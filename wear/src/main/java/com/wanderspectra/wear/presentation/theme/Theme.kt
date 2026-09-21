@@ -1,4 +1,4 @@
-package com.example.wanderspectra.presentation.theme
+package com.wanderspectra.wear.presentation.theme
 
 import androidx.compose.runtime.Composable
 import androidx.wear.compose.material.MaterialTheme

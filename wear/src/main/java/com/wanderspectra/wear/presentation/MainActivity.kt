@@ -3,7 +3,7 @@
  * most up to date changes to the libraries and their usages.
  */
 
-package com.example.wanderspectra.presentation
+package com.wanderspectra.wear.presentation
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -23,8 +23,8 @@ import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
 import androidx.wear.tooling.preview.devices.WearDevices
-import com.example.wanderspectra.R
-import com.example.wanderspectra.presentation.theme.WanderSpectraTheme
+import com.wanderspectra.wear.R
+import com.wanderspectra.wear.presentation.theme.WanderSpectraTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

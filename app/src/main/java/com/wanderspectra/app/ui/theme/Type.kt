@@ -1,4 +1,4 @@
-package com.example.wanderspectra.ui.theme
+package com.wanderspectra.app.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

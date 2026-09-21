@@ -5,13 +5,13 @@ plugins {
 }
 
 android {
-    namespace = "com.example.wanderspectra"
+    namespace = "com.wanderspectra.app"
     compileSdk {
         version = release(36)
     }
 
     defaultConfig {
-        applicationId = "com.example.wanderspectra"
+        applicationId = "com.wanderspectra.app"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
