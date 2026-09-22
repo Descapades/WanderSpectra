@@ -25,15 +25,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import com.wanderspectra.app.ui.theme.TanSongbird
+import com.wanderspectra.app.ui.theme.Salsa
 
-
-private val TanSongbird = FontFamily(
-    Font(R.font.tan_songbird)
-)
-
-private val Salsa = FontFamily(
-    Font(R.font.salsa_regular)
-)
 
 @Composable
 fun SplashScreen() {

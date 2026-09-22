@@ -13,6 +13,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.wanderspectra.app.ui.theme.WanderSpectraTheme
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,10 +27,35 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             WanderSpectraTheme {
-                SplashScreen()
+
+                var showSplash by remember {
+                    mutableStateOf(true)
+                }
+
+                var showOnboarding by remember {
+                    mutableStateOf(false)
+                }
+
+                LaunchedEffect(Unit) {
+                    delay(2000)
+                    showSplash = false
+                }
+
+                if (showSplash) {
+                    SplashScreen()
+                } else if (showOnboarding) {
+                    OnboardingScreen()
+                } else {
+                    LoginScreen(
+                        onCreateAccountClick = {
+                            showOnboarding = true
+                        }
+                    )
+                }
             }
         }
     }
 }
+
 
 
