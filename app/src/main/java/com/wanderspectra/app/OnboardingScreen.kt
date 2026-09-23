@@ -46,6 +46,8 @@ import com.wanderspectra.app.ui.theme.ButtonBlue
 import com.wanderspectra.app.ui.theme.ButtonRed
 import com.wanderspectra.app.ui.theme.SecondaryRed
 import androidx.compose.foundation.layout.PaddingValues
+import com.google.firebase.auth.FirebaseAuth
+import androidx.compose.ui.text.style.TextAlign
 
 @Composable
 fun OnboardingScreen() {
@@ -72,6 +74,56 @@ fun OnboardingScreen() {
     var elopementTriggers by remember { mutableStateOf("") }
     var calmingStrategies by remember { mutableStateOf("") }
     var safetyConcerns by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var registrationMessage by remember { mutableStateOf<String?>(null) }
+    var isRegistering by remember { mutableStateOf(false) }
+
+    val auth = FirebaseAuth.getInstance()
+
+    fun registerCaregiver() {
+        registrationMessage = null
+
+        when {
+            email.isBlank() -> {
+                registrationMessage = "Please enter an email address."
+            }
+
+            !android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches() -> {
+                registrationMessage = "Please enter a valid email address."
+            }
+
+            password.isBlank() -> {
+                registrationMessage = "Please enter a password."
+            }
+
+            password.length < 6 -> {
+                registrationMessage = "Password must be at least 6 characters."
+            }
+
+            password != confirmPassword -> {
+                registrationMessage = "Passwords do not match."
+            }
+
+            else -> {
+                isRegistering = true
+
+                auth.createUserWithEmailAndPassword(
+                    email.trim(),
+                    password
+                ).addOnCompleteListener { task ->
+                    isRegistering = false
+
+                    if (task.isSuccessful) {
+                        registrationMessage = "Account created successfully."
+                    } else {
+                        registrationMessage =
+                            task.exception?.localizedMessage
+                                ?: "Account registration failed. Please try again."
+                    }
+                }
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -175,6 +227,15 @@ fun OnboardingScreen() {
                     placeholder = "Password",
                     value = password,
                     onValueChange = { password = it },
+                    keyboardType = KeyboardType.Password,
+                    isPassword = true
+                )
+
+                OnboardingField(
+                    label = "Confirm Password",
+                    placeholder = "Confirm Password",
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it },
                     keyboardType = KeyboardType.Password,
                     isPassword = true
                 )
@@ -402,6 +463,23 @@ fun OnboardingScreen() {
                     onValueChange = { safetyConcerns = it }
                 )
 
+                registrationMessage?.let { message ->
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = message,
+                        fontFamily = Salsa,
+                        fontSize = 12.sp,
+                        color = if (message == "Account created successfully.") {
+                            SecondaryBlue
+                        } else {
+                            EmergencyRed
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Row(
@@ -442,8 +520,9 @@ fun OnboardingScreen() {
 
                     Button(
                         onClick = {
-                            // Account creation functionality will be connected later
+                            registerCaregiver()
                         },
+                        enabled = !isRegistering,
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp)
@@ -468,6 +547,7 @@ fun OnboardingScreen() {
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
+
             }
         }
     }
