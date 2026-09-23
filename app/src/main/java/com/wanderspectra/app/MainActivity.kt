@@ -36,6 +36,10 @@ class MainActivity : ComponentActivity() {
                     mutableStateOf(false)
                 }
 
+                var showHome by remember {
+                    mutableStateOf(false)
+                }
+
                 LaunchedEffect(Unit) {
                     delay(2000)
                     showSplash = false
@@ -43,12 +47,17 @@ class MainActivity : ComponentActivity() {
 
                 if (showSplash) {
                     SplashScreen()
+                } else if (showHome) {
+                    HomeScreen()
                 } else if (showOnboarding) {
                     OnboardingScreen()
                 } else {
                     LoginScreen(
                         onCreateAccountClick = {
                             showOnboarding = true
+                        },
+                        onLoginSuccess = {
+                            showHome = true
                         }
                     )
                 }

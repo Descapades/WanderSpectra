@@ -52,11 +52,13 @@ import com.wanderspectra.app.ui.theme.ButtonRed
 import com.wanderspectra.app.ui.theme.SecondaryRed
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
+import com.google.firebase.auth.FirebaseAuth
 
 
 @Composable
 fun LoginScreen(
-    onCreateAccountClick: () -> Unit
+    onCreateAccountClick: () -> Unit,
+    onLoginSuccess: () -> Unit
 ) {
 
     val backgroundCream = Color(0xFFEEE9D5)
@@ -65,6 +67,46 @@ fun LoginScreen(
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var loginMessage by remember { mutableStateOf<String?>(null) }
+    var isLoggingIn by remember { mutableStateOf(false) }
+
+    val auth = FirebaseAuth.getInstance()
+
+    fun signInCaregiver() {
+        loginMessage = null
+
+        when {
+            email.isBlank() -> {
+                loginMessage = "Please enter your email address."
+            }
+
+            !android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches() -> {
+                loginMessage = "Please enter a valid email address."
+            }
+
+            password.isBlank() -> {
+                loginMessage = "Please enter your password."
+            }
+
+            else -> {
+                isLoggingIn = true
+
+                auth.signInWithEmailAndPassword(
+                    email.trim(),
+                    password
+                ).addOnCompleteListener { task ->
+                    isLoggingIn = false
+
+                    if (task.isSuccessful) {
+                        loginMessage = null
+                        onLoginSuccess()
+                    } else {
+                        loginMessage = "Invalid email or password."
+                    }
+                }
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -372,10 +414,24 @@ fun LoginScreen(
                 )
                 Spacer(modifier = Modifier.height(18.dp))
 
+                loginMessage?.let { message ->
+                    Text(
+                        text = message,
+                        fontFamily = Salsa,
+                        fontSize = 12.sp,
+                        color = EmergencyRed,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
                 Button(
                     onClick = {
-                        // Firebase email login will be connected later
+                        signInCaregiver()
                     },
+                    enabled = !isLoggingIn,
                     modifier = Modifier
                         .width(230.dp)
                         .height(48.dp)
