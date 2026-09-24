@@ -53,10 +53,31 @@ import com.wanderspectra.app.ui.theme.SecondaryRed
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import com.google.firebase.auth.FirebaseAuth
+import android.content.Context
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialException
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.firebase.auth.GoogleAuthProvider
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import com.facebook.AccessToken
+import com.facebook.CallbackManager
+import com.facebook.FacebookCallback
+import com.facebook.FacebookException
+import com.facebook.login.LoginManager
+import com.facebook.login.LoginResult
+import com.google.firebase.auth.FacebookAuthProvider
+import android.content.Intent
+import androidx.activity.result.contract.ActivityResultContracts
 
 
 @Composable
 fun LoginScreen(
+    callbackManager: CallbackManager,
     onCreateAccountClick: () -> Unit,
     onLoginSuccess: () -> Unit
 ) {
@@ -71,6 +92,11 @@ fun LoginScreen(
     var isLoggingIn by remember { mutableStateOf(false) }
 
     val auth = FirebaseAuth.getInstance()
+    val context = LocalContext.current
+    val credentialManager = CredentialManager.create(context)
+    val coroutineScope = rememberCoroutineScope()
+
+
 
     fun signInCaregiver() {
         loginMessage = null
@@ -107,6 +133,99 @@ fun LoginScreen(
             }
         }
     }
+
+    fun signInWithGoogle() {
+        coroutineScope.launch {
+            try {
+                val googleIdOption = GetGoogleIdOption.Builder()
+                    .setFilterByAuthorizedAccounts(false)
+                    .setServerClientId(
+                        context.getString(R.string.default_web_client_id)
+                    )
+                    .setAutoSelectEnabled(false)
+                    .build()
+
+                val request = GetCredentialRequest.Builder()
+                    .addCredentialOption(googleIdOption)
+                    .build()
+
+                val result = credentialManager.getCredential(
+                    context = context,
+                    request = request
+                )
+
+                val credential = result.credential
+
+                if (
+                    credential.type ==
+                    GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+                ) {
+                    val googleIdTokenCredential =
+                        GoogleIdTokenCredential.createFrom(credential.data)
+
+                    val firebaseCredential = GoogleAuthProvider.getCredential(
+                        googleIdTokenCredential.idToken,
+                        null
+                    )
+
+                    auth.signInWithCredential(firebaseCredential)
+                        .addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                loginMessage = null
+                                onLoginSuccess()
+                            } else {
+                                loginMessage =
+                                    "Google sign in failed. Please try again."
+                            }
+                        }
+                } else {
+                    loginMessage =
+                        "Google sign in failed. Please try again."
+                }
+
+            } catch (e: GetCredentialException) {
+                loginMessage =
+                    "Google sign in was cancelled or could not be completed."
+            } catch (e: Exception) {
+                loginMessage =
+                    "Google sign in failed. Please try again."
+            }
+        }
+    }
+
+    fun handleFacebookAccessToken(accessToken: AccessToken) {
+        val credential = FacebookAuthProvider.getCredential(accessToken.token)
+
+        auth.signInWithCredential(credential)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    loginMessage = null
+                    onLoginSuccess()
+                } else {
+                    loginMessage =
+                        "Facebook sign in failed. Please try again."
+                }
+            }
+    }
+
+    LoginManager.getInstance().registerCallback(
+        callbackManager,
+        object : FacebookCallback<LoginResult> {
+
+            override fun onSuccess(result: LoginResult) {
+                handleFacebookAccessToken(result.accessToken)
+            }
+
+            override fun onCancel() {
+                loginMessage = "Facebook sign in was cancelled."
+            }
+
+            override fun onError(error: FacebookException) {
+                loginMessage =
+                    "Facebook sign in failed. Please try again."
+            }
+        }
+    )
 
     Box(
         modifier = Modifier
@@ -238,7 +357,7 @@ fun LoginScreen(
                 )
                 Button(
                     onClick = {
-                        // Google login functionality will be connected later
+                        signInWithGoogle()
                     },
                     modifier = Modifier
                         .width(230.dp)
@@ -282,7 +401,11 @@ fun LoginScreen(
 
                 Button(
                     onClick = {
-                        // Facebook login functionality will be connected later
+                        LoginManager.getInstance().logInWithReadPermissions(
+                            context as androidx.activity.ComponentActivity,
+                            callbackManager,
+                            listOf("email", "public_profile")
+                        )
                     },
                     modifier = Modifier
                         .width(230.dp)

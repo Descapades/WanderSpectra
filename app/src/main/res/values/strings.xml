@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">WanderSpectra</string>
+    <string name="facebook_app_id">1720254092396085</string>
+    <string name="fb_login_protocol_scheme">fb1720254092396085</string>
 </resources>

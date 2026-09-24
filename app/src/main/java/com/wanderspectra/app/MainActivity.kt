@@ -19,8 +19,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
+import android.content.Intent
+import com.facebook.CallbackManager
 
 class MainActivity : ComponentActivity() {
+    private val callbackManager = CallbackManager.Factory.create()
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -53,6 +56,7 @@ class MainActivity : ComponentActivity() {
                     OnboardingScreen()
                 } else {
                     LoginScreen(
+                        callbackManager = callbackManager,
                         onCreateAccountClick = {
                             showOnboarding = true
                         },
@@ -63,6 +67,17 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    @Suppress("DEPRECATION")
+    @Deprecated("Facebook SDK uses onActivityResult for login callbacks")
+    override fun onActivityResult(
+        requestCode: Int,
+        resultCode: Int,
+        data: Intent?
+    ) {
+        super.onActivityResult(requestCode, resultCode, data)
+        callbackManager.onActivityResult(requestCode, resultCode, data)
     }
 }
 
