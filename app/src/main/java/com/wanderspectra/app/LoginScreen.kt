@@ -480,7 +480,8 @@ fun LoginScreen(
                         Text(
                             text = "username",
                             fontFamily = Salsa,
-                            fontSize = 12.sp
+                            fontSize = 12.sp,
+                            color = PrimaryBlue
                         )
                     },
                     singleLine = true,
@@ -519,7 +520,8 @@ fun LoginScreen(
                         Text(
                             text = "password",
                             fontFamily = Salsa,
-                            fontSize = 12.sp
+                            fontSize = 12.sp,
+                            color = PrimaryBlue
                         )
                     },
                     singleLine = true,

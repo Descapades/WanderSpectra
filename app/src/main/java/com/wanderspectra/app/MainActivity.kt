@@ -44,6 +44,18 @@ class MainActivity : ComponentActivity() {
                     mutableStateOf(FirebaseAuth.getInstance().currentUser != null)
                 }
 
+                var showAddAnotherChild by remember {
+                    mutableStateOf(false)
+                }
+
+                var showChildConfirmation by remember {
+                    mutableStateOf(false)
+                }
+
+                var confirmedChildren by remember {
+                    mutableStateOf<List<ChildProfile>>(emptyList())
+                }
+
                 LaunchedEffect(Unit) {
                     delay(2000)
                     showSplash = false
@@ -58,11 +70,48 @@ class MainActivity : ComponentActivity() {
                             showOnboarding = false
                         }
                     )
-                } else if (showOnboarding) {
-                    OnboardingScreen(
-                        onAccountCreated = {
-                            showOnboarding = false
+                } else if (showAddAnotherChild) {
+
+                    AddAnotherChild(
+                        onChildProfileCreated = { childProfile ->
+
+                            confirmedChildren =
+                                confirmedChildren + childProfile
+
+                            showAddAnotherChild = false
+                            showChildConfirmation = true
+                        }
+                    )
+
+                } else if (showChildConfirmation) {
+
+                    ChildConfirmation(
+                        children = confirmedChildren,
+
+                        onAddAnotherChild = {
+                            showChildConfirmation = false
+                            showAddAnotherChild = true
+                        },
+
+                        onBack = {
+                            showChildConfirmation = false
+                            showOnboarding = true
+                        },
+
+                        onFinish = {
+                            showChildConfirmation = false
                             showHome = true
+                        }
+                    )
+
+                } else if (showOnboarding) {
+
+                    OnboardingScreen(
+                        onAccountCreated = { childProfile ->
+                            confirmedChildren = listOf(childProfile)
+
+                            showOnboarding = false
+                            showChildConfirmation = true
                         }
                     )
                 } else {
