@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
 import android.content.Intent
 import com.facebook.CallbackManager
+import com.google.firebase.auth.FirebaseAuth
 
 class MainActivity : ComponentActivity() {
     private val callbackManager = CallbackManager.Factory.create()
@@ -40,7 +41,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 var showHome by remember {
-                    mutableStateOf(false)
+                    mutableStateOf(FirebaseAuth.getInstance().currentUser != null)
                 }
 
                 LaunchedEffect(Unit) {
@@ -51,9 +52,13 @@ class MainActivity : ComponentActivity() {
                 if (showSplash) {
                     SplashScreen()
                 } else if (showHome) {
-                    HomeScreen()
+                    HomeScreen(
+                        onSignOut = {
+                            showHome = false
+                            showOnboarding = false
+                        }
+                    )
                 } else if (showOnboarding) {
-                    OnboardingScreen()
                 } else {
                     LoginScreen(
                         callbackManager = callbackManager,

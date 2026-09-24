@@ -11,20 +11,43 @@ import androidx.compose.ui.unit.sp
 import com.wanderspectra.app.ui.theme.BackgroundCream
 import com.wanderspectra.app.ui.theme.Salsa
 import com.wanderspectra.app.ui.theme.SecondaryBlue
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Button
+import androidx.compose.ui.unit.dp
+import com.google.firebase.auth.FirebaseAuth
 
 @Composable
-fun HomeScreen() {
+fun HomeScreen(
+    onSignOut: () -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(BackgroundCream),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "WanderSpectra Home",
-            fontFamily = Salsa,
-            fontSize = 24.sp,
-            color = SecondaryBlue
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "WanderSpectra Home",
+                fontFamily = Salsa,
+                fontSize = 24.sp,
+                color = SecondaryBlue
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = {
+                    FirebaseAuth.getInstance().signOut()
+                    onSignOut()
+                }
+            ) {
+                Text("Sign Out")
+            }
+        }
     }
 }
