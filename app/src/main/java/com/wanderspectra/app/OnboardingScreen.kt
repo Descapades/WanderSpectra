@@ -50,7 +50,9 @@ import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.ui.text.style.TextAlign
 
 @Composable
-fun OnboardingScreen() {
+fun OnboardingScreen(
+    onAccountCreated: () -> Unit
+) {
 
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -80,6 +82,10 @@ fun OnboardingScreen() {
 
     val auth = FirebaseAuth.getInstance()
 
+    val caregiverRepository = remember {
+        CaregiverRepository()
+    }
+
     fun registerCaregiver() {
         registrationMessage = null
 
@@ -107,20 +113,41 @@ fun OnboardingScreen() {
             else -> {
                 isRegistering = true
 
-                auth.createUserWithEmailAndPassword(
-                    email.trim(),
-                    password
-                ).addOnCompleteListener { task ->
-                    isRegistering = false
+                auth.createUserWithEmailAndPassword(email.trim(), password)
+                    .addOnCompleteListener { task ->
 
-                    if (task.isSuccessful) {
-                        registrationMessage = "Account created successfully."
-                    } else {
-                        registrationMessage =
-                            task.exception?.localizedMessage
-                                ?: "Account registration failed. Please try again."
+                        if (task.isSuccessful) {
+
+                            val caregiver = Caregiver(
+                                username = username.trim(),
+                                email = email.trim(),
+                                phone = phone.trim(),
+                                location = location.trim(),
+                                relationship = relationship.trim()
+                            )
+
+                            caregiverRepository.createCaregiver(
+                                caregiver = caregiver,
+                                onSuccess = {
+                                    isRegistering = false
+                                    registrationMessage =
+                                        "Account created successfully."
+                                    onAccountCreated()
+                                },
+                                onFailure = {
+                                    isRegistering = false
+                                    registrationMessage =
+                                        "Account created, but caregiver information could not be saved."
+                                }
+                            )
+
+                        } else {
+                            isRegistering = false
+                            registrationMessage =
+                                task.exception?.localizedMessage
+                                    ?: "Account registration failed. Please try again."
+                        }
                     }
-                }
             }
         }
     }

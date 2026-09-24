@@ -59,6 +59,12 @@ class MainActivity : ComponentActivity() {
                         }
                     )
                 } else if (showOnboarding) {
+                    OnboardingScreen(
+                        onAccountCreated = {
+                            showOnboarding = false
+                            showHome = true
+                        }
+                    )
                 } else {
                     LoginScreen(
                         callbackManager = callbackManager,
