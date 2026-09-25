@@ -46,8 +46,14 @@ enum class AppDestination {
     HOME,
     CHILD_PROFILE,
     HISTORY,
+    SAFETY_CIRCLE,
     COMMUNITY,
-    SAFETY_CIRCLE
+    CAREGIVER_ACCOUNT,
+    SAFE_ZONE_SETTINGS,
+    WEARABLE_SETTINGS,
+    ALERT_NOTIFICATIONS,
+    PRIVACY_PERMISSIONS,
+    HELP_ABOUT
 }
 
 @Composable
@@ -154,8 +160,14 @@ fun AppShell(
                         AppDestination.HOME -> content()
                         AppDestination.CHILD_PROFILE -> ChildProfileContent()
                         AppDestination.HISTORY -> HistoryContent()
-                        AppDestination.COMMUNITY -> CommunityContent()
                         AppDestination.SAFETY_CIRCLE -> SafetyCircleContent()
+                        AppDestination.COMMUNITY -> CommunityContent()
+                        AppDestination.CAREGIVER_ACCOUNT -> CaregiverAccountContent()
+                        AppDestination.SAFE_ZONE_SETTINGS -> SafeZoneSettingsContent()
+                        AppDestination.WEARABLE_SETTINGS -> WearableSettingsContent()
+                        AppDestination.ALERT_NOTIFICATIONS -> AlertNotificationsContent()
+                        AppDestination.PRIVACY_PERMISSIONS -> PrivacyPermissionsContent()
+                        AppDestination.HELP_ABOUT -> HelpAboutContent()
                     }
                 }
             }
@@ -175,7 +187,11 @@ fun AppShell(
                         top = 105.dp,
                         end = 28.dp
                     ),
-                onSignOut = onSignOut
+                onSignOut = onSignOut,
+                onDestinationSelected = { destination ->
+                    currentDestination = destination
+                    showSettingsMenu = false
+                }
             )
         }
     }
@@ -279,7 +295,8 @@ fun AppNavigationButton(
 @Composable
 fun SettingsMenu(
     modifier: Modifier = Modifier,
-    onSignOut: () -> Unit
+    onSignOut: () -> Unit,
+    onDestinationSelected: (AppDestination) -> Unit
 ) {
     Column(
         modifier = modifier
@@ -322,12 +339,47 @@ fun SettingsMenu(
                 .background(PrimaryBlue)
         )
 
-        SettingsMenuItem("Caregiver Account")
-        SettingsMenuItem("Safe Zone Settings")
-        SettingsMenuItem("Wearable Settings")
-        SettingsMenuItem("Alert & Notifications")
-        SettingsMenuItem("Privacy & Permissions")
-        SettingsMenuItem("Help & About")
+        SettingsMenuItem(
+            text = "Caregiver Account",
+            onClick = {
+                onDestinationSelected(AppDestination.CAREGIVER_ACCOUNT)
+            }
+        )
+
+        SettingsMenuItem(
+            text = "Safe Zone Settings",
+            onClick = {
+                onDestinationSelected(AppDestination.SAFE_ZONE_SETTINGS)
+            }
+        )
+
+        SettingsMenuItem(
+            text = "Wearable Settings",
+            onClick = {
+                onDestinationSelected(AppDestination.WEARABLE_SETTINGS)
+            }
+        )
+
+        SettingsMenuItem(
+            text = "Alert & Notifications",
+            onClick = {
+                onDestinationSelected(AppDestination.ALERT_NOTIFICATIONS)
+            }
+        )
+
+        SettingsMenuItem(
+            text = "Privacy & Permissions",
+            onClick = {
+                onDestinationSelected(AppDestination.PRIVACY_PERMISSIONS)
+            }
+        )
+
+        SettingsMenuItem(
+            text = "Help & About",
+            onClick = {
+                onDestinationSelected(AppDestination.HELP_ABOUT)
+            }
+        )
 
         SettingsMenuItem(
             text = "Sign Out",
