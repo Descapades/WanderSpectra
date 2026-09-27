@@ -20,7 +20,6 @@ import com.wanderspectra.app.ui.theme.Salsa
 
 @Composable
 fun SafeZoneSettingsContent() {
-    val repo = remember { SafeZoneRepository() }
     var status by remember { mutableStateOf("Not saved yet") }
 
     Column(
@@ -50,7 +49,7 @@ fun SafeZoneSettingsContent() {
                     lat = 30.43,
                     lng = -86.57
                 )
-                repo.save(zone) { ok ->
+                SafeZoneRepository().save(zone) { ok ->
                     status = if (ok) "Saved to Firestore" else "Save failed"
                 }
             },
@@ -59,4 +58,9 @@ fun SafeZoneSettingsContent() {
             Text("Save test zone")
         }
     }
+}
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+fun SafeZoneSettingsPreview() {
+    SafeZoneSettingsContent()
 }
