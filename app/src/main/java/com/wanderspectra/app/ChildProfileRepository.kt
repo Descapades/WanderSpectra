@@ -69,4 +69,67 @@ class ChildProfileRepository {
                 onFailure(exception)
             }
     }
+
+    fun getChildProfiles(
+        onSuccess: (List<ChildProfile>) -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        val user = auth.currentUser
+
+        if (user == null) {
+            onFailure(Exception("No authenticated caregiver found."))
+            return
+        }
+
+        firestore
+            .collection("caregivers")
+            .document(user.uid)
+            .collection("children")
+            .get()
+            .addOnSuccessListener { documents ->
+                val children = documents.mapNotNull { document ->
+                    document.toObject(ChildProfile::class.java)
+                }
+
+                onSuccess(children)
+            }
+            .addOnFailureListener { exception ->
+                onFailure(exception)
+            }
+    }
+
+    fun updateChildProfile(
+        childProfile: ChildProfile,
+        onSuccess: () -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        val user = auth.currentUser
+
+        if (user == null) {
+            onFailure(Exception("No authenticated caregiver found."))
+            return
+        }
+
+        if (childProfile.childId.isBlank()) {
+            onFailure(Exception("Child profile ID is missing."))
+            return
+        }
+
+        val updatedChild = childProfile.copy(
+            caregiverUid = user.uid
+        )
+
+        firestore
+            .collection("caregivers")
+            .document(user.uid)
+            .collection("children")
+            .document(childProfile.childId)
+            .set(updatedChild)
+            .addOnSuccessListener {
+                onSuccess()
+            }
+            .addOnFailureListener { exception ->
+                onFailure(exception)
+            }
+    }
 }
