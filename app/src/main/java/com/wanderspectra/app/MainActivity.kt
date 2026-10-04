@@ -56,6 +56,10 @@ class MainActivity : ComponentActivity() {
                     mutableStateOf<List<ChildProfile>>(emptyList())
                 }
 
+                val childProfileRepository = remember {
+                    ChildProfileRepository()
+                }
+
                 LaunchedEffect(Unit) {
                     delay(2000)
                     showSplash = false
@@ -99,8 +103,34 @@ class MainActivity : ComponentActivity() {
                         },
 
                         onFinish = {
-                            showChildConfirmation = false
-                            showHome = true
+                            val childProfile = confirmedChildren.firstOrNull()
+
+                            if (childProfile != null) {
+                                childProfileRepository.createChildProfile(
+                                    childProfile = childProfile,
+                                    onSuccess = { childId ->
+                                        childProfileRepository.getChildProfile(
+                                            childId = childId,
+                                            onSuccess = { savedChild ->
+                                                if (savedChild != null) {
+                                                    println("Retrieved child profile: ${savedChild.fullName}")
+                                                    println("Child ID: ${savedChild.childId}")
+                                                    println("Caregiver UID: ${savedChild.caregiverUid}")
+
+                                                    showChildConfirmation = false
+                                                    showHome = true
+                                                }
+                                            },
+                                            onFailure = { exception ->
+                                                exception.printStackTrace()
+                                            }
+                                        )
+                                    },
+                                    onFailure = { exception ->
+                                        exception.printStackTrace()
+                                    }
+                                )
+                            }
                         }
                     )
 
