@@ -68,4 +68,5 @@ dependencies {
     implementation("com.facebook.android:facebook-login:18.1.3")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("androidx.compose.material:material-icons-extended")
+    implementation(libs.play.services.wearable)
 }
