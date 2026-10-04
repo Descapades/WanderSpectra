@@ -54,8 +54,38 @@ fun WearableSettingsContent(
         mutableStateOf(-1)
     }
 
+    val wearableRepository = remember {
+        WearableRepository()
+    }
+
     val childName = child.preferredName
         .ifBlank { child.fullName }
+
+    LaunchedEffect(child.childId) {
+        wearableRepository.getWearable(
+            childId = child.childId,
+            onSuccess = { wearable ->
+
+                android.util.Log.d(
+                    "WearableFirestore",
+                    "Retrieved wearable: $wearable"
+                )
+
+                if (wearable != null) {
+                    connectedDeviceName = wearable.deviceName
+                    batteryLevel = wearable.batteryLevel
+                    isConnected = wearable.connected
+                }
+            },
+            onFailure = { exception ->
+                android.util.Log.e(
+                    "WearableFirestore",
+                    "Failed to retrieve wearable",
+                    exception
+                )
+            }
+        )
+    }
 
     if (isConnected) {
 
@@ -75,10 +105,40 @@ fun WearableSettingsContent(
 
         ConnectWearableScreen(
             childName = childName,
-            onDeviceConnected = { deviceName, battery ->
+            onDeviceConnected = { deviceId, deviceName, battery ->
+
+                // The Wear OS connection already succeeded,
+                // so update the UI immediately.
                 connectedDeviceName = deviceName
                 batteryLevel = battery
                 isConnected = true
+
+                val wearable = Wearable(
+                    deviceId = deviceId,
+                    deviceName = deviceName,
+                    deviceType = "Wear OS Device",
+                    batteryLevel = battery,
+                    connected = true,
+                    lastSync = System.currentTimeMillis()
+                )
+
+                wearableRepository.saveWearable(
+                    childId = child.childId,
+                    wearable = wearable,
+                    onSuccess = {
+                        android.util.Log.d(
+                            "WearableFirestore",
+                            "Wearable saved successfully"
+                        )
+                    },
+                    onFailure = { exception ->
+                        android.util.Log.e(
+                            "WearableFirestore",
+                            "Failed to save wearable",
+                            exception
+                        )
+                    }
+                )
             }
         )
 
@@ -209,7 +269,7 @@ fun WearableNotConnectedScreen(
 @Composable
 fun ConnectWearableScreen(
     childName: String,
-    onDeviceConnected: (String, Int) -> Unit
+    onDeviceConnected: (String, String, Int) -> Unit
 ) {
     val context = LocalContext.current
 
@@ -363,6 +423,7 @@ fun ConnectWearableScreen(
                         ) { connected, battery ->
                             if (connected) {
                                 onDeviceConnected(
+                                    node.id,
                                     node.displayName,
                                     battery
                                 )
