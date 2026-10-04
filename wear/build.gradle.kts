@@ -11,7 +11,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.wanderspectra.wear"
+        applicationId = "com.wanderspectra.app"
         minSdk = 30
         targetSdk = 36
         versionCode = 1
