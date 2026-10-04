@@ -67,6 +67,7 @@ dependencies {
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     implementation("com.facebook.android:facebook-login:18.1.3")
     implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation("com.cloudinary:cloudinary-android:3.1.2")
     implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.play.services.wearable)
 }

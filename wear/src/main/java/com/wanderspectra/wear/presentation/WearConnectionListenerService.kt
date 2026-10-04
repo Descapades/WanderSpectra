@@ -4,6 +4,9 @@ import android.util.Log
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
 
 class WearConnectionListenerService : WearableListenerService() {
 
@@ -13,6 +16,29 @@ class WearConnectionListenerService : WearableListenerService() {
         private const val CONNECTED_PATH = "/wanderspectra/connected"
     }
 
+    private fun getBatteryLevel(): Int {
+        val batteryStatus = registerReceiver(
+            null,
+            IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        )
+
+        val level = batteryStatus?.getIntExtra(
+            BatteryManager.EXTRA_LEVEL,
+            -1
+        ) ?: -1
+
+        val scale = batteryStatus?.getIntExtra(
+            BatteryManager.EXTRA_SCALE,
+            -1
+        ) ?: -1
+
+        return if (level >= 0 && scale > 0) {
+            (level * 100) / scale
+        } else {
+            -1
+        }
+    }
+
     override fun onMessageReceived(messageEvent: MessageEvent) {
         super.onMessageReceived(messageEvent)
 
@@ -20,11 +46,13 @@ class WearConnectionListenerService : WearableListenerService() {
 
             Log.d(TAG, "Connection request received from caregiver app")
 
+            val batteryLevel = getBatteryLevel()
+
             Wearable.getMessageClient(this)
                 .sendMessage(
                     messageEvent.sourceNodeId,
                     CONNECTED_PATH,
-                    "WanderSpectra Wear connected".toByteArray()
+                    batteryLevel.toString().toByteArray()
                 )
                 .addOnSuccessListener {
                     Log.d(TAG, "Connection response sent to caregiver app")

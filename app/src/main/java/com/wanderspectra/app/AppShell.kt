@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.SupervisedUserCircle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,6 +68,25 @@ fun AppShell(
 
     var currentDestination by remember {
         mutableStateOf(AppDestination.HOME)
+    }
+
+    var child by remember {
+        mutableStateOf<ChildProfile?>(null)
+    }
+
+    val childRepository = remember {
+        ChildProfileRepository()
+    }
+
+    LaunchedEffect(Unit) {
+        childRepository.getChildProfiles(
+            onSuccess = { children ->
+                child = children.firstOrNull()
+            },
+            onFailure = {
+                child = null
+            }
+        )
     }
 
     Box(
@@ -164,7 +184,13 @@ fun AppShell(
                         AppDestination.COMMUNITY -> CommunityContent()
                         AppDestination.CAREGIVER_ACCOUNT -> CaregiverAccountContent()
                         AppDestination.SAFE_ZONE_SETTINGS -> SafeZoneSettingsContent()
-                        AppDestination.WEARABLE_SETTINGS -> WearableSettingsContent()
+                        AppDestination.WEARABLE_SETTINGS -> {
+                            child?.let { childProfile ->
+                                WearableSettingsContent(
+                                    child = childProfile
+                                )
+                            }
+                        }
                         AppDestination.ALERT_NOTIFICATIONS -> AlertNotificationsContent()
                         AppDestination.PRIVACY_PERMISSIONS -> PrivacyPermissionsContent()
                         AppDestination.HELP_ABOUT -> HelpAboutContent()
