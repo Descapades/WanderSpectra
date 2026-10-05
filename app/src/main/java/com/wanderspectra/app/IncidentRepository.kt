@@ -5,22 +5,39 @@ import com.google.firebase.firestore.FirebaseFirestore
 class IncidentRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
-    fun startIncident(incident: Incident, onDone: (Boolean, String) -> Unit) {
+    fun startIncident(incident: Incident, onDone: (Boolean, String, String?) -> Unit) {
         val data = hashMapOf(
             "childId" to incident.childId,
             "caregiverId" to incident.caregiverId,
-            "status" to incident.status,
+            "status" to "open",
             "startTime" to incident.startTime,
-            "endTime" to incident.endTime,
+            "endTime" to null,
             "lastKnownLat" to incident.lastKnownLat,
             "lastKnownLng" to incident.lastKnownLng
         )
 
         db.collection("incidents")
             .add(data)
-            .addOnSuccessListener { onDone(true, "Incident saved") }
+            .addOnSuccessListener { doc ->
+                onDone(true, "Incident saved", doc.id)
+            }
             .addOnFailureListener { error ->
-                onDone(false, error.message ?: "Incident save failed")
+                onDone(false, error.message ?: "Incident save failed", null)
+            }
+    }
+
+    fun closeIncident(incidentId: String, onDone: (Boolean, String) -> Unit) {
+        db.collection("incidents")
+            .document(incidentId)
+            .update(
+                mapOf(
+                    "status" to "closed",
+                    "endTime" to System.currentTimeMillis()
+                )
+            )
+            .addOnSuccessListener { onDone(true, "Child marked safe") }
+            .addOnFailureListener { error ->
+                onDone(false, error.message ?: "Close failed")
             }
     }
 }

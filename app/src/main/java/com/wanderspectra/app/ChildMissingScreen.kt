@@ -2,19 +2,18 @@ package com.wanderspectra.app
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wanderspectra.app.ui.theme.ButtonBlue
@@ -25,9 +24,12 @@ import com.wanderspectra.app.ui.theme.SecondaryBlue
 import com.wanderspectra.app.ui.theme.SecondaryRed
 
 @Composable
-fun ChildMissingContent() {
-    var status by remember { mutableStateOf("Confirm this is an elopement") }
-
+fun ChildMissingContent(
+    childName: String = "Jimothy",
+    statusText: String = "",
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -35,53 +37,47 @@ fun ChildMissingContent() {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Text("CHILD IS MISSING", color = SecondaryRed, fontFamily = Salsa, fontSize = 22.sp)
+        Text("CONFIRMATION", color = PrimaryBlue, fontFamily = Salsa, fontSize = 14.sp)
+        Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Child is Missing?",
-            color = PrimaryBlue,
+            "Is $childName missing?",
+            color = SecondaryRed,
             fontFamily = Salsa,
-            fontSize = 24.sp
+            fontSize = 20.sp,
+            textAlign = TextAlign.Center
         )
-        Text(
-            text = status,
-            fontFamily = Salsa,
-            modifier = Modifier.padding(top = 16.dp)
-        )
-        Row(
-            modifier = Modifier.padding(top = 24.dp)
+        Spacer(modifier = Modifier.height(12.dp))
+        if (statusText.isNotBlank()) {
+            Text(
+                text = statusText,
+                color = SecondaryRed,
+                fontFamily = Salsa,
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+        Button(
+            onClick = onConfirm,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = ButtonRed,
+                contentColor = SecondaryRed
+            )
         ) {
-            Button(
-                onClick = {
-                    val incident = Incident(
-                        childId = "test-child",
-                        caregiverId = "test-caregiver",
-                        status = "open",
-                        startTime = System.currentTimeMillis(),
-                        lastKnownLat = 30.43,
-                        lastKnownLng = -86.57
-                    )
-                    IncidentRepository().startIncident(incident) { _, message ->
-                        status = message
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ButtonRed,
-                    contentColor = SecondaryRed
-                )
-            ) {
-                Text("Confirm", fontFamily = Salsa)
-            }
-            Button(
-                onClick = {
-                    status = "Cancelled. No incident written."
-                },
-                modifier = Modifier.padding(start = 12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ButtonBlue,
-                    contentColor = SecondaryBlue
-                )
-            ) {
-                Text("Cancel", fontFamily = Salsa)
-            }
+            Text("Elopement Mode", fontFamily = Salsa)
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Button(
+            onClick = onCancel,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = ButtonBlue,
+                contentColor = SecondaryBlue
+            )
+        ) {
+            Text("Cancel", fontFamily = Salsa)
         }
     }
 }
