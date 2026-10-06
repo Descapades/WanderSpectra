@@ -42,6 +42,7 @@ import com.wanderspectra.app.ui.theme.EmergencyRed
 import com.wanderspectra.app.ui.theme.PrimaryBlue
 import com.wanderspectra.app.ui.theme.Salsa
 import com.wanderspectra.app.ui.theme.TanSongbird
+import com.wanderspectra.app.ui.theme.ButtonBlue
 
 enum class AppDestination {
     HOME,
@@ -199,6 +200,7 @@ fun AppShell(
             }
 
             AppBottomNavigation(
+                currentDestination = currentDestination,
                 onDestinationSelected = { destination ->
                     currentDestination = destination
                 }
@@ -225,6 +227,7 @@ fun AppShell(
 
 @Composable
 fun AppBottomNavigation(
+    currentDestination: AppDestination,
     onDestinationSelected: (AppDestination) -> Unit
 ) {
     Row(
@@ -247,6 +250,7 @@ fun AppBottomNavigation(
         AppNavigationButton(
             icon = Icons.Default.Home,
             contentDescription = "Home",
+            isSelected = currentDestination == AppDestination.HOME,
             onClick = {
                 onDestinationSelected(AppDestination.HOME)
             }
@@ -255,6 +259,7 @@ fun AppBottomNavigation(
         AppNavigationButton(
             icon = Icons.Default.Person,
             contentDescription = "Child Profile",
+            isSelected = currentDestination == AppDestination.CHILD_PROFILE,
             onClick = {
                 onDestinationSelected(AppDestination.CHILD_PROFILE)
             }
@@ -263,6 +268,7 @@ fun AppBottomNavigation(
         AppNavigationButton(
             icon = Icons.Default.History,
             contentDescription = "History",
+            isSelected = currentDestination == AppDestination.HISTORY,
             onClick = {
                 onDestinationSelected(AppDestination.HISTORY)
             }
@@ -271,6 +277,7 @@ fun AppBottomNavigation(
         AppNavigationButton(
             icon = Icons.Default.SupervisedUserCircle,
             contentDescription = "Safety Circle",
+            isSelected = currentDestination == AppDestination.SAFETY_CIRCLE,
             onClick = {
                 onDestinationSelected(AppDestination.SAFETY_CIRCLE)
             }
@@ -279,6 +286,7 @@ fun AppBottomNavigation(
         AppNavigationButton(
             icon = Icons.Default.Groups,
             contentDescription = "Community",
+            isSelected = currentDestination == AppDestination.COMMUNITY,
             onClick = {
                 onDestinationSelected(AppDestination.COMMUNITY)
             }
@@ -290,31 +298,40 @@ fun AppBottomNavigation(
 fun AppNavigationButton(
     icon: ImageVector,
     contentDescription: String,
+    isSelected: Boolean,
     onClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
-            .size(58.dp)
             .background(
-                color = ButtonYellow,
-                shape = RoundedCornerShape(10.dp)
+                color = if (isSelected) ButtonBlue else BackgroundCream,
+                shape = RoundedCornerShape(12.dp)
             )
-            .border(
-                width = 1.dp,
-                color = PrimaryBlue,
-                shape = RoundedCornerShape(10.dp)
-            )
-            .clickable {
-                onClick()
-            },
+            .padding(6.dp)
+            .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            tint = PrimaryBlue,
-            modifier = Modifier.size(38.dp)
-        )
+        Box(
+            modifier = Modifier
+                .size(58.dp)
+                .background(
+                    color = ButtonYellow,
+                    shape = RoundedCornerShape(10.dp)
+                )
+                .border(
+                    width = 1.dp,
+                    color = PrimaryBlue,
+                    shape = RoundedCornerShape(10.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = PrimaryBlue,
+                modifier = Modifier.size(38.dp)
+            )
+        }
     }
 }
 
