@@ -1,13 +1,6 @@
 package com.wanderspectra.app
 
 import android.Manifest
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -26,18 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material3.Button
@@ -78,34 +59,6 @@ fun PrivacyPermissionsContent() {
         mutableStateOf(CaregiverLocationManager.hasLocationPermission(context))
     }
 
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                hasLocationPermission = CaregiverLocationManager.hasLocationPermission(context)
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        hasLocationPermission = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-
     var hasNotificationPermission by remember {
         mutableStateOf(CaregiverNotificationManager.hasNotificationPermission(context))
     }
@@ -113,6 +66,7 @@ fun PrivacyPermissionsContent() {
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
+                hasLocationPermission = CaregiverLocationManager.hasLocationPermission(context)
                 hasNotificationPermission = CaregiverNotificationManager.hasNotificationPermission(context)
             }
         }
@@ -122,7 +76,14 @@ fun PrivacyPermissionsContent() {
         }
     }
 
-    val permissionLauncher = rememberLauncherForActivityResult(
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        hasLocationPermission = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+    }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         hasNotificationPermission = CaregiverNotificationManager.hasNotificationPermission(context)
@@ -207,7 +168,7 @@ fun PrivacyPermissionsContent() {
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(
                         onClick = {
-                            permissionLauncher.launch(
+                            locationPermissionLauncher.launch(
                                 arrayOf(
                                     Manifest.permission.ACCESS_FINE_LOCATION,
                                     Manifest.permission.ACCESS_COARSE_LOCATION
@@ -291,7 +252,7 @@ fun PrivacyPermissionsContent() {
                     Button(
                         onClick = {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                             } else {
                                 CaregiverNotificationManager.openNotificationSettings(context)
                             }
