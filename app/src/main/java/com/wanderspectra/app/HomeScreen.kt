@@ -24,6 +24,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.wanderspectra.app.ui.theme.TanSongbird
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.android.gms.maps.CameraUpdateFactory
 
 private val HomeBlue = Color(0xFF4681B2)
 private val HomeRed = Color(0xFFC34A5B)
@@ -186,23 +192,38 @@ private fun HomeLocationCard() {
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            val testWearableLocation = LatLng(
+                27.7731,
+                -82.4076
+            )
+
+            val cameraPositionState = rememberCameraPositionState()
+
+            LaunchedEffect(testWearableLocation) {
+                cameraPositionState.move(
+                    CameraUpdateFactory.newLatLngZoom(
+                        testWearableLocation,
+                        16f
+                    )
+                )
+            }
+
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(285.dp),
                 shape = RoundedCornerShape(10.dp),
-                color = Color(0xFFEDEBE2),
                 border = BorderStroke(1.dp, HomeBlue)
             ) {
-                Box(
-                    contentAlignment = Alignment.Center
+                GoogleMap(
+                    modifier = Modifier.fillMaxSize(),
+                    cameraPositionState = cameraPositionState
                 ) {
-                    Text(
-                        text = "Wearable Location Map",
-                        fontFamily = Salsa,
-                        fontSize = 16.sp,
-                        color = HomeBlue,
-                        textAlign = TextAlign.Center
+                    Marker(
+                        state = MarkerState(
+                            position = testWearableLocation
+                        ),
+                        title = "Wearable Location"
                     )
                 }
             }
@@ -222,7 +243,7 @@ private fun HomeLocationCard() {
                 )
 
                 Text(
-                    text = "Location unavailable",
+                    text = "Test Wearable Location",
                     modifier = Modifier.padding(start = 16.dp),
                     fontFamily = Salsa,
                     fontSize = 17.sp,
@@ -239,7 +260,7 @@ private fun HomeLocationCard() {
                 )
 
                 Text(
-                    text = "Not available",
+                    text = "Test location",
                     modifier = Modifier.padding(start = 16.dp),
                     fontFamily = Salsa,
                     fontSize = 17.sp,

@@ -70,4 +70,6 @@ dependencies {
     implementation("com.cloudinary:cloudinary-android:3.1.2")
     implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.play.services.wearable)
+    implementation("com.google.maps.android:maps-compose:6.4.1")
+
 }
