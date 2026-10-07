@@ -452,6 +452,7 @@ fun AddAnotherChild(
                                     fullName = childName.trim(),
                                     preferredName = preferredName.trim(),
                                     birthdate = birthdate.trim(),
+                                    photoUrl = selectedPhotoUri?.toString() ?: "",
                                     height = height.trim(),
                                     weight = weight.trim(),
                                     hairColor = hairColor.trim(),
