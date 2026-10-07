@@ -2,4 +2,5 @@
     <string name="app_name">WanderSpectra</string>
     <string name="facebook_app_id">1720254092396085</string>
     <string name="fb_login_protocol_scheme">fb1720254092396085</string>
+    <string name="google_maps_key">AIzaSyA8Cwr4NrmE-ZW9PVrugPYht9bwdGuqGNQ</string>
 </resources>
