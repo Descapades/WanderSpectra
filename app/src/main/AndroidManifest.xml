@@ -27,6 +27,10 @@
             android:value="1720254092396085" />
 
         <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="@string/google_maps_key" />
+
+        <meta-data
             android:name="com.facebook.sdk.ClientToken"
             android:value="c2463462f213aabf5a495c8acd9f6138" />
 
