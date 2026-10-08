@@ -31,6 +31,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             WanderSpectraTheme {
+                NotificationPermissionPopup(activity = this@MainActivity)
+                LocationPermissionPopup(activity = this@MainActivity)
 
                 var showSplash by remember {
                     mutableStateOf(true)
