@@ -559,7 +559,7 @@ fun WearableConnectedScreen(
 
             Text(
                 text = deviceName,
-                modifier = Modifier.padding(start = 20.dp),
+                modifier = Modifier.padding(start = 36.dp),
                 color = PrimaryBlue,
                 fontFamily = Salsa,
                 fontSize = 16.sp
@@ -577,7 +577,7 @@ fun WearableConnectedScreen(
 
             Text(
                 text = "Just Now",
-                modifier = Modifier.padding(start = 20.dp),
+                modifier = Modifier.padding(start = 36.dp),
                 color = PrimaryBlue,
                 fontFamily = Salsa,
                 fontSize = 16.sp
