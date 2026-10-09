@@ -55,7 +55,9 @@ enum class AppDestination {
     WEARABLE_SETTINGS,
     ALERT_NOTIFICATIONS,
     PRIVACY_PERMISSIONS,
-    HELP_ABOUT
+    HELP_ABOUT,
+    CHILD_MISSING,
+    ELOPEMENT_MODE
 }
 
 @Composable
@@ -63,13 +65,10 @@ fun AppShell(
     onSignOut: () -> Unit,
     content: @Composable () -> Unit
 ) {
-    var showSettingsMenu by remember {
-        mutableStateOf(false)
-    }
-
-    var currentDestination by remember {
-        mutableStateOf(AppDestination.HOME)
-    }
+    var showSettingsMenu by remember { mutableStateOf(false) }
+    var currentDestination by remember { mutableStateOf(AppDestination.HOME) }
+    var openIncidentId by remember { mutableStateOf<String?>(null) }
+    var incidentStatus by remember { mutableStateOf("") }
 
     var child by remember {
         mutableStateOf<ChildProfile?>(null)
@@ -95,90 +94,47 @@ fun AppShell(
             .fillMaxSize()
             .background(BackgroundCream)
     ) {
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(BackgroundCream)
         ) {
-
-            // WanderSpectra Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(
-                        start = 24.dp,
-                        end = 24.dp,
-                        top = 32.dp
-                    ),
+                    .padding(start = 24.dp, end = 24.dp, top = 32.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
-                Text(
-                    text = "Wander",
-                    color = EmergencyRed,
-                    fontFamily = TanSongbird,
-                    fontSize = 22.sp
-                )
-
-                Text(
-                    text = "Spectra",
-                    color = PrimaryBlue,
-                    fontFamily = TanSongbird,
-                    fontSize = 22.sp
-                )
-
+                Text(text = "Wander", color = EmergencyRed, fontFamily = TanSongbird, fontSize = 22.sp)
+                Text(text = "Spectra", color = PrimaryBlue, fontFamily = TanSongbird, fontSize = 22.sp)
                 Image(
-                    painter = painterResource(
-                        id = R.drawable.wanderspectra_logo
-                    ),
+                    painter = painterResource(id = R.drawable.wanderspectra_logo),
                     contentDescription = "Open Settings",
                     modifier = Modifier
                         .size(60.dp)
-                        .clickable {
-                            showSettingsMenu = !showSettingsMenu
-                        }
+                        .clickable { showSettingsMenu = !showSettingsMenu }
                 )
             }
 
-            // Shared Content Card
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(
-                        start = 28.dp,
-                        end = 28.dp,
-                        bottom = 8.dp
-                    )
-                    .background(
-                        color = ButtonYellow,
-                        shape = RoundedCornerShape(14.dp)
-                    )
-                    .border(
-                        width = 1.dp,
-                        color = PrimaryBlue,
-                        shape = RoundedCornerShape(14.dp)
-                    )
+                    .padding(start = 28.dp, end = 28.dp, bottom = 8.dp)
+                    .background(color = ButtonYellow, shape = RoundedCornerShape(14.dp))
+                    .border(width = 1.dp, color = PrimaryBlue, shape = RoundedCornerShape(14.dp))
                     .padding(14.dp)
             ) {
-
-                // Shared Inner Cream Card
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(
-                            color = BackgroundCream,
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = PrimaryBlue,
-                            shape = RoundedCornerShape(12.dp)
-                        )
+                        .background(color = BackgroundCream, shape = RoundedCornerShape(12.dp))
+                        .border(width = 1.dp, color = PrimaryBlue, shape = RoundedCornerShape(12.dp))
                 ) {
                     when (currentDestination) {
-                        AppDestination.HOME -> content()
+                        AppDestination.HOME -> HomeContent(
+                            onChildMissing = { currentDestination = AppDestination.CHILD_MISSING }
+                        )
                         AppDestination.CHILD_PROFILE -> ChildProfileContent()
                         AppDestination.HISTORY -> HistoryContent()
                         AppDestination.SAFETY_CIRCLE -> SafetyCircleContent()
@@ -195,6 +151,42 @@ fun AppShell(
                         AppDestination.ALERT_NOTIFICATIONS -> AlertNotificationsContent()
                         AppDestination.PRIVACY_PERMISSIONS -> PrivacyPermissionsContent()
                         AppDestination.HELP_ABOUT -> HelpAboutContent()
+                        AppDestination.CHILD_MISSING -> ChildMissingContent(
+                            statusText = incidentStatus,
+                            onConfirm = {
+                                incidentStatus = "Saving incident..."
+                                val incident = Incident(
+                                    childId = "test-child",
+                                    caregiverId = FirebaseAuth.getInstance().currentUser?.uid ?: "test-caregiver",
+                                    status = "open",
+                                    startTime = System.currentTimeMillis(),
+                                    lastKnownLat = 30.43,
+                                    lastKnownLng = -86.57
+                                )
+                                IncidentRepository().startIncident(incident) { ok, message, id ->
+                                    incidentStatus = message
+                                    if (ok && id != null) {
+                                        openIncidentId = id
+                                        currentDestination = AppDestination.ELOPEMENT_MODE
+                                    }
+                                }
+                            },
+                            onCancel = {
+                                openIncidentId = null
+                                incidentStatus = ""
+                                currentDestination = AppDestination.HOME
+                            }
+                        )
+                        AppDestination.ELOPEMENT_MODE -> ElopementModeContent(
+                            incidentId = openIncidentId,
+                            statusText = incidentStatus,
+                            onChildSafe = { id ->
+                                IncidentRepository().closeIncident(id) { _, message ->
+                                    incidentStatus = message
+                                }
+                            },
+                            onBackHome = { currentDestination = AppDestination.HOME }
+                        )
                     }
                 }
             }
@@ -211,10 +203,7 @@ fun AppShell(
             SettingsMenu(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(
-                        top = 105.dp,
-                        end = 28.dp
-                    ),
+                    .padding(top = 105.dp, end = 28.dp),
                 onSignOut = onSignOut,
                 onDestinationSelected = { destination ->
                     currentDestination = destination
@@ -233,15 +222,8 @@ fun AppBottomNavigation(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(
-                start = 28.dp,
-                end = 28.dp,
-                bottom = 18.dp
-            )
-            .background(
-                color = BackgroundCream,
-                shape = RoundedCornerShape(10.dp)
-            )
+            .padding(start = 28.dp, end = 28.dp, bottom = 18.dp)
+            .background(color = BackgroundCream, shape = RoundedCornerShape(10.dp))
             .padding(6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -344,17 +326,9 @@ fun SettingsMenu(
     Column(
         modifier = modifier
             .width(185.dp)
-            .background(
-                color = BackgroundCream,
-                shape = RoundedCornerShape(10.dp)
-            )
-            .border(
-                width = 1.dp,
-                color = PrimaryBlue,
-                shape = RoundedCornerShape(10.dp)
-            )
+            .background(color = BackgroundCream, shape = RoundedCornerShape(10.dp))
+            .border(width = 1.dp, color = PrimaryBlue, shape = RoundedCornerShape(10.dp))
     ) {
-
         Text(
             text = "Settings",
             color = PrimaryBlue,
@@ -362,75 +336,20 @@ fun SettingsMenu(
             fontSize = 14.sp,
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    color = ButtonYellow,
-                    shape = RoundedCornerShape(
-                        topStart = 10.dp,
-                        topEnd = 10.dp
-                    )
-                )
-                .padding(
-                    horizontal = 18.dp,
-                    vertical = 12.dp
-                )
+                .background(color = ButtonYellow, shape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
+                .padding(horizontal = 18.dp, vertical = 12.dp)
         )
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(PrimaryBlue)
-        )
-
-        SettingsMenuItem(
-            text = "Caregiver Account",
-            onClick = {
-                onDestinationSelected(AppDestination.CAREGIVER_ACCOUNT)
-            }
-        )
-
-        SettingsMenuItem(
-            text = "Safe Zone Settings",
-            onClick = {
-                onDestinationSelected(AppDestination.SAFE_ZONE_SETTINGS)
-            }
-        )
-
-        SettingsMenuItem(
-            text = "Wearable Settings",
-            onClick = {
-                onDestinationSelected(AppDestination.WEARABLE_SETTINGS)
-            }
-        )
-
-        SettingsMenuItem(
-            text = "Alert & Notifications",
-            onClick = {
-                onDestinationSelected(AppDestination.ALERT_NOTIFICATIONS)
-            }
-        )
-
-        SettingsMenuItem(
-            text = "Privacy & Permissions",
-            onClick = {
-                onDestinationSelected(AppDestination.PRIVACY_PERMISSIONS)
-            }
-        )
-
-        SettingsMenuItem(
-            text = "Help & About",
-            onClick = {
-                onDestinationSelected(AppDestination.HELP_ABOUT)
-            }
-        )
-
-        SettingsMenuItem(
-            text = "Sign Out",
-            onClick = {
-                FirebaseAuth.getInstance().signOut()
-                onSignOut()
-            }
-        )
+        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(PrimaryBlue))
+        SettingsMenuItem("Caregiver Account") { onDestinationSelected(AppDestination.CAREGIVER_ACCOUNT) }
+        SettingsMenuItem("Safe Zone Settings") { onDestinationSelected(AppDestination.SAFE_ZONE_SETTINGS) }
+        SettingsMenuItem("Wearable Settings") { onDestinationSelected(AppDestination.WEARABLE_SETTINGS) }
+        SettingsMenuItem("Alert & Notifications") { onDestinationSelected(AppDestination.ALERT_NOTIFICATIONS) }
+        SettingsMenuItem("Privacy & Permissions") { onDestinationSelected(AppDestination.PRIVACY_PERMISSIONS) }
+        SettingsMenuItem("Help & About") { onDestinationSelected(AppDestination.HELP_ABOUT) }
+        SettingsMenuItem("Sign Out") {
+            FirebaseAuth.getInstance().signOut()
+            onSignOut()
+        }
     }
 }
 
@@ -446,12 +365,7 @@ fun SettingsMenuItem(
         fontSize = 13.sp,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable {
-                onClick()
-            }
-            .padding(
-                horizontal = 18.dp,
-                vertical = 12.dp
-            )
+            .clickable { onClick() }
+            .padding(horizontal = 18.dp, vertical = 12.dp)
     )
 }
