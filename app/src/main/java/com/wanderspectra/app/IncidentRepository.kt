@@ -71,10 +71,30 @@ class IncidentRepository(
             .get()
             .addOnSuccessListener { querySnapshot ->
 
-                val incidents = querySnapshot.documents.mapNotNull { document ->
-                    document
-                        .toObject(IncidentRecord::class.java)
-                        ?.copy(incidentId = document.id)
+                val incidents = querySnapshot.documents.map { document ->
+
+                    fun readTimestamp(field: String): com.google.firebase.Timestamp? {
+                        return when (val value = document.get(field)) {
+                            is com.google.firebase.Timestamp -> value
+                            is Number -> com.google.firebase.Timestamp(
+                                java.util.Date(value.toLong())
+                            )
+                            else -> null
+                        }
+                    }
+
+                    IncidentRecord(
+                        incidentId = document.id,
+                        childId = document.getString("childId") ?: "",
+                        caregiverId = document.getString("caregiverId") ?: "",
+                        startTime = readTimestamp("startTime"),
+                        endTime = readTimestamp("endTime"),
+                        status = document.getString("status") ?: "",
+                        lastKnownLatitude = document.getDouble("lastKnownLatitude")
+                            ?: document.getDouble("lastKnownLat"),
+                        lastKnownLongitude = document.getDouble("lastKnownLongitude")
+                            ?: document.getDouble("lastKnownLng")
+                    )
                 }
 
                 val sortedIncidents = incidents.sortedByDescending {

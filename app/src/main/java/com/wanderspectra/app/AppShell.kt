@@ -136,7 +136,13 @@ fun AppShell(
                             onChildMissing = { currentDestination = AppDestination.CHILD_MISSING }
                         )
                         AppDestination.CHILD_PROFILE -> ChildProfileContent()
-                        AppDestination.HISTORY -> HistoryContent()
+                        AppDestination.HISTORY -> IncidentHistoryScreen(
+                            childId = child?.childId ?: "",
+                            childName = child?.preferredName ?: "",
+                            onViewReport = { incident ->
+                                // Report navigation will be connected separately.
+                            }
+                        )
                         AppDestination.SAFETY_CIRCLE -> SafetyCircleContent()
                         AppDestination.COMMUNITY -> CommunityContent()
                         AppDestination.CAREGIVER_ACCOUNT -> CaregiverAccountContent()
