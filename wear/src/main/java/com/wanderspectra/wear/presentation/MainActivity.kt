@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -48,14 +49,15 @@ class MainActivity : ComponentActivity() {
         setTheme(android.R.style.Theme_DeviceDefault)
 
         setContent {
-            WearApp()
+            WearApp(activity = this)
         }
     }
 }
 
 @Composable
-fun WearApp() {
+fun WearApp(activity: ComponentActivity) {
     WanderSpectraTheme {
+        WearLocationPermissionPopup(activity = activity)
         SafeScreen()
     }
 }
@@ -93,7 +95,13 @@ fun SafeScreen() {
 )
 @Composable
 fun DefaultPreview() {
-    WearApp()
+    val context = LocalContext.current
+    WanderSpectraTheme {
+        if (context is ComponentActivity) {
+            WearLocationPermissionPopup(activity = context)
+        }
+        SafeScreen()
+    }
 }
 
 @Composable
