@@ -31,6 +31,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             WanderSpectraTheme {
+                NotificationPermissionPopup(activity = this@MainActivity)
+                LocationPermissionPopup(activity = this@MainActivity)
 
                 var showSplash by remember {
                     mutableStateOf(true)
@@ -54,6 +56,10 @@ class MainActivity : ComponentActivity() {
 
                 var confirmedChildren by remember {
                     mutableStateOf<List<ChildProfile>>(emptyList())
+                }
+
+                val childProfileRepository = remember {
+                    ChildProfileRepository()
                 }
 
                 LaunchedEffect(Unit) {
@@ -99,8 +105,34 @@ class MainActivity : ComponentActivity() {
                         },
 
                         onFinish = {
-                            showChildConfirmation = false
-                            showHome = true
+                            val childProfile = confirmedChildren.firstOrNull()
+
+                            if (childProfile != null) {
+                                childProfileRepository.createChildProfile(
+                                    childProfile = childProfile,
+                                    onSuccess = { childId ->
+                                        childProfileRepository.getChildProfile(
+                                            childId = childId,
+                                            onSuccess = { savedChild ->
+                                                if (savedChild != null) {
+                                                    println("Retrieved child profile: ${savedChild.fullName}")
+                                                    println("Child ID: ${savedChild.childId}")
+                                                    println("Caregiver UID: ${savedChild.caregiverUid}")
+
+                                                    showChildConfirmation = false
+                                                    showHome = true
+                                                }
+                                            },
+                                            onFailure = { exception ->
+                                                exception.printStackTrace()
+                                            }
+                                        )
+                                    },
+                                    onFailure = { exception ->
+                                        exception.printStackTrace()
+                                    }
+                                )
+                            }
                         }
                     )
 

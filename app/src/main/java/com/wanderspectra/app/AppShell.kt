@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.SupervisedUserCircle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +42,7 @@ import com.wanderspectra.app.ui.theme.EmergencyRed
 import com.wanderspectra.app.ui.theme.PrimaryBlue
 import com.wanderspectra.app.ui.theme.Salsa
 import com.wanderspectra.app.ui.theme.TanSongbird
+import com.wanderspectra.app.ui.theme.ButtonBlue
 
 enum class AppDestination {
     HOME,
@@ -67,6 +69,25 @@ fun AppShell(
     var currentDestination by remember { mutableStateOf(AppDestination.HOME) }
     var openIncidentId by remember { mutableStateOf<String?>(null) }
     var incidentStatus by remember { mutableStateOf("") }
+
+    var child by remember {
+        mutableStateOf<ChildProfile?>(null)
+    }
+
+    val childRepository = remember {
+        ChildProfileRepository()
+    }
+
+    LaunchedEffect(Unit) {
+        childRepository.getChildProfiles(
+            onSuccess = { children ->
+                child = children.firstOrNull()
+            },
+            onFailure = {
+                child = null
+            }
+        )
+    }
 
     Box(
         modifier = Modifier
@@ -115,12 +136,24 @@ fun AppShell(
                             onChildMissing = { currentDestination = AppDestination.CHILD_MISSING }
                         )
                         AppDestination.CHILD_PROFILE -> ChildProfileContent()
-                        AppDestination.HISTORY -> HistoryContent()
+                        AppDestination.HISTORY -> IncidentHistoryScreen(
+                            childId = child?.childId ?: "",
+                            childName = child?.preferredName ?: "",
+                            onViewReport = { incident ->
+                                // Report navigation will be connected separately.
+                            }
+                        )
                         AppDestination.SAFETY_CIRCLE -> SafetyCircleContent()
                         AppDestination.COMMUNITY -> CommunityContent()
                         AppDestination.CAREGIVER_ACCOUNT -> CaregiverAccountContent()
                         AppDestination.SAFE_ZONE_SETTINGS -> SafeZoneSettingsContent()
-                        AppDestination.WEARABLE_SETTINGS -> WearableSettingsContent()
+                        AppDestination.WEARABLE_SETTINGS -> {
+                            child?.let { childProfile ->
+                                WearableSettingsContent(
+                                    child = childProfile
+                                )
+                            }
+                        }
                         AppDestination.ALERT_NOTIFICATIONS -> AlertNotificationsContent()
                         AppDestination.PRIVACY_PERMISSIONS -> PrivacyPermissionsContent()
                         AppDestination.HELP_ABOUT -> HelpAboutContent()
@@ -165,7 +198,10 @@ fun AppShell(
             }
 
             AppBottomNavigation(
-                onDestinationSelected = { currentDestination = it }
+                currentDestination = currentDestination,
+                onDestinationSelected = { destination ->
+                    currentDestination = destination
+                }
             )
         }
 
@@ -186,6 +222,7 @@ fun AppShell(
 
 @Composable
 fun AppBottomNavigation(
+    currentDestination: AppDestination,
     onDestinationSelected: (AppDestination) -> Unit
 ) {
     Row(
@@ -197,11 +234,51 @@ fun AppBottomNavigation(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AppNavigationButton(Icons.Default.Home, "Home") { onDestinationSelected(AppDestination.HOME) }
-        AppNavigationButton(Icons.Default.Person, "Child Profile") { onDestinationSelected(AppDestination.CHILD_PROFILE) }
-        AppNavigationButton(Icons.Default.History, "History") { onDestinationSelected(AppDestination.HISTORY) }
-        AppNavigationButton(Icons.Default.SupervisedUserCircle, "Safety Circle") { onDestinationSelected(AppDestination.SAFETY_CIRCLE) }
-        AppNavigationButton(Icons.Default.Groups, "Community") { onDestinationSelected(AppDestination.COMMUNITY) }
+
+        AppNavigationButton(
+            icon = Icons.Default.Home,
+            contentDescription = "Home",
+            isSelected = currentDestination == AppDestination.HOME,
+            onClick = {
+                onDestinationSelected(AppDestination.HOME)
+            }
+        )
+
+        AppNavigationButton(
+            icon = Icons.Default.Person,
+            contentDescription = "Child Profile",
+            isSelected = currentDestination == AppDestination.CHILD_PROFILE,
+            onClick = {
+                onDestinationSelected(AppDestination.CHILD_PROFILE)
+            }
+        )
+
+        AppNavigationButton(
+            icon = Icons.Default.History,
+            contentDescription = "History",
+            isSelected = currentDestination == AppDestination.HISTORY,
+            onClick = {
+                onDestinationSelected(AppDestination.HISTORY)
+            }
+        )
+
+        AppNavigationButton(
+            icon = Icons.Default.SupervisedUserCircle,
+            contentDescription = "Safety Circle",
+            isSelected = currentDestination == AppDestination.SAFETY_CIRCLE,
+            onClick = {
+                onDestinationSelected(AppDestination.SAFETY_CIRCLE)
+            }
+        )
+
+        AppNavigationButton(
+            icon = Icons.Default.Groups,
+            contentDescription = "Community",
+            isSelected = currentDestination == AppDestination.COMMUNITY,
+            onClick = {
+                onDestinationSelected(AppDestination.COMMUNITY)
+            }
+        )
     }
 }
 
@@ -209,17 +286,40 @@ fun AppBottomNavigation(
 fun AppNavigationButton(
     icon: ImageVector,
     contentDescription: String,
+    isSelected: Boolean,
     onClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
-            .size(58.dp)
-            .background(color = ButtonYellow, shape = RoundedCornerShape(10.dp))
-            .border(width = 1.dp, color = PrimaryBlue, shape = RoundedCornerShape(10.dp))
+            .background(
+                color = if (isSelected) ButtonBlue else BackgroundCream,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .padding(6.dp)
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Icon(imageVector = icon, contentDescription = contentDescription, tint = PrimaryBlue, modifier = Modifier.size(38.dp))
+        Box(
+            modifier = Modifier
+                .size(58.dp)
+                .background(
+                    color = ButtonYellow,
+                    shape = RoundedCornerShape(10.dp)
+                )
+                .border(
+                    width = 1.dp,
+                    color = PrimaryBlue,
+                    shape = RoundedCornerShape(10.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = PrimaryBlue,
+                modifier = Modifier.size(38.dp)
+            )
+        }
     }
 }
 
