@@ -12,7 +12,8 @@ class SafeZoneRepository(
             "radius" to zone.radius,
             "monitoringEnabled" to zone.monitoringEnabled,
             "lat" to zone.lat,
-            "lng" to zone.lng
+            "lng" to zone.lng,
+            "savedAt" to System.currentTimeMillis()
         )
 
         db.collection("safeZones")
@@ -21,5 +22,29 @@ class SafeZoneRepository(
             .addOnFailureListener { error ->
                 onDone(false, error.message ?: "Save failed")
             }
+    }
+
+    fun getLatest(onDone: (SafeZone?) -> Unit) {
+        db.collection("safeZones")
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val doc = snapshot.documents.maxByOrNull { it.getLong("savedAt") ?: 0L }
+                if (doc == null) {
+                    onDone(null)
+                } else {
+                    onDone(
+                        SafeZone(
+                            id = doc.id,
+                            name = doc.getString("name") ?: "",
+                            childId = doc.getString("childId") ?: "",
+                            radius = doc.getLong("radius")?.toInt() ?: 500,
+                            monitoringEnabled = doc.getBoolean("monitoringEnabled") ?: true,
+                            lat = doc.getDouble("lat") ?: 0.0,
+                            lng = doc.getDouble("lng") ?: 0.0
+                        )
+                    )
+                }
+            }
+            .addOnFailureListener { onDone(null) }
     }
 }

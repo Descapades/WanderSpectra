@@ -206,6 +206,8 @@ fun AppShell(
                         AppDestination.ELOPEMENT_MODE -> ElopementModeContent(
                             incidentId = openIncidentId,
                             statusText = incidentStatus,
+                            pointLat = 30.43,
+                            pointLng = -86.57,
                             onChildSafe = { id ->
                                 IncidentRepository().closeIncident(id) { _, message ->
                                     incidentStatus = message

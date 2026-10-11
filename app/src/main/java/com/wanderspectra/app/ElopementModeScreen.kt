@@ -11,6 +11,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -26,20 +31,46 @@ import com.wanderspectra.app.ui.theme.SecondaryRed
 fun ElopementModeContent(
     incidentId: String?,
     statusText: String,
+    pointLat: Double,
+    pointLng: Double,
     childName: String = "Jimothy",
     onChildSafe: (String) -> Unit,
     onBackHome: () -> Unit
 ) {
+    var zoneText by remember { mutableStateOf("Checking zone...") }
+
+    LaunchedEffect(pointLat, pointLng) {
+        SafeZoneRepository().getLatest { zone ->
+            zoneText = if (zone == null) {
+                "No saved zone"
+            } else if (ZoneCheck.isOutside(zone, pointLat, pointLng)) {
+                "Outside safe zone"
+            } else {
+                "Inside safe zone"
+            }
+        }
+    }
+
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("ELOPEMENT MODE ACTIVE", color = SecondaryRed, fontFamily = Salsa, fontSize = 22.sp, textAlign = TextAlign.Center)
+        Text(
+            text = "ELOPEMENT MODE ACTIVE",
+            color = SecondaryRed,
+            fontFamily = Salsa,
+            fontSize = 22.sp,
+            textAlign = TextAlign.Center
+        )
         Spacer(modifier = Modifier.height(12.dp))
-        Text("$childName is missing", color = PrimaryBlue, fontFamily = Salsa, fontSize = 18.sp)
+        Text(text = "$childName is missing", color = PrimaryBlue, fontFamily = Salsa, fontSize = 18.sp)
         Spacer(modifier = Modifier.height(12.dp))
-        Text(statusText, fontFamily = Salsa, textAlign = TextAlign.Center)
+        Text(text = zoneText, color = SecondaryRed, fontFamily = Salsa, fontSize = 16.sp)
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(text = statusText, fontFamily = Salsa, textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(24.dp))
         Button(
             onClick = { if (incidentId != null) onChildSafe(incidentId) },
