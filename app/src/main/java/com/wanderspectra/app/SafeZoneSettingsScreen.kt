@@ -16,7 +16,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wanderspectra.app.ui.theme.PrimaryBlue
@@ -26,6 +25,8 @@ import com.wanderspectra.app.ui.theme.Salsa
 fun SafeZoneSettingsContent() {
     var name by remember { mutableStateOf("Home") }
     var radiusText by remember { mutableStateOf("500") }
+    var latText by remember { mutableStateOf("30.43") }
+    var lngText by remember { mutableStateOf("-86.57") }
     var monitoring by remember { mutableStateOf(true) }
     var status by remember { mutableStateOf("Not saved yet") }
 
@@ -54,6 +55,18 @@ fun SafeZoneSettingsContent() {
             label = { Text("Radius (ft)") },
             modifier = Modifier.padding(top = 8.dp)
         )
+        OutlinedTextField(
+            value = latText,
+            onValueChange = { latText = it },
+            label = { Text("Latitude") },
+            modifier = Modifier.padding(top = 8.dp)
+        )
+        OutlinedTextField(
+            value = lngText,
+            onValueChange = { lngText = it },
+            label = { Text("Longitude") },
+            modifier = Modifier.padding(top = 8.dp)
+        )
         Row(
             modifier = Modifier.padding(top = 8.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -75,14 +88,19 @@ fun SafeZoneSettingsContent() {
                     status = "Name cannot be empty"
                     return@Button
                 }
-                val radius = radiusText.toIntOrNull() ?: 500
+                val lat = latText.toDoubleOrNull()
+                val lng = lngText.toDoubleOrNull()
+                if (lat == null || lng == null) {
+                    status = "Lat and lng must be numbers"
+                    return@Button
+                }
                 val zone = SafeZone(
                     name = name,
                     childId = "test-child",
-                    radius = radius,
+                    radius = radiusText.toIntOrNull() ?: 500,
                     monitoringEnabled = monitoring,
-                    lat = 30.43,
-                    lng = -86.57
+                    lat = lat,
+                    lng = lng
                 )
                 SafeZoneRepository().save(zone) { _, message ->
                     status = message
@@ -93,10 +111,4 @@ fun SafeZoneSettingsContent() {
             Text("Save zone")
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun SafeZoneSettingsPreview() {
-    SafeZoneSettingsContent()
 }
