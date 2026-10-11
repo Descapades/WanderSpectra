@@ -1,5 +1,12 @@
 package com.wanderspectra.app
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -69,7 +76,10 @@ fun AppShell(
     var currentDestination by remember { mutableStateOf(AppDestination.HOME) }
     var openIncidentId by remember { mutableStateOf<String?>(null) }
     var incidentStatus by remember { mutableStateOf("") }
-
+    val context = LocalContext.current
+    val notificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
     var child by remember {
         mutableStateOf<ChildProfile?>(null)
     }
@@ -173,6 +183,16 @@ fun AppShell(
                                     incidentStatus = message
                                     if (ok && id != null) {
                                         openIncidentId = id
+                                        if (Build.VERSION.SDK_INT >= 33) {
+                                            val granted = ContextCompat.checkSelfPermission(
+                                                context,
+                                                Manifest.permission.POST_NOTIFICATIONS
+                                            ) == PackageManager.PERMISSION_GRANTED
+                                            if (!granted) {
+                                                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                            }
+                                        }
+                                        ElopementNotifier.show(context)
                                         currentDestination = AppDestination.ELOPEMENT_MODE
                                     }
                                 }
