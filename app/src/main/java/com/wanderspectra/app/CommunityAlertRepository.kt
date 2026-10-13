@@ -20,8 +20,37 @@ class CommunityAlertRepository {
             "A child ID is required."
         }
 
+        val incidentDocument = db.collection("incidents")
+            .document(alert.incidentId)
+            .get()
+            .await()
+
+        require(incidentDocument.exists()) {
+            "The associated incident does not exist."
+        }
+
+        require(incidentDocument.getString("status") == "open") {
+            "Community Alerts can only be created for active incidents."
+        }
+
+        require(incidentDocument.getString("caregiverId") == alert.caregiverId) {
+            "The incident does not belong to the specified caregiver."
+        }
+
+        require(incidentDocument.getString("childId") == alert.childId) {
+            "The incident does not belong to the specified child."
+        }
+
         val document = alerts.document()
-        val newAlert = alert.copy(id = document.id)
+        val now = com.google.firebase.Timestamp.now()
+
+        val newAlert = alert.copy(
+            id = document.id,
+            status = "ACTIVE",
+            createdAt = now,
+            updatedAt = now,
+            resolvedAt = null
+        )
 
         document.set(newAlert).await()
 
