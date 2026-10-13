@@ -44,12 +44,14 @@ fun HomeScreen(
     onSignOut: () -> Unit
 ) {
     AppShell(onSignOut = onSignOut) {
-        HomeContent()
+        HomeContent(onChildMissing = {})
     }
 }
 
 @Composable
-fun HomeContent() {
+fun HomeContent(
+    onChildMissing: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -59,7 +61,7 @@ fun HomeContent() {
     ) {
         HomeStatusCard()
 
-        HomeLocationCard()
+        HomeLocationCard(onChildMissing = onChildMissing)
     }
 }
 
@@ -179,7 +181,9 @@ private fun HomeStatusCard() {
 }
 
 @Composable
-private fun HomeLocationCard() {
+private fun HomeLocationCard(
+    onChildMissing: () -> Unit
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(15.dp),
@@ -292,7 +296,7 @@ private fun HomeLocationCard() {
             Spacer(modifier = Modifier.height(18.dp))
 
             Button(
-                onClick = {},
+                onClick = onChildMissing,
                 modifier = Modifier
                     .fillMaxWidth(0.82f)
                     .height(48.dp),
