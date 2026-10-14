@@ -1,8 +1,11 @@
 package com.wanderspectra.wear.presentation
 
+import android.Manifest
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -20,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.wear.tooling.preview.devices.WearDevices
 import com.wanderspectra.wear.R
+import com.wanderspectra.wear.location.WearLocationManager
 import com.wanderspectra.wear.presentation.theme.WanderSpectraTheme
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -40,15 +44,35 @@ private val BackgroundCream = Color(0xFFEEE9D5)
 
 class MainActivity : ComponentActivity() {
 
+    private val locationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        Log.d("MainActivity", "Location permissions granted: fine=$fineGranted, coarse=$coarseGranted")
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
-
         super.onCreate(savedInstanceState)
 
         setTheme(android.R.style.Theme_DeviceDefault)
 
+        requestLocationPermissionsIfNeeded()
+
         setContent {
             WearApp()
+        }
+    }
+
+    private fun requestLocationPermissionsIfNeeded() {
+        if (!WearLocationManager.hasLocationPermission(this)) {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
         }
     }
 }
@@ -68,7 +92,6 @@ fun SafeScreen() {
             .background(BackgroundCream),
         contentAlignment = Alignment.Center
     ) {
-
         Image(
             painter = painterResource(id = R.drawable.wear_safe_face),
             contentDescription = "Safe",
