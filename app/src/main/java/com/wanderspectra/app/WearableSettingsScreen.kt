@@ -1,5 +1,6 @@
 package com.wanderspectra.app
 
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -54,6 +55,14 @@ fun WearableSettingsContent(
         mutableStateOf(-1)
     }
 
+    var latitude by remember {
+        mutableStateOf<Double?>(null)
+    }
+
+    var longitude by remember {
+        mutableStateOf<Double?>(null)
+    }
+
     val wearableRepository = remember {
         WearableRepository()
     }
@@ -65,7 +74,6 @@ fun WearableSettingsContent(
         wearableRepository.getWearable(
             childId = child.childId,
             onSuccess = { wearable ->
-
                 android.util.Log.d(
                     "WearableFirestore",
                     "Retrieved wearable: $wearable"
@@ -75,6 +83,8 @@ fun WearableSettingsContent(
                     connectedDeviceName = wearable.deviceName
                     batteryLevel = wearable.batteryLevel
                     isConnected = wearable.connected
+                    latitude = wearable.latitude
+                    longitude = wearable.longitude
                 }
             },
             onFailure = { exception ->
@@ -93,11 +103,15 @@ fun WearableSettingsContent(
             childName = childName,
             deviceName = connectedDeviceName,
             batteryLevel = batteryLevel,
+            latitude = latitude,
+            longitude = longitude,
             onDisconnectDevice = {
                 isConnected = false
                 showDeviceSelection = false
                 connectedDeviceName = ""
                 batteryLevel = -1
+                latitude = null
+                longitude = null
             }
         )
 
@@ -105,12 +119,12 @@ fun WearableSettingsContent(
 
         ConnectWearableScreen(
             childName = childName,
-            onDeviceConnected = { deviceId, deviceName, battery ->
+            onDeviceConnected = { deviceId, deviceName, battery, lat, lng ->
 
-                // The Wear OS connection already succeeded,
-                // so update the UI immediately.
                 connectedDeviceName = deviceName
                 batteryLevel = battery
+                latitude = lat
+                longitude = lng
                 isConnected = true
 
                 val wearable = Wearable(
@@ -119,7 +133,10 @@ fun WearableSettingsContent(
                     deviceType = "Wear OS Device",
                     batteryLevel = battery,
                     connected = true,
-                    lastSync = System.currentTimeMillis()
+                    lastSync = System.currentTimeMillis(),
+                    latitude = lat,
+                    longitude = lng,
+                    locationTimestamp = System.currentTimeMillis()
                 )
 
                 wearableRepository.saveWearable(
@@ -269,7 +286,7 @@ fun WearableNotConnectedScreen(
 @Composable
 fun ConnectWearableScreen(
     childName: String,
-    onDeviceConnected: (String, String, Int) -> Unit
+    onDeviceConnected: (String, String, Int, Double?, Double?) -> Unit
 ) {
     val context = LocalContext.current
 
@@ -420,12 +437,14 @@ fun ConnectWearableScreen(
                         WearConnectionManager.sendConnectionRequest(
                             context = context,
                             nodeId = node.id
-                        ) { connected, battery ->
+                        ) { connected, battery, lat, lng ->
                             if (connected) {
                                 onDeviceConnected(
                                     node.id,
                                     node.displayName,
-                                    battery
+                                    battery,
+                                    lat,
+                                    lng
                                 )
                             }
                         }
@@ -463,6 +482,8 @@ fun WearableConnectedScreen(
     childName: String,
     deviceName: String,
     batteryLevel: Int,
+    latitude: Double? = null,
+    longitude: Double? = null,
     onDisconnectDevice: () -> Unit
 ) {
     val connectedGreen = Color(0xFF8EDCB4)
@@ -559,6 +580,28 @@ fun WearableConnectedScreen(
 
             Text(
                 text = deviceName,
+                modifier = Modifier.padding(start = 36.dp),
+                color = PrimaryBlue,
+                fontFamily = Salsa,
+                fontSize = 16.sp
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "Wearable Location:",
+                modifier = Modifier.padding(start = 20.dp),
+                color = WearableRed,
+                fontFamily = Salsa,
+                fontSize = 16.sp
+            )
+
+            Text(
+                text = if (latitude != null && longitude != null) {
+                    "%.4f, %.4f".format(latitude, longitude)
+                } else {
+                    "Location Pending"
+                },
                 modifier = Modifier.padding(start = 36.dp),
                 color = PrimaryBlue,
                 fontFamily = Salsa,

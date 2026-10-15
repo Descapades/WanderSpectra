@@ -6,12 +6,39 @@ import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Node
 import com.google.android.gms.wearable.Wearable
+import org.json.JSONObject
+
+data class WearableLocationResult(
+    val connected: Boolean,
+    val batteryLevel: Int,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val timestamp: Long = System.currentTimeMillis()
+)
 
 object WearConnectionManager {
 
     private const val TAG = "WearConnection"
     private const val CONNECT_PATH = "/wanderspectra/connect"
     private const val CONNECTED_PATH = "/wanderspectra/connected"
+    private const val LOCATION_PATH = "/wanderspectra/location"
+    private const val LOCATION_RESPONSE_PATH = "/wanderspectra/location_response"
+
+    private fun safeLogE(tag: String, msg: String, throwable: Throwable? = null) {
+        try {
+            Log.e(tag, msg, throwable)
+        } catch (_: Throwable) {
+            // Ignored in plain JVM unit test environment
+        }
+    }
+
+    private fun safeLogD(tag: String, msg: String) {
+        try {
+            Log.d(tag, msg)
+        } catch (_: Throwable) {
+            // Ignored in plain JVM unit test environment
+        }
+    }
 
     fun getAvailableWearables(
         context: Context,
@@ -21,7 +48,7 @@ object WearConnectionManager {
             .connectedNodes
             .addOnSuccessListener { nodes ->
                 nodes.forEach { node ->
-                    Log.d(
+                    safeLogD(
                         TAG,
                         "Available Wear device: ${node.displayName} (${node.id})"
                     )
@@ -30,7 +57,7 @@ object WearConnectionManager {
                 onResult(nodes)
             }
             .addOnFailureListener { exception ->
-                Log.e(
+                safeLogE(
                     TAG,
                     "Failed to find Wear OS devices",
                     exception
@@ -40,10 +67,63 @@ object WearConnectionManager {
             }
     }
 
+    fun parseLocationResponse(rawString: String): WearableLocationResult {
+        val trimmed = rawString.trim()
+        if (trimmed.startsWith("{")) {
+            return try {
+                val json = JSONObject(trimmed)
+                val battery = json.optInt("batteryLevel", -1)
+                val lat = if (json.has("latitude") && !json.isNull("latitude")) json.getDouble("latitude") else null
+                val lng = if (json.has("longitude") && !json.isNull("longitude")) json.getDouble("longitude") else null
+                val time = json.optLong("timestamp", System.currentTimeMillis())
+
+                if (battery == -1) {
+                    parseJsonFallback(trimmed)
+                } else {
+                    WearableLocationResult(
+                        connected = true,
+                        batteryLevel = battery,
+                        latitude = lat,
+                        longitude = lng,
+                        timestamp = time
+                    )
+                }
+            } catch (_: Throwable) {
+                parseJsonFallback(trimmed)
+            }
+        } else {
+            val battery = trimmed.toIntOrNull() ?: -1
+            return WearableLocationResult(
+                connected = true,
+                batteryLevel = battery
+            )
+        }
+    }
+
+    private fun parseJsonFallback(jsonString: String): WearableLocationResult {
+        val batteryRegex = """"batteryLevel"\s*:\s*(-?\d+)""".toRegex()
+        val latRegex = """"latitude"\s*:\s*(-?\d+(?:\.\d+)?)""".toRegex()
+        val lngRegex = """"longitude"\s*:\s*(-?\d+(?:\.\d+)?)""".toRegex()
+        val timeRegex = """"timestamp"\s*:\s*(\d+)""".toRegex()
+
+        val battery = batteryRegex.find(jsonString)?.groupValues?.get(1)?.toIntOrNull() ?: -1
+        val lat = latRegex.find(jsonString)?.groupValues?.get(1)?.toDoubleOrNull()
+        val lng = lngRegex.find(jsonString)?.groupValues?.get(1)?.toDoubleOrNull()
+        val time = timeRegex.find(jsonString)?.groupValues?.get(1)?.toLongOrNull() ?: System.currentTimeMillis()
+
+        return WearableLocationResult(
+            connected = true,
+            batteryLevel = battery,
+            latitude = lat,
+            longitude = lng,
+            timestamp = time
+        )
+    }
+
     fun sendConnectionRequest(
         context: Context,
         nodeId: String,
-        onResult: (Boolean, Int) -> Unit
+        onResult: (Boolean, Int, Double?, Double?) -> Unit
     ) {
         val messageClient = Wearable.getMessageClient(context)
 
@@ -53,23 +133,24 @@ object WearConnectionManager {
             MessageClient.OnMessageReceivedListener { messageEvent: MessageEvent ->
 
                 if (
-                    messageEvent.path == CONNECTED_PATH &&
+                    (messageEvent.path == CONNECTED_PATH || messageEvent.path == LOCATION_RESPONSE_PATH) &&
                     messageEvent.sourceNodeId == nodeId
                 ) {
-                    val batteryLevel = messageEvent.data
-                        .toString(Charsets.UTF_8)
-                        .toIntOrNull() ?: -1
+                    val rawPayload = messageEvent.data.toString(Charsets.UTF_8)
+                    val result = parseLocationResponse(rawPayload)
 
-                    Log.d(
+                    safeLogD(
                         TAG,
-                        "WanderSpectra connection confirmed. Battery: $batteryLevel%"
+                        "WanderSpectra connection confirmed. Battery: ${result.batteryLevel}%, Lat: ${result.latitude}, Lng: ${result.longitude}"
                     )
 
                     messageClient.removeListener(responseListener)
 
                     onResult(
                         true,
-                        batteryLevel
+                        result.batteryLevel,
+                        result.latitude,
+                        result.longitude
                     )
                 }
             }
@@ -83,13 +164,13 @@ object WearConnectionManager {
                 "WanderSpectra connection request".toByteArray()
             )
             .addOnSuccessListener {
-                Log.d(
+                safeLogD(
                     TAG,
                     "Connection request sent. Waiting for Wear response."
                 )
             }
             .addOnFailureListener { exception ->
-                Log.e(
+                safeLogE(
                     TAG,
                     "Failed to send connection request",
                     exception
@@ -99,7 +180,82 @@ object WearConnectionManager {
 
                 onResult(
                     false,
-                    -1
+                    -1,
+                    null,
+                    null
+                )
+            }
+    }
+
+    // Overload for backward compatibility
+    fun sendConnectionRequest(
+        context: Context,
+        nodeId: String,
+        onResult: (Boolean, Int) -> Unit
+    ) {
+        sendConnectionRequest(context, nodeId) { connected, battery, _, _ ->
+            onResult(connected, battery)
+        }
+    }
+
+    fun requestWearableLocation(
+        context: Context,
+        nodeId: String,
+        onResult: (WearableLocationResult) -> Unit
+    ) {
+        val messageClient = Wearable.getMessageClient(context)
+
+        lateinit var responseListener: MessageClient.OnMessageReceivedListener
+
+        responseListener =
+            MessageClient.OnMessageReceivedListener { messageEvent: MessageEvent ->
+
+                if (
+                    (messageEvent.path == LOCATION_RESPONSE_PATH || messageEvent.path == CONNECTED_PATH) &&
+                    messageEvent.sourceNodeId == nodeId
+                ) {
+                    val rawPayload = messageEvent.data.toString(Charsets.UTF_8)
+                    val result = parseLocationResponse(rawPayload)
+
+                    safeLogD(
+                        TAG,
+                        "Location response received from Wear device: $result"
+                    )
+
+                    messageClient.removeListener(responseListener)
+
+                    onResult(result)
+                }
+            }
+
+        messageClient.addListener(responseListener)
+
+        messageClient
+            .sendMessage(
+                nodeId,
+                LOCATION_PATH,
+                "Request location".toByteArray()
+            )
+            .addOnSuccessListener {
+                safeLogD(
+                    TAG,
+                    "Location request sent to Wear device $nodeId"
+                )
+            }
+            .addOnFailureListener { exception ->
+                safeLogE(
+                    TAG,
+                    "Failed to send location request to Wear device $nodeId",
+                    exception
+                )
+
+                messageClient.removeListener(responseListener)
+
+                onResult(
+                    WearableLocationResult(
+                        connected = false,
+                        batteryLevel = -1
+                    )
                 )
             }
     }
