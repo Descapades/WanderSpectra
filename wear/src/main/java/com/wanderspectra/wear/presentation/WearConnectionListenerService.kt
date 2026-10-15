@@ -4,8 +4,7 @@ import android.util.Log
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
-import android.content.Intent
-import android.content.IntentFilter
+import android.content.Context
 import android.os.BatteryManager
 
 class WearConnectionListenerService : WearableListenerService() {
@@ -17,26 +16,9 @@ class WearConnectionListenerService : WearableListenerService() {
     }
 
     private fun getBatteryLevel(): Int {
-        val batteryStatus = registerReceiver(
-            null,
-            IntentFilter(Intent.ACTION_BATTERY_CHANGED)
-        )
-
-        val level = batteryStatus?.getIntExtra(
-            BatteryManager.EXTRA_LEVEL,
-            -1
-        ) ?: -1
-
-        val scale = batteryStatus?.getIntExtra(
-            BatteryManager.EXTRA_SCALE,
-            -1
-        ) ?: -1
-
-        return if (level >= 0 && scale > 0) {
-            (level * 100) / scale
-        } else {
-            -1
-        }
+        val batteryManager = getSystemService(BATTERY_SERVICE) as BatteryManager
+        val capacity = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        return if (capacity in 0..100) capacity else -1
     }
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
