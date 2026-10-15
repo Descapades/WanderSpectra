@@ -1,5 +1,7 @@
 # WanderSpectra
 
+## Introduction
+
 WanderSpectra is an Android caregiver application with a Wear OS companion designed to help families respond when an autistic child wanders away from a designated safe area.
 
 The application provides caregivers with access to their child's profile, wearable location information, safe zone settings, emergency contacts, and incident history.
@@ -39,6 +41,18 @@ The application provides caregivers with access to their child's profile, wearab
 - Git and GitHub
 - Android Studio
 
+## Installation
+
+WanderSpectra is currently in alpha development.
+
+To install a current Android development build:
+
+1. Obtain the current WanderSpectra APK provided by the project team.
+2. Open the APK on a compatible Android device.
+3. Follow the Android installation prompts.
+4. Launch WanderSpectra after installation.
+5. Create a caregiver account or sign in with an existing account.
+
 ## Privacy and Security
 
 WanderSpectra handles sensitive caregiver, child, and location information.
@@ -57,6 +71,18 @@ The application is designed to prioritize caregiver control, child safety, and r
 6. Run the `app` configuration on an Android emulator or device.
 
 Firebase access must be configured for the project.
+
+To create a debug build from the repository on Windows, run:
+
+```powershell
+.\gradlew.bat :app:assembleDebug
+```
+
+A successful debug build creates the APK at:
+
+```text
+app/build/outputs/apk/debug/app-debug.apk
+```
 
 ## Contributors
 
