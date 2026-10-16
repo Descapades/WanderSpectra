@@ -11,6 +11,7 @@ data class CommunityAlert(
     val photoUrl: String = "",
     val status: String = "ACTIVE",
     val lastKnownArea: String = "",
+    val alertRadiusKm: Double = 1.0,
     val latitude: Double? = null,
     val longitude: Double? = null,
     val createdAt: Timestamp? = null,

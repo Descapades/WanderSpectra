@@ -22,12 +22,45 @@ import kotlinx.coroutines.delay
 import android.content.Intent
 import com.facebook.CallbackManager
 import com.google.firebase.auth.FirebaseAuth
+import android.util.Log
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging
 
 class MainActivity : ComponentActivity() {
     private val callbackManager = CallbackManager.Factory.create()
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        FirebaseMessaging.getInstance().token
+            .addOnSuccessListener { token ->
+                val user = FirebaseAuth.getInstance().currentUser
+
+                if (user == null) {
+                    Log.d("FCMTest", "No signed-in user")
+                    return@addOnSuccessListener
+                }
+
+                FirebaseFirestore.getInstance()
+                    .collection("communityAlertParticipants")
+                    .document(user.uid)
+                    .get()
+                    .addOnSuccessListener { document ->
+                        val savedToken = document.getString("fcmToken")
+
+                        Log.d(
+                            "FCMTest",
+                            "Current token matches Firestore: ${token == savedToken}"
+                        )
+                    }
+                    .addOnFailureListener {
+                        Log.e("FCMTest", "Unable to read Firestore token")
+                    }
+            }
+            .addOnFailureListener {
+                Log.e("FCMTest", "Unable to retrieve FCM token")
+            }
+
         enableEdgeToEdge()
         setContent {
             WanderSpectraTheme {

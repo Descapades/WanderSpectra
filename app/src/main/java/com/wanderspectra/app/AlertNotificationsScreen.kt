@@ -48,6 +48,7 @@ import com.wanderspectra.app.ui.theme.PrimaryBlue
 import com.wanderspectra.app.ui.theme.SafeMint
 import com.wanderspectra.app.ui.theme.Salsa
 import com.wanderspectra.app.ui.theme.SecondaryBlue
+import androidx.compose.material3.Switch
 
 @Composable
 fun AlertNotificationsContent() {
@@ -56,6 +57,22 @@ fun AlertNotificationsContent() {
 
     var hasPermission by remember {
         mutableStateOf(CaregiverNotificationManager.hasNotificationPermission(context))
+    }
+
+    var communityAlertsEnabled by remember {
+        mutableStateOf(CommunityAlertPreferences.isOptedIn(context))
+    }
+
+    val participantRepository = remember(context) {
+        CommunityAlertParticipantRepository(context)
+    }
+
+    var communityAlertStatus by remember {
+        mutableStateOf("")
+    }
+
+    var communityAlertRequestInProgress by remember {
+        mutableStateOf(false)
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -98,6 +115,92 @@ fun AlertNotificationsContent() {
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold
         )
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = CardCream),
+            shape = RoundedCornerShape(10.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Community Alerts",
+                        color = PrimaryBlue,
+                        fontFamily = Salsa,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        text = "Participate in nearby missing child alerts.",
+                        color = SecondaryBlue,
+                        fontFamily = Salsa,
+                        fontSize = 12.sp
+                    )
+                }
+
+                Switch(
+                    checked = communityAlertsEnabled,
+                    enabled = !communityAlertRequestInProgress,
+                    onCheckedChange = { enabled ->
+
+                        communityAlertRequestInProgress = true
+                        communityAlertsEnabled = enabled
+                        CommunityAlertPreferences.setOptedIn(context, enabled)
+
+                        if (enabled) {
+                            communityAlertStatus = "Registering for Community Alerts..."
+
+                            participantRepository.registerParticipant(
+                                onSuccess = {
+                                    communityAlertRequestInProgress = false
+                                    communityAlertStatus = "Community Alerts enabled."
+                                },
+                                onFailure = { error ->
+                                    communityAlertRequestInProgress = false
+                                    communityAlertsEnabled = false
+                                    CommunityAlertPreferences.setOptedIn(context, false)
+                                    communityAlertStatus = error
+                                }
+                            )
+                        } else {
+                            communityAlertStatus = "Disabling Community Alerts..."
+
+                            participantRepository.unregisterParticipant(
+                                onSuccess = {
+                                    communityAlertRequestInProgress = false
+                                    communityAlertStatus = "Community Alerts disabled."
+                                },
+                                onFailure = { error ->
+                                    communityAlertRequestInProgress = false
+                                    communityAlertStatus =
+                                        "Unable to remove registration: $error"
+                                }
+                            )
+                        }
+                    }
+                )
+            }
+
+            if (communityAlertStatus.isNotBlank()) {
+                Text(
+                    text = communityAlertStatus,
+                    color = SecondaryBlue,
+                    fontFamily = Salsa,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(
+                        start = 16.dp,
+                        end = 16.dp,
+                        bottom = 12.dp
+                    )
+                )
+            }
+        }
 
         // Status Card
         Card(
