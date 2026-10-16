@@ -1,13 +1,13 @@
 package com.wanderspectra.wear.presentation
 
+import android.os.BatteryManager
+import android.util.Log
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
 import android.content.Context
-import android.os.BatteryManager
 import com.wanderspectra.wear.location.WearLocationManager
 import org.json.JSONObject
-import android.util.Log
 
 class WearConnectionListenerService : WearableListenerService() {
 
@@ -17,6 +17,8 @@ class WearConnectionListenerService : WearableListenerService() {
         private const val CONNECTED_PATH = "/wanderspectra/connected"
         private const val LOCATION_PATH = "/wanderspectra/location"
         private const val LOCATION_RESPONSE_PATH = "/wanderspectra/location_response"
+        private const val ELOPEMENT_PATH = "/wanderspectra/elopement"
+        private const val SAFEZONE_PATH = "/wanderspectra/safezone_update"
     }
 
     private fun getBatteryLevel(): Int {
@@ -35,6 +37,13 @@ class WearConnectionListenerService : WearableListenerService() {
                 val batteryLevel = getBatteryLevel()
 
                 WearLocationManager.fetchLocation(this) { locationData ->
+                    if (locationData != null) {
+                        WearSafetyStateRepository.checkLocationAgainstSafeZone(
+                            locationData.latitude,
+                            locationData.longitude
+                        )
+                    }
+
                     val responseJson = JSONObject().apply {
                         put("batteryLevel", batteryLevel)
                         if (locationData != null) {
@@ -65,6 +74,33 @@ class WearConnectionListenerService : WearableListenerService() {
                         .addOnFailureListener { exception ->
                             Log.e(TAG, "Failed to send response to caregiver app", exception)
                         }
+                }
+            }
+            ELOPEMENT_PATH -> {
+                val payload = messageEvent.data.toString(Charsets.UTF_8).lowercase()
+                val isElopement = payload.contains("true") || payload.contains("start") || payload.contains("exited") || payload.contains("elopement")
+                WearSafetyStateRepository.setElopementDetected(isElopement)
+                Log.d(TAG, "Elopement message received: $payload, setElopementDetected($isElopement)")
+            }
+            SAFEZONE_PATH -> {
+                val payload = messageEvent.data.toString(Charsets.UTF_8)
+                try {
+                    val json = JSONObject(payload)
+                    val lat = json.optDouble("lat", 0.0)
+                    val lng = json.optDouble("lng", 0.0)
+                    val radius = json.optInt("radius", 500)
+                    val enabled = json.optBoolean("monitoringEnabled", true)
+                    WearSafetyStateRepository.updateActiveSafeZone(
+                        WearSafeZone(
+                            lat = lat,
+                            lng = lng,
+                            radiusFeet = radius,
+                            monitoringEnabled = enabled
+                        )
+                    )
+                    Log.d(TAG, "Updated active safe zone from message: lat=$lat, lng=$lng, radius=$radius ft")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to parse safezone payload", e)
                 }
             }
         }

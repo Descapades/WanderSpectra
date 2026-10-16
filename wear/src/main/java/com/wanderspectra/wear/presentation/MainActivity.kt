@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,7 +42,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
-
 
 private val BackgroundCream = Color(0xFFEEE9D5)
 
@@ -80,9 +82,33 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun WearApp(activity: ComponentActivity) {
+    val context = LocalContext.current
+    val isElopementDetected by WearSafetyStateRepository.isElopementDetected.collectAsState()
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            if (WearLocationManager.hasLocationPermission(context)) {
+                WearLocationManager.fetchLocation(context) { locationData ->
+                    if (locationData != null) {
+                        WearSafetyStateRepository.checkLocationAgainstSafeZone(
+                            locationData.latitude,
+                            locationData.longitude
+                        )
+                    }
+                }
+            }
+            delay(10000L)
+        }
+    }
+
     WanderSpectraTheme {
         WearLocationPermissionPopup(activity = activity)
-        SafeScreen()
+
+        if (isElopementDetected) {
+            StopScreen()
+        } else {
+            SafeScreen()
+        }
     }
 }
 
@@ -124,6 +150,17 @@ fun DefaultPreview() {
             WearLocationPermissionPopup(activity = context)
         }
         SafeScreen()
+    }
+}
+
+@Preview(
+    device = WearDevices.SMALL_ROUND,
+    showSystemUi = true
+)
+@Composable
+fun StopScreenDefaultPreview() {
+    WanderSpectraTheme {
+        StopScreen()
     }
 }
 
