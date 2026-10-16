@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import com.wanderspectra.app.ui.theme.Salsa
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -206,12 +207,14 @@ private fun HomeStatusCard() {
 private fun HomeLocationCard(
     onChildMissing: () -> Unit
 ) {
+    val context = LocalContext.current
     val childRepository = remember { ChildProfileRepository() }
     val wearableRepository = remember { WearableRepository() }
 
     var wearableLocation by remember { mutableStateOf<LatLng?>(null) }
     var locationText by remember { mutableStateOf("Test Wearable Location") }
     var lastUpdatedText by remember { mutableStateOf("Test location") }
+    var wearableDeviceId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         childRepository.getChildProfiles(
@@ -222,6 +225,7 @@ private fun HomeLocationCard(
                         childId = child.childId,
                         onSuccess = { wearable ->
                             if (wearable != null) {
+                                wearableDeviceId = wearable.deviceId
                                 if (wearable.latitude != null && wearable.longitude != null) {
                                     wearableLocation = LatLng(wearable.latitude, wearable.longitude)
                                     locationText = "%.4f, %.4f".format(wearable.latitude, wearable.longitude)
@@ -333,7 +337,30 @@ private fun HomeLocationCard(
             Spacer(modifier = Modifier.height(22.dp))
 
             Button(
-                onClick = {},
+                onClick = {
+                    android.widget.Toast.makeText(context, "Playing sound on wearable...", android.widget.Toast.LENGTH_SHORT).show()
+                    if (!wearableDeviceId.isNullOrBlank()) {
+                        WearConnectionManager.playSoundOnWearable(context, wearableDeviceId!!) { success ->
+                            if (!success) {
+                                WearConnectionManager.getAvailableWearables(context) { nodes ->
+                                    val node = nodes.firstOrNull()
+                                    if (node != null) {
+                                        WearConnectionManager.playSoundOnWearable(context, node.id) { _ -> }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        WearConnectionManager.getAvailableWearables(context) { nodes ->
+                            val node = nodes.firstOrNull()
+                            if (node != null) {
+                                WearConnectionManager.playSoundOnWearable(context, node.id) { _ -> }
+                            } else {
+                                android.widget.Toast.makeText(context, "No connected wearable found", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth(0.82f)
                     .height(48.dp),

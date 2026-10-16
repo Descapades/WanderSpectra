@@ -1,11 +1,15 @@
 package com.wanderspectra.wear.presentation
 
+import android.content.Context
+import android.media.MediaPlayer
+import android.media.RingtoneManager
 import android.os.BatteryManager
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
-import android.content.Context
 import com.wanderspectra.wear.location.WearLocationManager
 import org.json.JSONObject
 
@@ -17,8 +21,9 @@ class WearConnectionListenerService : WearableListenerService() {
         private const val CONNECTED_PATH = "/wanderspectra/connected"
         private const val LOCATION_PATH = "/wanderspectra/location"
         private const val LOCATION_RESPONSE_PATH = "/wanderspectra/location_response"
+        private const val PLAY_SOUND_PATH = "/wanderspectra/play_sound"
         private const val ELOPEMENT_PATH = "/wanderspectra/elopement"
-        private const val SAFEZONE_PATH = "/wanderspectra/safezone_update"
+        private const val SAFEZONE_PATH = "/wanderspectra/safezone"
     }
 
     private fun getBatteryLevel(): Int {
@@ -76,6 +81,13 @@ class WearConnectionListenerService : WearableListenerService() {
                         }
                 }
             }
+            PLAY_SOUND_PATH -> {
+                Log.d(TAG, "Play sound request received from node ${messageEvent.sourceNodeId}")
+                WearSafetyStateRepository.setPlayingSound(true)
+                playWearableSound(this) {
+                    WearSafetyStateRepository.setPlayingSound(false)
+                }
+            }
             ELOPEMENT_PATH -> {
                 val payload = messageEvent.data.toString(Charsets.UTF_8).lowercase()
                 val isElopement = payload.contains("true") || payload.contains("start") || payload.contains("exited") || payload.contains("elopement")
@@ -103,6 +115,44 @@ class WearConnectionListenerService : WearableListenerService() {
                     Log.e(TAG, "Failed to parse safezone payload", e)
                 }
             }
+        }
+    }
+
+    private fun playWearableSound(context: Context, onCompletion: () -> Unit) {
+        try {
+            val alertUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+
+            val mediaPlayer = MediaPlayer.create(context, alertUri)
+                ?: MediaPlayer.create(context, android.provider.Settings.System.DEFAULT_NOTIFICATION_URI)
+
+            if (mediaPlayer != null) {
+                mediaPlayer.setOnCompletionListener {
+                    try {
+                        it.release()
+                    } catch (_: Exception) {}
+                    onCompletion()
+                }
+                mediaPlayer.start()
+
+                Handler(Looper.getMainLooper()).postDelayed({
+                    try {
+                        if (mediaPlayer.isPlaying) {
+                            mediaPlayer.stop()
+                            mediaPlayer.release()
+                            onCompletion()
+                        }
+                    } catch (_: Exception) {
+                        onCompletion()
+                    }
+                }, 4000L)
+            } else {
+                onCompletion()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to play wearable sound", e)
+            onCompletion()
         }
     }
 }

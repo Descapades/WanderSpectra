@@ -82,32 +82,15 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun WearApp(activity: ComponentActivity) {
-    val context = LocalContext.current
-    val isElopementDetected by WearSafetyStateRepository.isElopementDetected.collectAsState()
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            if (WearLocationManager.hasLocationPermission(context)) {
-                WearLocationManager.fetchLocation(context) { locationData ->
-                    if (locationData != null) {
-                        WearSafetyStateRepository.checkLocationAgainstSafeZone(
-                            locationData.latitude,
-                            locationData.longitude
-                        )
-                    }
-                }
-            }
-            delay(10000L)
-        }
-    }
+    val isPlayingSound by WearSafetyStateRepository.isPlayingSound.collectAsState()
+    val isElopement by WearSafetyStateRepository.isElopementDetected.collectAsState()
 
     WanderSpectraTheme {
         WearLocationPermissionPopup(activity = activity)
-
-        if (isElopementDetected) {
-            StopScreen()
-        } else {
-            SafeScreen()
+        when {
+            isPlayingSound -> PlayingSoundScreen()
+            isElopement -> StopScreen()
+            else -> SafeScreen()
         }
     }
 }

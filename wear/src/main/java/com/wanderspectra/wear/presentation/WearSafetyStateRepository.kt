@@ -20,6 +20,9 @@ object WearSafetyStateRepository {
     private val _isElopementDetected = MutableStateFlow(false)
     val isElopementDetected: StateFlow<Boolean> = _isElopementDetected.asStateFlow()
 
+    private val _isPlayingSound = MutableStateFlow(false)
+    val isPlayingSound: StateFlow<Boolean> = _isPlayingSound.asStateFlow()
+
     private val _activeSafeZone = MutableStateFlow<WearSafeZone?>(
         WearSafeZone(lat = 30.43, lng = -86.57, radiusFeet = 500, monitoringEnabled = true)
     )
@@ -27,6 +30,10 @@ object WearSafetyStateRepository {
 
     fun setElopementDetected(detected: Boolean) {
         _isElopementDetected.value = detected
+    }
+
+    fun setPlayingSound(playing: Boolean) {
+        _isPlayingSound.value = playing
     }
 
     fun updateActiveSafeZone(safeZone: WearSafeZone) {

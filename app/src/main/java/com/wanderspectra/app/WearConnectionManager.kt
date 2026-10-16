@@ -23,8 +23,7 @@ object WearConnectionManager {
     private const val CONNECTED_PATH = "/wanderspectra/connected"
     private const val LOCATION_PATH = "/wanderspectra/location"
     private const val LOCATION_RESPONSE_PATH = "/wanderspectra/location_response"
-    private const val ELOPEMENT_PATH = "/wanderspectra/elopement"
-    private const val SAFEZONE_PATH = "/wanderspectra/safezone_update"
+    private const val PLAY_SOUND_PATH = "/wanderspectra/play_sound"
 
     private fun safeLogE(tag: String, msg: String, throwable: Throwable? = null) {
         try {
@@ -262,77 +261,25 @@ object WearConnectionManager {
             }
     }
 
-    fun sendElopementAlert(
+    fun playSoundOnWearable(
         context: Context,
-        isElopementActive: Boolean,
-        onComplete: ((Boolean) -> Unit)? = null
+        nodeId: String,
+        onResult: (Boolean) -> Unit
     ) {
         val messageClient = Wearable.getMessageClient(context)
-        val nodeClient = Wearable.getNodeClient(context)
-
-        nodeClient.connectedNodes.addOnSuccessListener { nodes ->
-            if (nodes.isEmpty()) {
-                onComplete?.invoke(false)
-                return@addOnSuccessListener
+        messageClient
+            .sendMessage(
+                nodeId,
+                PLAY_SOUND_PATH,
+                "Play sound request".toByteArray(Charsets.UTF_8)
+            )
+            .addOnSuccessListener {
+                safeLogD(TAG, "Play sound message sent successfully to $nodeId")
+                onResult(true)
             }
-
-            val payload = if (isElopementActive) "true" else "false"
-            var sentCount = 0
-
-            nodes.forEach { node ->
-                messageClient.sendMessage(node.id, ELOPEMENT_PATH, payload.toByteArray())
-                    .addOnSuccessListener {
-                        sentCount++
-                        if (sentCount == nodes.size) {
-                            onComplete?.invoke(true)
-                        }
-                    }
-                    .addOnFailureListener {
-                        onComplete?.invoke(false)
-                    }
+            .addOnFailureListener { exception ->
+                safeLogE(TAG, "Failed to send play sound message to $nodeId", exception)
+                onResult(false)
             }
-        }.addOnFailureListener {
-            onComplete?.invoke(false)
-        }
-    }
-
-    fun sendSafeZoneUpdate(
-        context: Context,
-        safeZone: SafeZone,
-        onComplete: ((Boolean) -> Unit)? = null
-    ) {
-        val messageClient = Wearable.getMessageClient(context)
-        val nodeClient = Wearable.getNodeClient(context)
-
-        val json = JSONObject().apply {
-            put("lat", safeZone.lat)
-            put("lng", safeZone.lng)
-            put("radius", safeZone.radius)
-            put("monitoringEnabled", safeZone.monitoringEnabled)
-        }
-        val payload = json.toString().toByteArray(Charsets.UTF_8)
-
-        nodeClient.connectedNodes.addOnSuccessListener { nodes ->
-            if (nodes.isEmpty()) {
-                onComplete?.invoke(false)
-                return@addOnSuccessListener
-            }
-
-            var sentCount = 0
-            nodes.forEach { node ->
-                messageClient.sendMessage(node.id, SAFEZONE_PATH, payload)
-                    .addOnSuccessListener {
-                        sentCount++
-                        if (sentCount == nodes.size) {
-                            onComplete?.invoke(true)
-                        }
-                    }
-                    .addOnFailureListener {
-                        onComplete?.invoke(false)
-                    }
-            }
-        }.addOnFailureListener {
-            onComplete?.invoke(false)
-        }
     }
 }
