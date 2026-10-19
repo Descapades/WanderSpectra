@@ -1,5 +1,6 @@
 package com.wanderspectra.app
 
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,6 +30,17 @@ fun SafeZoneSettingsContent() {
     var lngText by remember { mutableStateOf("-86.57") }
     var monitoring by remember { mutableStateOf(true) }
     var status by remember { mutableStateOf("Not saved yet") }
+    LaunchedEffect(Unit) {
+        SafeZoneRepository().getLatest { zone ->
+            if (zone != null) {
+                name = zone.name
+                radiusText = zone.radius.toString()
+                latText = zone.lat.toString()
+                lngText = zone.lng.toString()
+                monitoring = zone.monitoringEnabled
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
