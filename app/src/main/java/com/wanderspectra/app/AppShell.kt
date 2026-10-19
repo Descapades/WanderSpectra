@@ -76,6 +76,8 @@ fun AppShell(
     var currentDestination by remember { mutableStateOf(AppDestination.HOME) }
     var openIncidentId by remember { mutableStateOf<String?>(null) }
     var incidentStatus by remember { mutableStateOf("") }
+    var checkLat by remember { mutableStateOf(30.43) }
+    var checkLng by remember { mutableStateOf(-86.57) }
     val context = LocalContext.current
     val notificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -171,29 +173,31 @@ fun AppShell(
                             statusText = incidentStatus,
                             onConfirm = {
                                 incidentStatus = "Saving incident..."
-                                val incident = Incident(
-                                    childId = "test-child",
-                                    caregiverId = FirebaseAuth.getInstance().currentUser?.uid ?: "test-caregiver",
-                                    status = "open",
-                                    startTime = System.currentTimeMillis(),
-                                    lastKnownLat = 30.43,
-                                    lastKnownLng = -86.57
-                                )
-                                IncidentRepository().startIncident(incident) { ok, message, id ->
-                                    incidentStatus = message
-                                    if (ok && id != null) {
-                                        openIncidentId = id
-                                        if (Build.VERSION.SDK_INT >= 33) {
-                                            val granted = ContextCompat.checkSelfPermission(
-                                                context,
-                                                Manifest.permission.POST_NOTIFICATIONS
-                                            ) == PackageManager.PERMISSION_GRANTED
-                                            if (!granted) {
-                                                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                SafeZoneRepository().getLatest { zone ->
+                                    val incident = Incident(
+                                        childId = "test-child",
+                                        caregiverId = FirebaseAuth.getInstance().currentUser?.uid ?: "test-caregiver",
+                                        status = "open",
+                                        startTime = System.currentTimeMillis(),
+                                        lastKnownLat = checkLat,
+                                        lastKnownLng = checkLng
+                                    )
+                                    IncidentRepository().startIncident(incident) { ok, message, id ->
+                                        incidentStatus = message
+                                        if (ok && id != null) {
+                                            openIncidentId = id
+                                            if (Build.VERSION.SDK_INT >= 33) {
+                                                val granted = ContextCompat.checkSelfPermission(
+                                                    context,
+                                                    Manifest.permission.POST_NOTIFICATIONS
+                                                ) == PackageManager.PERMISSION_GRANTED
+                                                if (!granted) {
+                                                    notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                                }
                                             }
+                                            ElopementNotifier.show(context)
+                                            currentDestination = AppDestination.ELOPEMENT_MODE
                                         }
-                                        ElopementNotifier.show(context)
-                                        currentDestination = AppDestination.ELOPEMENT_MODE
                                     }
                                 }
                             },
@@ -206,8 +210,8 @@ fun AppShell(
                         AppDestination.ELOPEMENT_MODE -> ElopementModeContent(
                             incidentId = openIncidentId,
                             statusText = incidentStatus,
-                            pointLat = 30.43,
-                            pointLng = -86.57,
+                            pointLat = checkLat,
+                            pointLng = checkLng,
                             onChildSafe = { id ->
                                 IncidentRepository().closeIncident(id) { _, message ->
                                     incidentStatus = message
