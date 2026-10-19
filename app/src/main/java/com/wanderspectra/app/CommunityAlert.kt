@@ -10,6 +10,7 @@ data class CommunityAlert(
     val childName: String = "",
     val photoUrl: String = "",
     val status: String = "ACTIVE",
+    val distanceMiles: Double? = null,
     val lastKnownArea: String = "",
     val alertRadiusKm: Double = 1.0,
     val latitude: Double? = null,

@@ -96,7 +96,10 @@ fun LoginScreen(
     val credentialManager = CredentialManager.create(context)
     val coroutineScope = rememberCoroutineScope()
 
-
+    fun handleSuccessfulLogin() {
+        CloudflareAuthTest.run()
+        onLoginSuccess()
+    }
 
     fun signInCaregiver() {
         loginMessage = null
@@ -125,7 +128,7 @@ fun LoginScreen(
 
                     if (task.isSuccessful) {
                         loginMessage = null
-                        onLoginSuccess()
+                        handleSuccessfulLogin()
                     } else {
                         loginMessage = "Invalid email or password."
                     }
@@ -172,7 +175,7 @@ fun LoginScreen(
                         .addOnCompleteListener { task ->
                             if (task.isSuccessful) {
                                 loginMessage = null
-                                onLoginSuccess()
+                                handleSuccessfulLogin()
                             } else {
                                 loginMessage =
                                     "Google sign in failed. Please try again."
@@ -200,7 +203,7 @@ fun LoginScreen(
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     loginMessage = null
-                    onLoginSuccess()
+                    handleSuccessfulLogin()
                 } else {
                     loginMessage =
                         "Facebook sign in failed. Please try again."

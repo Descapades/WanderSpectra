@@ -16,28 +16,78 @@ import androidx.compose.ui.unit.sp
 import com.wanderspectra.app.ui.theme.PrimaryBlue
 import com.wanderspectra.app.ui.theme.Salsa
 import com.wanderspectra.app.ui.theme.TanSongbird
+import java.util.concurrent.TimeUnit
 
 @Composable
 fun CommunityContent() {
 
-    val repository = remember { CommunityAlertRepository() }
+    val repository = remember {
+        CommunityAlertRepository()
+    }
 
     var alerts by remember {
         mutableStateOf<List<CommunityAlert>>(emptyList())
     }
 
-    var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember {
+        mutableStateOf(true)
+    }
+
+    var errorMessage by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    var selectedAlert by remember {
+        mutableStateOf<CommunityAlert?>(null)
+    }
+
+    var showingSightingForm by remember {
+        mutableStateOf(false)
+    }
+
+    var submissionMessage by remember {
+        mutableStateOf<String?>(null)
+    }
 
     LaunchedEffect(Unit) {
         try {
             alerts = repository.getAlerts()
-                .filter { it.status == "ACTIVE" && it.caregiverId.isNotBlank() }
+                .filter { it.status == "ACTIVE" }
         } catch (e: Exception) {
             errorMessage = e.message ?: "Unable to load alerts"
         } finally {
             isLoading = false
         }
+    }
+
+    if (selectedAlert != null) {
+        val alert = selectedAlert!!
+
+        if (showingSightingForm) {
+            SightingReportScreen(
+                alert = alert,
+                onCancel = {
+                    showingSightingForm = false
+                },
+                onSubmitted = {
+                    showingSightingForm = false
+                    selectedAlert = null
+                    submissionMessage = "Sighting submitted successfully."
+                }
+            )
+        } else {
+            CommunityAlertDetailScreen(
+                alert = alert,
+                onBack = {
+                    selectedAlert = null
+                },
+                onReportSighting = {
+                    showingSightingForm = true
+                }
+            )
+        }
+
+        return
     }
 
     Column(
@@ -46,6 +96,15 @@ fun CommunityContent() {
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+
+        submissionMessage?.let { message ->
+            Text(
+                text = message,
+                color = PrimaryBlue,
+                fontFamily = Salsa
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
 
         Text(
             text = "Community",
@@ -63,7 +122,7 @@ fun CommunityContent() {
 
             errorMessage != null -> {
                 Text(
-                    text = "Unable to load community alerts",
+                    text = "Unable to load community alerts:\n$errorMessage",
                     color = PrimaryBlue
                 )
             }
@@ -87,7 +146,12 @@ fun CommunityContent() {
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(alerts) { alert ->
-                        CommunityAlertCard(alert = alert)
+                        CommunityAlertCard(
+                            alert = alert,
+                            onClick = {
+                                selectedAlert = alert
+                            }
+                        )
                     }
                 }
             }
@@ -100,50 +164,130 @@ fun CommunityAlertCard(
     alert: CommunityAlert,
     onClick: () -> Unit = {}
 ) {
+    val isActive = alert.status == "ACTIVE"
+
+    val alertColor = if (isActive) {
+        Color(0xFFC34A5B)
+    } else {
+        Color(0xFF80D8B5)
+    }
+
+    val elapsedTime = alert.createdAt?.let { timestamp ->
+        val elapsedMillis = (
+                System.currentTimeMillis() - timestamp.toDate().time
+                ).coerceAtLeast(0L)
+
+        val minutes = TimeUnit.MILLISECONDS.toMinutes(elapsedMillis)
+        val hours = TimeUnit.MILLISECONDS.toHours(elapsedMillis)
+
+        when {
+            minutes < 1 -> "Just now"
+            minutes < 60 -> "$minutes minutes ago"
+            hours < 24 -> "$hours hours ago"
+            else -> "${TimeUnit.MILLISECONDS.toDays(elapsedMillis)} days ago"
+        }
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
         shape = RoundedCornerShape(6.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFEEE9D5)
+            containerColor = Color(0xFFF4F1E8)
         ),
         border = BorderStroke(1.dp, PrimaryBlue)
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.Top
         ) {
             Text(
-                text = "● ACTIVE ALERT",
-                color = Color(0xFFC34A5B),
-                fontFamily = Salsa,
+                text = "●",
+                color = alertColor,
                 fontSize = 18.sp
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.width(8.dp))
 
-            Text(
-                text = "Child last seen near",
-                color = PrimaryBlue,
-                fontFamily = Salsa
-            )
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = if (isActive) {
+                        "ACTIVE ALERT"
+                    } else {
+                        "FOUND SAFE"
+                    },
+                    color = alertColor,
+                    fontFamily = Salsa,
+                    fontSize = 18.sp
+                )
 
-            Text(
-                text = alert.lastKnownArea.ifBlank {
-                    "Location unavailable"
-                },
-                color = PrimaryBlue,
-                fontFamily = Salsa
-            )
+                Spacer(modifier = Modifier.height(4.dp))
 
-            Spacer(modifier = Modifier.height(8.dp))
+                // Distance will appear when an approved
+                // approximate distance is available.
+                val distanceMiles = alert.distanceMiles
 
-            Text(
-                text = "VIEW ALERT",
-                color = Color(0xFFC34A5B),
-                fontFamily = Salsa,
-                modifier = Modifier.align(Alignment.End)
-            )
+                if (distanceMiles != null) {
+                    Text(
+                        text = String.format(
+                            java.util.Locale.US,
+                            "%.1f Miles Away",
+                            distanceMiles
+                        ),
+                        color = PrimaryBlue,
+                        fontFamily = Salsa,
+                        fontSize = 16.sp
+                    )
+                }
+
+                Text(
+                    text = if (isActive) {
+                        "Child last seen near"
+                    } else {
+                        "Child was found safe"
+                    },
+                    color = PrimaryBlue,
+                    fontFamily = Salsa,
+                    fontSize = 16.sp
+                )
+
+                if (isActive) {
+                    Text(
+                        text = alert.lastKnownArea.ifBlank {
+                            "Location unavailable"
+                        },
+                        color = PrimaryBlue,
+                        fontFamily = Salsa,
+                        fontSize = 16.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (elapsedTime != null) {
+                    Text(
+                        text = elapsedTime,
+                        color = Color(0xFFC34A5B),
+                        fontFamily = Salsa,
+                        fontSize = 14.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "VIEW ALERT",
+                    color = Color(0xFFC34A5B),
+                    fontFamily = Salsa,
+                    fontSize = 16.sp,
+                    modifier = Modifier.align(Alignment.End)
+                )
+            }
         }
     }
 }
