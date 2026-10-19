@@ -6,26 +6,41 @@ class SafeZoneRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
     fun save(zone: SafeZone, onDone: (Boolean, String) -> Unit) {
-        val data = hashMapOf(
-            "name" to zone.name,
-            "childId" to zone.childId,
-            "radius" to zone.radius,
-            "monitoringEnabled" to zone.monitoringEnabled,
-            "lat" to zone.lat,
-            "lng" to zone.lng,
-            "savedAt" to System.currentTimeMillis()
-        )
+        getLatest { existing ->
+            val data = hashMapOf(
+                "name" to zone.name,
+                "childId" to zone.childId,
+                "caregiverId" to (com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""),
+                "radius" to zone.radius,
+                "monitoringEnabled" to zone.monitoringEnabled,
+                "lat" to zone.lat,
+                "lng" to zone.lng,
+                "savedAt" to System.currentTimeMillis()
+            )
 
-        db.collection("safeZones")
-            .add(data)
-            .addOnSuccessListener { onDone(true, "Saved to Firestore") }
-            .addOnFailureListener { error ->
-                onDone(false, error.message ?: "Save failed")
+            if (existing != null && existing.id.isNotBlank()) {
+                db.collection("safeZones")
+                    .document(existing.id)
+                    .set(data)
+                    .addOnSuccessListener { onDone(true, "Updated existing zone") }
+                    .addOnFailureListener { error ->
+                        onDone(false, error.message ?: "Update failed")
+                    }
+            } else {
+                db.collection("safeZones")
+                    .add(data)
+                    .addOnSuccessListener { onDone(true, "Saved to Firestore") }
+                    .addOnFailureListener { error ->
+                        onDone(false, error.message ?: "Save failed")
+                    }
             }
+        }
     }
 
     fun getLatest(onDone: (SafeZone?) -> Unit) {
+        val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
         db.collection("safeZones")
+            .whereEqualTo("caregiverId", uid)
             .get()
             .addOnSuccessListener { snapshot ->
                 val doc = snapshot.documents.maxByOrNull { it.getLong("savedAt") ?: 0L }
