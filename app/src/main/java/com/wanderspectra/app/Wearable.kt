@@ -6,5 +6,8 @@ data class Wearable(
     val deviceType: String = "Wear OS Device",
     val batteryLevel: Int = -1,
     val connected: Boolean = false,
-    val lastSync: Long = 0L
+    val lastSync: Long = 0L,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val locationTimestamp: Long = 0L
 )

@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import com.wanderspectra.app.ui.theme.Salsa
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,6 +31,9 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.android.gms.maps.CameraUpdateFactory
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private val HomeBlue = Color(0xFF4681B2)
 private val HomeRed = Color(0xFFC34A5B)
@@ -38,6 +42,25 @@ private val HomeYellow = Color(0xFFFAE3A6)
 private val HomeCream = Color(0xFFEEE9D5)
 private val HomeButtonBlue = Color(0xFFA9C8D9)
 private val HomeButtonRed = Color(0xFFE2A0A2)
+
+fun formatLastUpdatedTime(timestamp: Long): String {
+    if (timestamp <= 0L) return "Unknown"
+    val now = System.currentTimeMillis()
+    val diffMs = now - timestamp
+    if (diffMs < 0L) {
+        val sdf = SimpleDateFormat("h:mm a", Locale.getDefault())
+        return sdf.format(Date(timestamp))
+    }
+    val diffMinutes = diffMs / (1000 * 60)
+    return when {
+        diffMs < 60_000L -> "Just now"
+        diffMinutes < 60L -> "$diffMinutes ${if (diffMinutes == 1L) "min" else "mins"} ago"
+        else -> {
+            val sdf = SimpleDateFormat("h:mm a, MMM d", Locale.getDefault())
+            sdf.format(Date(timestamp))
+        }
+    }
+}
 
 @Composable
 fun HomeScreen(
@@ -184,6 +207,49 @@ private fun HomeStatusCard() {
 private fun HomeLocationCard(
     onChildMissing: () -> Unit
 ) {
+    val context = LocalContext.current
+    val childRepository = remember { ChildProfileRepository() }
+    val wearableRepository = remember { WearableRepository() }
+
+    var wearableLocation by remember { mutableStateOf<LatLng?>(null) }
+    var locationText by remember { mutableStateOf("Test Wearable Location") }
+    var lastUpdatedText by remember { mutableStateOf("Test location") }
+    var wearableDeviceId by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        childRepository.getChildProfiles(
+            onSuccess = { children ->
+                val child = children.firstOrNull()
+                if (child != null) {
+                    wearableRepository.getWearable(
+                        childId = child.childId,
+                        onSuccess = { wearable ->
+                            if (wearable != null) {
+                                wearableDeviceId = wearable.deviceId
+                                if (wearable.latitude != null && wearable.longitude != null) {
+                                    wearableLocation = LatLng(wearable.latitude, wearable.longitude)
+                                    locationText = "%.4f, %.4f".format(wearable.latitude, wearable.longitude)
+                                }
+                                val timestamp = if (wearable.locationTimestamp > 0L) {
+                                    wearable.locationTimestamp
+                                } else {
+                                    wearable.lastSync
+                                }
+                                if (timestamp > 0L) {
+                                    lastUpdatedText = formatLastUpdatedTime(timestamp)
+                                }
+                            }
+                        },
+                        onFailure = {}
+                    )
+                }
+            },
+            onFailure = {}
+        )
+    }
+
+    val displayLocation = wearableLocation ?: LatLng(27.7731, -82.4076)
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(15.dp),
@@ -196,17 +262,13 @@ private fun HomeLocationCard(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            val testWearableLocation = LatLng(
-                27.7731,
-                -82.4076
-            )
 
             val cameraPositionState = rememberCameraPositionState()
 
-            LaunchedEffect(testWearableLocation) {
+            LaunchedEffect(displayLocation) {
                 cameraPositionState.move(
                     CameraUpdateFactory.newLatLngZoom(
-                        testWearableLocation,
+                        displayLocation,
                         16f
                     )
                 )
@@ -225,7 +287,7 @@ private fun HomeLocationCard(
                 ) {
                     Marker(
                         state = MarkerState(
-                            position = testWearableLocation
+                            position = displayLocation
                         ),
                         title = "Wearable Location"
                     )
@@ -247,7 +309,7 @@ private fun HomeLocationCard(
                 )
 
                 Text(
-                    text = "Test Wearable Location",
+                    text = locationText,
                     modifier = Modifier.padding(start = 16.dp),
                     fontFamily = Salsa,
                     fontSize = 17.sp,
@@ -264,7 +326,7 @@ private fun HomeLocationCard(
                 )
 
                 Text(
-                    text = "Test location",
+                    text = lastUpdatedText,
                     modifier = Modifier.padding(start = 16.dp),
                     fontFamily = Salsa,
                     fontSize = 17.sp,
@@ -275,7 +337,30 @@ private fun HomeLocationCard(
             Spacer(modifier = Modifier.height(22.dp))
 
             Button(
-                onClick = {},
+                onClick = {
+                    android.widget.Toast.makeText(context, "Playing sound on wearable...", android.widget.Toast.LENGTH_SHORT).show()
+                    if (!wearableDeviceId.isNullOrBlank()) {
+                        WearConnectionManager.playSoundOnWearable(context, wearableDeviceId!!) { success ->
+                            if (!success) {
+                                WearConnectionManager.getAvailableWearables(context) { nodes ->
+                                    val node = nodes.firstOrNull()
+                                    if (node != null) {
+                                        WearConnectionManager.playSoundOnWearable(context, node.id) { _ -> }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        WearConnectionManager.getAvailableWearables(context) { nodes ->
+                            val node = nodes.firstOrNull()
+                            if (node != null) {
+                                WearConnectionManager.playSoundOnWearable(context, node.id) { _ -> }
+                            } else {
+                                android.widget.Toast.makeText(context, "No connected wearable found", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth(0.82f)
                     .height(48.dp),

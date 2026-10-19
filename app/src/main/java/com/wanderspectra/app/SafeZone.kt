@@ -2,6 +2,7 @@ package com.wanderspectra.app
 
 data class SafeZone(
     val id: String = "",
+    val caregiverId: String = "",
     val name: String = "",
     val childId: String = "",
     val radius: Int = 500,
