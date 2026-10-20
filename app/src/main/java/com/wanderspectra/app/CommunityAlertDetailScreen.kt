@@ -291,29 +291,6 @@ fun CommunityAlertDetailScreen(
 
         Spacer(modifier = Modifier.height(22.dp))
 
-        if (onViewChildProfile != null) {
-            Button(
-                onClick = onViewChildProfile,
-                modifier = Modifier
-                    .fillMaxWidth(0.78f)
-                    .height(54.dp),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ProfileBlue
-                ),
-                border = BorderStroke(1.dp, PrimaryBlue)
-            ) {
-                Text(
-                    text = "View Child Profile",
-                    fontFamily = Salsa,
-                    fontSize = 20.sp,
-                    color = PrimaryBlue
-                )
-            }
-
-            Spacer(modifier = Modifier.height(22.dp))
-        }
-
         Text(
             text = "Reported Sightings:",
             fontFamily = Salsa,
@@ -401,26 +378,28 @@ fun CommunityAlertDetailScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Button(
-            onClick = onReportSighting,
-            modifier = Modifier
-                .fillMaxWidth(0.78f)
-                .height(54.dp),
-            shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = ButtonBlue
-            ),
-            border = BorderStroke(1.dp, SecondaryBlue)
-        ) {
-            Text(
-                text = "View Profile",
-                fontFamily = Salsa,
-                fontSize = 20.sp,
-                color = SecondaryBlue
-            )
+        if (onViewChildProfile != null) {
+            Button(
+                onClick = { onViewChildProfile.invoke() },
+                modifier = Modifier
+                    .fillMaxWidth(0.78f)
+                    .height(54.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = ProfileBlue
+                ),
+                border = BorderStroke(1.dp, SecondaryBlue)
+            ) {
+                Text(
+                    text = "View Child Profile",
+                    fontFamily = Salsa,
+                    fontSize = 20.sp,
+                    color = SecondaryBlue
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(22.dp))
 
         Button(
             onClick = onReportSighting,

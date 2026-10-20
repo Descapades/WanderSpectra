@@ -135,9 +135,9 @@ fun ChildProfileContent() {
 }
 
 @Composable
-private fun ViewChildProfile(
+fun ViewChildProfile(
     child: ChildProfile,
-    onEdit: () -> Unit
+    onEdit: (() -> Unit)? = null
 ) {
     Column(
         modifier = Modifier
@@ -269,24 +269,25 @@ private fun ViewChildProfile(
         )
 
         Spacer(modifier = Modifier.height(24.dp))
-
-        Button(
-            onClick = onEdit,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = ButtonBlue,
-                contentColor = SecondaryBlue
-            )
-        ) {
-            Text(
-                text = "Edit Child Profile",
-                fontFamily = Salsa,
-                fontSize = 16.sp,
-                color = SecondaryBlue
-            )
+        if (onEdit != null) {
+            Button(
+                onClick = onEdit,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = ButtonBlue,
+                    contentColor = SecondaryBlue
+                )
+            ) {
+                Text(
+                    text = "Edit Child Profile",
+                    fontFamily = Salsa,
+                    fontSize = 16.sp,
+                    color = SecondaryBlue
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))

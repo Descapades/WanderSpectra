@@ -17,6 +17,7 @@ import com.wanderspectra.app.ui.theme.PrimaryBlue
 import com.wanderspectra.app.ui.theme.Salsa
 import com.wanderspectra.app.ui.theme.TanSongbird
 import java.util.concurrent.TimeUnit
+import com.google.firebase.firestore.FirebaseFirestore
 
 @Composable
 fun CommunityContent() {
@@ -45,6 +46,22 @@ fun CommunityContent() {
         mutableStateOf(false)
     }
 
+    var showingEmergencyProfile by remember {
+        mutableStateOf(false)
+    }
+
+    var emergencyProfile by remember {
+        mutableStateOf<ChildProfile?>(null)
+    }
+
+    var profileLoading by remember {
+        mutableStateOf(false)
+    }
+
+    var profileError by remember {
+        mutableStateOf<String?>(null)
+    }
+
     var submissionMessage by remember {
         mutableStateOf<String?>(null)
     }
@@ -62,8 +79,69 @@ fun CommunityContent() {
 
     if (selectedAlert != null) {
         val alert = selectedAlert!!
+        if (showingEmergencyProfile) {
 
-        if (showingSightingForm) {
+            LaunchedEffect(alert.id) {
+                profileLoading = true
+                profileError = null
+                emergencyProfile = null
+
+                FirebaseFirestore.getInstance()
+                    .collection("publicEmergencyProfiles")
+                    .document(alert.id)
+                    .get()
+                    .addOnSuccessListener { document ->
+                        emergencyProfile =
+                            document.toObject(ChildProfile::class.java)
+
+                        profileLoading = false
+                    }
+                    .addOnFailureListener { exception ->
+                        profileError = exception.message
+                        profileLoading = false
+                    }
+            }
+
+            when {
+                profileLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = PrimaryBlue)
+                    }
+                }
+
+                profileError != null -> {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Unable to load Emergency Profile: $profileError",
+                            color = PrimaryBlue
+                        )
+
+                        TextButton(
+                            onClick = {
+                                showingEmergencyProfile = false
+                            }
+                        ) {
+                            Text("Back")
+                        }
+                    }
+                }
+
+                else -> {
+                    EmergencyProfileContent(
+                        profile = emergencyProfile,
+                        onBack = {
+                            showingEmergencyProfile = false
+                        }
+                    )
+                }
+            }
+
+        } else if (showingSightingForm) {
             SightingReportScreen(
                 alert = alert,
                 onCancel = {
@@ -83,6 +161,9 @@ fun CommunityContent() {
                 },
                 onReportSighting = {
                     showingSightingForm = true
+                },
+                onViewChildProfile = {
+                    showingEmergencyProfile = true
                 }
             )
         }
