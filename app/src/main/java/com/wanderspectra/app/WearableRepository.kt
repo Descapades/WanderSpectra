@@ -63,6 +63,31 @@ class WearableRepository {
                 onFailure(exception)
             }
     }
+
+    fun updateWearableLocation(
+        childId: String,
+        latitude: Double,
+        longitude: Double,
+        timestamp: Long,
+        onSuccess: () -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        val updates = mapOf(
+            "latitude" to latitude,
+            "longitude" to longitude,
+            "locationTimestamp" to timestamp,
+            "lastSync" to System.currentTimeMillis()
+        )
+
+        wearableDocument(childId)
+            .update(updates)
+            .addOnSuccessListener {
+                onSuccess()
+            }
+            .addOnFailureListener { exception ->
+                onFailure(exception)
+            }
+    }
 }
 
 

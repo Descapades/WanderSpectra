@@ -34,6 +34,7 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.delay
 
 private val HomeBlue = Color(0xFF4681B2)
 private val HomeRed = Color(0xFFC34A5B)
@@ -210,17 +211,18 @@ private fun HomeLocationCard(
     val context = LocalContext.current
     val childRepository = remember { ChildProfileRepository() }
     val wearableRepository = remember { WearableRepository() }
-
     var wearableLocation by remember { mutableStateOf<LatLng?>(null) }
     var locationText by remember { mutableStateOf("Test Wearable Location") }
     var lastUpdatedText by remember { mutableStateOf("Test location") }
     var wearableDeviceId by remember { mutableStateOf<String?>(null) }
+    var trackedChildId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         childRepository.getChildProfiles(
             onSuccess = { children ->
                 val child = children.firstOrNull()
                 if (child != null) {
+                    trackedChildId = child.childId
                     wearableRepository.getWearable(
                         childId = child.childId,
                         onSuccess = { wearable ->
@@ -246,6 +248,62 @@ private fun HomeLocationCard(
             },
             onFailure = {}
         )
+    }
+
+    LaunchedEffect(trackedChildId, wearableDeviceId) {
+        val childId = trackedChildId ?: return@LaunchedEffect
+
+        while (true) {
+            WearConnectionManager.getAvailableWearables(context) { nodes ->
+
+                val node = nodes.firstOrNull {
+                    it.id == wearableDeviceId
+                } ?: nodes.firstOrNull()
+
+                if (node != null) {
+                    WearConnectionManager.requestWearableLocation(
+                        context = context,
+                        nodeId = node.id
+                    ) { result ->
+
+                        if (result.connected &&
+                            result.latitude != null &&
+                            result.longitude != null
+                        ) {
+                            val latitude = result.latitude
+                            val longitude = result.longitude
+
+                            wearableRepository.updateWearableLocation(
+                                childId = childId,
+                                latitude = latitude,
+                                longitude = longitude,
+                                timestamp = result.timestamp,
+                                onSuccess = {
+                                    wearableLocation = LatLng(latitude, longitude)
+
+                                    locationText = "%.4f, %.4f".format(
+                                        latitude,
+                                        longitude
+                                    )
+
+                                    lastUpdatedText =
+                                        formatLastUpdatedTime(result.timestamp)
+                                },
+                                onFailure = { exception ->
+                                    android.util.Log.e(
+                                        "HomeLocationCard",
+                                        "Failed to save wearable location",
+                                        exception
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            delay(30_000L)
+        }
     }
 
     val displayLocation = wearableLocation ?: LatLng(27.7731, -82.4076)
