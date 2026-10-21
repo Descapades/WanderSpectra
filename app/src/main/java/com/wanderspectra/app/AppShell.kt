@@ -300,6 +300,11 @@ fun AppShell(
                 }) { Text("Return to active Elopement Mode") }
             }
 
+            CaregiverSightingNotifications(
+                caregiverId = caregiverUid,
+                childId = child?.childId.orEmpty()
+            )
+
             AppBottomNavigation(
                 currentDestination = currentDestination,
                 onDestinationSelected = { destination ->
