@@ -64,7 +64,8 @@ enum class AppDestination {
     PRIVACY_PERMISSIONS,
     HELP_ABOUT,
     CHILD_MISSING,
-    ELOPEMENT_MODE
+    ELOPEMENT_MODE,
+    EMERGENCY_PROFILE
 }
 
 @Composable
@@ -147,7 +148,26 @@ fun AppShell(
                         AppDestination.HOME -> HomeContent(
                             onChildMissing = { currentDestination = AppDestination.CHILD_MISSING }
                         )
-                        AppDestination.CHILD_PROFILE -> ChildProfileContent()
+                        AppDestination.CHILD_PROFILE -> Column(
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            androidx.compose.material3.TextButton(
+                                onClick = {
+                                    currentDestination = AppDestination.EMERGENCY_PROFILE
+                                }
+                            ) {
+                                Text("View Emergency Profile")
+                            }
+                            Box(modifier = Modifier.weight(1f)) {
+                                ChildProfileContent()
+                            }
+                        }
+                        AppDestination.EMERGENCY_PROFILE -> EmergencyProfileContent(
+                            profile = child,
+                            onBack = {
+                                currentDestination = AppDestination.CHILD_PROFILE
+                            }
+                        )
                         AppDestination.HISTORY -> IncidentHistoryScreen(
                             childId = child?.childId ?: "",
                             childName = child?.preferredName ?: "",
