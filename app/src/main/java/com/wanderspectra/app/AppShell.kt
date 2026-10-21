@@ -175,7 +175,10 @@ fun AppShell(
                                 // Report navigation will be connected separately.
                             }
                         )
-                        AppDestination.SAFETY_CIRCLE -> SafetyCircleContent()
+                        AppDestination.SAFETY_CIRCLE -> SafetyCircleManagementScreen(
+                            caregiverId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty(),
+                            childId = child?.childId.orEmpty()
+                        )
                         AppDestination.COMMUNITY -> CommunityContent()
                         AppDestination.CAREGIVER_ACCOUNT -> CaregiverAccountContent()
                         AppDestination.SAFE_ZONE_SETTINGS -> SafeZoneSettingsContent()

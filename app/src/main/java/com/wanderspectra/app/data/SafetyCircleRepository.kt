@@ -1,3 +1,4 @@
+
 package com.wanderspectra.app.data
 
 import com.google.firebase.firestore.FirebaseFirestore
@@ -97,5 +98,19 @@ class SafetyCircleRepository(
             .addOnFailureListener { exception ->
                 onError(exception)
             }
+    }
+    /** Removes a member after the caregiver confirms in the UI. */
+    fun removeMember(
+        memberId: String,
+        onSuccess: () -> Unit,
+        onError: (Exception) -> Unit
+    ) {
+        if (memberId.isBlank()) {
+            onError(IllegalArgumentException("A member ID is required."))
+            return
+        }
+        safetyCircleCollection.document(memberId).delete()
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { onError(it) }
     }
 }
