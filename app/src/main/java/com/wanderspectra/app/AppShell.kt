@@ -59,6 +59,7 @@ enum class AppDestination {
     COMMUNITY,
     CAREGIVER_ACCOUNT,
     SAFE_ZONE_SETTINGS,
+    SAFE_ZONE_EDIT,
     WEARABLE_SETTINGS,
     ALERT_NOTIFICATIONS,
     PRIVACY_PERMISSIONS,
@@ -158,7 +159,16 @@ fun AppShell(
                         AppDestination.SAFETY_CIRCLE -> SafetyCircleContent()
                         AppDestination.COMMUNITY -> CommunityContent()
                         AppDestination.CAREGIVER_ACCOUNT -> CaregiverAccountContent()
-                        AppDestination.SAFE_ZONE_SETTINGS -> SafeZoneSettingsContent()
+                        AppDestination.SAFE_ZONE_SETTINGS -> SafeZoneScreen(
+                            onAddClick = {
+                                currentDestination = AppDestination.SAFE_ZONE_EDIT
+                            },
+                            onEditClick = {
+                                currentDestination = AppDestination.SAFE_ZONE_EDIT
+                            }
+                        )
+
+                        AppDestination.SAFE_ZONE_EDIT -> SafeZoneSettingsContent()
                         AppDestination.WEARABLE_SETTINGS -> {
                             child?.let { childProfile ->
                                 WearableSettingsContent(

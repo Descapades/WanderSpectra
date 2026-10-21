@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 data class WearSafeZone(
+    val id: String = "",
+    val childId: String = "",
     val lat: Double = 0.0,
     val lng: Double = 0.0,
     val radiusFeet: Int = 500,
@@ -23,9 +25,7 @@ object WearSafetyStateRepository {
     private val _isPlayingSound = MutableStateFlow(false)
     val isPlayingSound: StateFlow<Boolean> = _isPlayingSound.asStateFlow()
 
-    private val _activeSafeZone = MutableStateFlow<WearSafeZone?>(
-        WearSafeZone(lat = 30.43, lng = -86.57, radiusFeet = 500, monitoringEnabled = true)
-    )
+    private val _activeSafeZone = MutableStateFlow<WearSafeZone?>(null)
     val activeSafeZone: StateFlow<WearSafeZone?> = _activeSafeZone.asStateFlow()
 
     fun setElopementDetected(detected: Boolean) {
@@ -38,11 +38,24 @@ object WearSafetyStateRepository {
 
     fun updateActiveSafeZone(safeZone: WearSafeZone) {
         _activeSafeZone.value = safeZone
+
+        if (!safeZone.monitoringEnabled) {
+            _isElopementDetected.value = false
+        }
+    }
+
+    fun clearActiveSafeZone() {
+        _activeSafeZone.value = null
+        _isElopementDetected.value = false
     }
 
     fun checkLocationAgainstSafeZone(latitude: Double, longitude: Double) {
-        val safeZone = _activeSafeZone.value ?: return
-        if (!safeZone.monitoringEnabled) return
+        val safeZone = _activeSafeZone.value
+
+        if (safeZone == null || !safeZone.monitoringEnabled) {
+            _isElopementDetected.value = false
+            return
+        }
 
         val distanceMeters = calculateDistanceMeters(
             lat1 = latitude,

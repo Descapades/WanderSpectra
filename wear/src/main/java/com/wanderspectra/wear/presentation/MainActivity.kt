@@ -1,6 +1,7 @@
 package com.wanderspectra.wear.presentation
 
 import android.Manifest
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -42,6 +43,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import android.content.Intent
+import androidx.compose.ui.text.style.TextAlign
+import androidx.core.content.ContextCompat
+import androidx.wear.compose.material.Text
+import android.graphics.Paint
+import android.graphics.Path
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.sp
+import androidx.core.content.res.ResourcesCompat
+import com.wanderspectra.wear.presentation.theme.PrimaryBlue
 
 private val BackgroundCream = Color(0xFFEEE9D5)
 
@@ -50,19 +71,35 @@ class MainActivity : ComponentActivity() {
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
-        val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        Log.d("MainActivity", "Location permissions granted: fine=$fineGranted, coarse=$coarseGranted")
+
+        val fineGranted =
+            permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+
+        val coarseGranted =
+            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+
+        Log.d(
+            "MainActivity",
+            "Location permissions granted: fine=$fineGranted, coarse=$coarseGranted"
+        )
+
+        if (fineGranted || coarseGranted) {
+            startGeofenceMonitoringIfEnabled()
+        } else {
+            Log.w(
+                "MainActivity",
+                "Location permission denied. Geofence monitoring cannot start."
+            )
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
-
         setTheme(android.R.style.Theme_DeviceDefault)
-
+        WearSafeZoneStorage.restore(this)
         requestLocationPermissionsIfNeeded()
-
+        startGeofenceMonitoringIfEnabled()
         setContent {
             WearApp(activity = this)
         }
@@ -76,6 +113,32 @@ class MainActivity : ComponentActivity() {
                     Manifest.permission.ACCESS_COARSE_LOCATION
                 )
             )
+        }
+    }
+
+    private fun startGeofenceMonitoringIfEnabled() {
+        val safeZone = WearSafetyStateRepository.activeSafeZone.value
+
+        if (safeZone == null || !safeZone.monitoringEnabled) {
+            Log.d("MainActivity", "No enabled Safe Zone. Monitoring not started.")
+            return
+        }
+
+        if (!WearLocationManager.hasLocationPermission(this)) {
+            Log.d("MainActivity", "Location permission missing. Monitoring not started.")
+            return
+        }
+
+        val intent = Intent(
+            this,
+            WearGeofenceMonitoringService::class.java
+        )
+
+        try {
+            ContextCompat.startForegroundService(this, intent)
+            Log.d("MainActivity", "Starting Safe Zone monitoring service")
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Unable to start Safe Zone monitoring", e)
         }
     }
 }
@@ -96,7 +159,19 @@ fun WearApp(activity: ComponentActivity) {
 }
 
 @Composable
-fun SafeScreen() {
+fun SafeScreen(childName: String = "") {
+    val context = LocalContext.current
+
+    val savedChildName = context.getSharedPreferences(
+        "wanderspectra_child",
+        Context.MODE_PRIVATE
+    ).getString("childName", "") ?: ""
+
+    val displayName = childName.ifBlank { savedChildName }
+    val salsaTypeface = remember {
+        ResourcesCompat.getFont(context, R.font.salsa)
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -111,13 +186,49 @@ fun SafeScreen() {
                 .offset(y = (-25).dp)
         )
 
-        Image(
-            painter = painterResource(id = R.drawable.wear_safe_text),
-            contentDescription = "You are safe",
+        val greeting = if (displayName.isNotBlank()) {
+            "Hi, $displayName!"
+        } else {
+            "Hi!"
+        }
+
+        Canvas(
             modifier = Modifier
-                .width(145.dp)
-                .offset(y = 52.dp)
-        )
+                .width(200.dp)
+                .height(100.dp)
+                .offset(y = 40.dp)
+        ) {
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = PrimaryBlue.toArgb()
+                textSize = 22.sp.toPx()
+                typeface = salsaTypeface
+                textAlign = Paint.Align.LEFT
+            }
+
+            val path = Path().apply {
+                addArc(
+                    size.width * 0.05f,
+                    -size.height * 0.85f,
+                    size.width * 0.95f,
+                    size.height * 0.85f,
+                    155f,
+                    -130f
+                )
+            }
+
+            val pathLength = android.graphics.PathMeasure(path, false).length
+            val textWidth = paint.measureText(greeting)
+
+            val horizontalOffset = (pathLength - textWidth) / 2f
+
+            drawContext.canvas.nativeCanvas.drawTextOnPath(
+                greeting,
+                path,
+                horizontalOffset,
+                0f,
+                paint
+            )
+        }
     }
 }
 
