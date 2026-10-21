@@ -59,9 +59,15 @@ class CommunityAlertRepository {
 
     // Retrieve all community alerts
     suspend fun getAlerts(): List<CommunityAlert> {
-        return alerts.get().await().documents.mapNotNull {
-            it.toObject(CommunityAlert::class.java)
-        }
+        return db.collection("publicCommunityAlerts")
+            .whereEqualTo("status", "ACTIVE")
+            .get()
+            .await()
+            .documents
+            .mapNotNull { document ->
+                document.toObject(CommunityAlert::class.java)
+                    ?.copy(id = document.id)
+            }
     }
 
     // Retrieve alerts for a specific incident
