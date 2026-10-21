@@ -1,3 +1,4 @@
+
 package com.wanderspectra.app
 
 import androidx.compose.foundation.layout.Arrangement
@@ -35,7 +36,8 @@ fun ElopementModeContent(
     pointLng: Double,
     childName: String = "Jimothy",
     onChildSafe: (String) -> Unit,
-    onBackHome: () -> Unit
+    onBackHome: () -> Unit,
+    isBusy: Boolean = false
 ) {
     var zoneText by remember { mutableStateOf("Checking zone...") }
 
@@ -74,6 +76,7 @@ fun ElopementModeContent(
         Spacer(modifier = Modifier.height(24.dp))
         Button(
             onClick = { if (incidentId != null) onChildSafe(incidentId) },
+            enabled = incidentId != null && !isBusy,
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = ButtonBlue, contentColor = SecondaryBlue)
         ) { Text("Child is Safe", fontFamily = Salsa) }
@@ -83,3 +86,4 @@ fun ElopementModeContent(
         }
     }
 }
+
