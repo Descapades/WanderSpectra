@@ -346,13 +346,27 @@ class WearConnectionListenerService : WearableListenerService() {
                         WearSafeZoneStorage.save(this, safeZone)
                         WearSafetyStateRepository.updateActiveSafeZone(safeZone)
                         if (safeZone.monitoringEnabled) {
-                            Log.d(TAG, "Safe Zone monitoring enabled")
+                            Log.d(TAG, "Safe Zone monitoring enabled. Attempting to start service.")
 
-                            // If monitoring is already running, the service
-                            // will use the updated Safe Zone automatically.
-                            // Starting a new location foreground service from
-                            // a background message may be restricted by Android.
-                            Log.d(TAG, "Monitoring will start when the watch app is opened")
+                            val serviceIntent = Intent(
+                                this,
+                                WearGeofenceMonitoringService::class.java
+                            )
+
+                            try {
+                                androidx.core.content.ContextCompat.startForegroundService(
+                                    this,
+                                    serviceIntent
+                                )
+
+                                Log.d(TAG, "Geofence monitoring service start requested")
+                            } catch (e: Exception) {
+                                Log.e(
+                                    TAG,
+                                    "Unable to start monitoring service from background",
+                                    e
+                                )
+                            }
                         } else {
                             Log.d(TAG, "Safe Zone monitoring disabled. Stopping service.")
 

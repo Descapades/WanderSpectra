@@ -75,6 +75,7 @@ fun AppShell(
 ) {
     var showSettingsMenu by remember { mutableStateOf(false) }
     var currentDestination by remember { mutableStateOf(AppDestination.HOME) }
+    var editingSafeZoneId by remember { mutableStateOf<String?>(null) }
     var openIncidentId by remember { mutableStateOf<String?>(null) }
     var incidentStatus by remember { mutableStateOf("") }
     var checkLat by remember { mutableStateOf(30.43) }
@@ -161,14 +162,28 @@ fun AppShell(
                         AppDestination.CAREGIVER_ACCOUNT -> CaregiverAccountContent()
                         AppDestination.SAFE_ZONE_SETTINGS -> SafeZoneScreen(
                             onAddClick = {
+                                editingSafeZoneId = null
                                 currentDestination = AppDestination.SAFE_ZONE_EDIT
                             },
-                            onEditClick = {
+                            onEditClick = { zoneId ->
+                                editingSafeZoneId = zoneId
                                 currentDestination = AppDestination.SAFE_ZONE_EDIT
                             }
                         )
 
-                        AppDestination.SAFE_ZONE_EDIT -> SafeZoneSettingsContent()
+                        AppDestination.SAFE_ZONE_EDIT -> {
+                            child?.let { childProfile ->
+                                SafeZoneSettingsContent(
+                                    childId = childProfile.childId,
+                                    editingZoneId = editingSafeZoneId,
+                                    onSaveSuccess = {
+                                        editingSafeZoneId = null
+                                        currentDestination = AppDestination.SAFE_ZONE_SETTINGS
+                                    }
+                                )
+                            }
+                        }
+
                         AppDestination.WEARABLE_SETTINGS -> {
                             child?.let { childProfile ->
                                 WearableSettingsContent(

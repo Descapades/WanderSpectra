@@ -47,12 +47,12 @@ class SafeZoneRepository(
 
     fun create(
         zone: SafeZone,
-        onDone: (Boolean, String) -> Unit
+        onDone: (Boolean, String, SafeZone?) -> Unit
     ) {
         val caregiverId = FirebaseAuth.getInstance().currentUser?.uid
 
         if (caregiverId == null) {
-            onDone(false, "You must be signed in to create a Safe Zone.")
+            onDone(false, "You must be signed in to create a Safe Zone.", null)
             return
         }
 
@@ -69,27 +69,33 @@ class SafeZoneRepository(
 
         db.collection("safeZones")
             .add(data)
-            .addOnSuccessListener {
-                onDone(true, "New Safe Zone created.")
+            .addOnSuccessListener { documentReference ->
+                val savedZone = zone.copy(id = documentReference.id)
+
+                onDone(
+                    true,
+                    "New Safe Zone created.",
+                    savedZone
+                )
             }
             .addOnFailureListener { error ->
-                onDone(false, error.message ?: "Unable to create Safe Zone.")
+                onDone(false, error.message ?: "Unable to create Safe Zone.", null)
             }
     }
 
     fun update(
         zone: SafeZone,
-        onDone: (Boolean, String) -> Unit
+        onDone: (Boolean, String, SafeZone?) -> Unit
     ) {
         val caregiverId = FirebaseAuth.getInstance().currentUser?.uid
 
         if (caregiverId == null) {
-            onDone(false, "You must be signed in to edit a Safe Zone.")
+            onDone(false, "You must be signed in to edit a Safe Zone.", null)
             return
         }
 
         if (zone.id.isBlank()) {
-            onDone(false, "Safe Zone ID is missing.")
+            onDone(false, "Safe Zone ID is missing.", null)
             return
         }
 
@@ -117,10 +123,10 @@ class SafeZoneRepository(
             transaction.update(document, updates)
         }
             .addOnSuccessListener {
-                onDone(true, "Safe Zone updated.")
+                onDone(true, "Safe Zone updated.", zone)
             }
             .addOnFailureListener { error ->
-                onDone(false, error.message ?: "Unable to update Safe Zone.")
+                onDone(false, error.message ?: "Unable to update Safe Zone.", null)
             }
     }
 
@@ -216,5 +222,45 @@ class SafeZoneRepository(
                 }
             }
             .addOnFailureListener { onDone(null) }
+    }
+
+    fun getById(
+        zoneId: String,
+        onResult: (SafeZone?) -> Unit
+    ) {
+        val caregiverId = FirebaseAuth.getInstance().currentUser?.uid
+
+        if (caregiverId == null || zoneId.isBlank()) {
+            onResult(null)
+            return
+        }
+
+        db.collection("safeZones")
+            .document(zoneId)
+            .get()
+            .addOnSuccessListener { document ->
+                if (!document.exists() ||
+                    document.getString("caregiverId") != caregiverId
+                ) {
+                    onResult(null)
+                    return@addOnSuccessListener
+                }
+
+                val zone = SafeZone(
+                    id = document.id,
+                    caregiverId = document.getString("caregiverId").orEmpty(),
+                    childId = document.getString("childId").orEmpty(),
+                    name = document.getString("name").orEmpty(),
+                    radius = document.getLong("radius")?.toInt() ?: 500,
+                    monitoringEnabled = document.getBoolean("monitoringEnabled") ?: true,
+                    lat = document.getDouble("lat") ?: 0.0,
+                    lng = document.getDouble("lng") ?: 0.0
+                )
+
+                onResult(zone)
+            }
+            .addOnFailureListener {
+                onResult(null)
+            }
     }
 }

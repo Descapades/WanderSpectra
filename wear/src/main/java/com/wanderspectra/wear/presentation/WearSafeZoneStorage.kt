@@ -13,6 +13,7 @@ object WearSafeZoneStorage {
     fun save(context: Context, safeZone: WearSafeZone) {
         val json = JSONObject().apply {
             put("id", safeZone.id)
+            put("childId", safeZone.childId)
             put("lat", safeZone.lat)
             put("lng", safeZone.lng)
             put("radius", safeZone.radiusFeet)

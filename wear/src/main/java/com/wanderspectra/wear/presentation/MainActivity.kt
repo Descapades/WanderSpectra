@@ -148,8 +148,13 @@ fun WearApp(activity: ComponentActivity) {
     val isPlayingSound by WearSafetyStateRepository.isPlayingSound.collectAsState()
     val isElopement by WearSafetyStateRepository.isElopementDetected.collectAsState()
 
+    LaunchedEffect(isElopement) {
+        Log.d("WearAppUI", "UI observed elopement state: $isElopement")
+    }
+
     WanderSpectraTheme {
         WearLocationPermissionPopup(activity = activity)
+
         when {
             isPlayingSound -> PlayingSoundScreen()
             isElopement -> StopScreen()

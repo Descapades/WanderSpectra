@@ -25,6 +25,7 @@ class WearGeofenceMonitoringService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private var isMonitoring = false
     private var locationRequestInProgress = false
+    private var lastHandledExitTimestamp: Long? = null
 
     private val monitoringRunnable = object : Runnable {
         override fun run() {
@@ -54,6 +55,25 @@ class WearGeofenceMonitoringService : Service() {
                             location.latitude,
                             location.longitude
                         )
+                        Log.d(
+                            TAG,
+                            "Elopement state after GPS check: " +
+                                    WearSafetyStateRepository.isElopementDetected.value
+                        )
+                        val exitEvent = WearSafetyStateRepository.safeZoneExitEvent.value
+
+                        if (exitEvent != null &&
+                            exitEvent.timestamp != lastHandledExitTimestamp
+                        ) {
+                            lastHandledExitTimestamp = exitEvent.timestamp
+
+                            Log.i(
+                                TAG,
+                                "SAFE_ZONE_EXIT: childId=${exitEvent.childId}, " +
+                                        "safeZoneId=${exitEvent.safeZoneId}, " +
+                                        "timestamp=${exitEvent.timestamp}"
+                            )
+                        }
 
                         Log.d(
                             TAG,

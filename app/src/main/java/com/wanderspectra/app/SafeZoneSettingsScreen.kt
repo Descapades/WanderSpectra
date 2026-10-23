@@ -51,12 +51,19 @@ import com.wanderspectra.app.ui.theme.ButtonBlue
 import com.wanderspectra.app.ui.theme.CardCream
 import com.wanderspectra.app.ui.theme.EmergencyRed
 import com.wanderspectra.app.ui.theme.SecondaryBlue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
 fun SafeZoneSettingsContent(
-    editingZoneId: String? = null
+    childId: String,
+    editingZoneId: String? = null,
+    onSaveSuccess: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf("Home") }
     var radiusText by remember { mutableStateOf("500") }
     var latText by remember { mutableStateOf("30.43") }
@@ -64,7 +71,47 @@ fun SafeZoneSettingsContent(
     var addressText by remember { mutableStateOf("") }
     var monitoring by remember { mutableStateOf(true) }
     var status by remember { mutableStateOf("Not saved yet") }
+    var isSaving by remember { mutableStateOf(false) }
     var editingZone by remember { mutableStateOf<SafeZone?>(null) }
+
+
+    LaunchedEffect(editingZoneId) {
+        if (editingZoneId != null) {
+            SafeZoneRepository().getById(editingZoneId) { zone ->
+                if (zone != null) {
+                    editingZone = zone
+                    name = zone.name
+                    radiusText = zone.radius.toString()
+                    latText = zone.lat.toString()
+                    lngText = zone.lng.toString()
+                    monitoring = zone.monitoringEnabled
+
+                    addressText = "Loading address..."
+
+                    scope.launch {
+                        val address = withContext(Dispatchers.IO) {
+                            try {
+                                val geocoder = Geocoder(context, Locale.getDefault())
+
+                                @Suppress("DEPRECATION")
+                                geocoder.getFromLocation(zone.lat, zone.lng, 1)
+                                    ?.firstOrNull()
+                                    ?.getAddressLine(0)
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
+
+                        addressText = address ?: ""
+                    }
+                    status = "Safe Zone loaded."
+                } else {
+                    status = "Unable to load Safe Zone."
+                }
+            }
+        }
+    }
+
 
 
 
@@ -241,7 +288,10 @@ fun SafeZoneSettingsContent(
             modifier = Modifier.padding(top = 16.dp)
         )
         Button(
+            enabled = !isSaving,
             onClick = {
+                if (isSaving) return@Button
+
                 if (name.isBlank()) {
                     status = "Name cannot be empty"
                     return@Button
@@ -252,13 +302,23 @@ fun SafeZoneSettingsContent(
                     status = "Lat and lng must be numbers"
                     return@Button
                 }
+                if (editingZoneId != null && editingZone?.id != editingZoneId) {
+                    status = "Safe Zone has not loaded. Please try again."
+                    return@Button
+                }
+
+                isSaving = true
+
+
                 val zone = editingZone?.copy(
+                    childId = childId,
                     name = name,
                     radius = radiusText.toIntOrNull() ?: 500,
                     monitoringEnabled = monitoring,
                     lat = lat,
                     lng = lng
                 ) ?: SafeZone(
+                    childId = childId,
                     name = name,
                     radius = radiusText.toIntOrNull() ?: 500,
                     monitoringEnabled = monitoring,
@@ -268,32 +328,39 @@ fun SafeZoneSettingsContent(
 
                 val repository = SafeZoneRepository()
 
-                val onSaved: (Boolean, String) -> Unit = { success, message ->
-                    status = message
+                val onSaved: (Boolean, String, SafeZone?) -> Unit =
+                    { success, message, savedZone ->
+                        isSaving = false
+                        status = message
 
-                    if (success) {
-                        WearConnectionManager.getAvailableWearables(context) { nodes ->
-                            if (nodes.isEmpty()) {
-                                Log.w("SafeZoneSync", "No connected wearable available")
-                                status = "Safe Zone saved. Watch not connected."
-                            } else {
-                                val node = nodes.first()
+                        if (success) {
+                            val zoneToSend = savedZone ?: zone
 
-                                WearConnectionManager.sendSafeZoneToWearable(
-                                    context = context,
-                                    nodeId = node.id,
-                                    safeZone = zone
-                                ) { sent ->
-                                    status = if (sent) {
-                                        "Safe Zone saved. Sent to watch."
-                                    } else {
-                                        "Safe Zone saved. Watch sync failed."
+                            onSaveSuccess()
+
+                            WearConnectionManager.getAvailableWearables(context) { nodes ->
+                                if (nodes.isEmpty()) {
+                                    Log.w("SafeZoneSync", "No connected wearable available")
+                                    status = "Safe Zone saved. Watch not connected."
+                                } else {
+                                    val node = nodes.first()
+
+                                    WearConnectionManager.sendSafeZoneToWearable(
+                                        context = context,
+                                        nodeId = node.id,
+                                        safeZone = zoneToSend,
+                                        childId = childId
+                                    ) { sent ->
+                                        status = if (sent) {
+                                            "Safe Zone saved. Sent to watch."
+                                        } else {
+                                            "Safe Zone saved. Watch sync failed."
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
                 if (editingZoneId == null) {
                     repository.create(zone, onSaved)
                 } else {

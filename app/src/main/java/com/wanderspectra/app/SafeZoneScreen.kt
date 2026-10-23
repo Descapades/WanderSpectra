@@ -48,7 +48,7 @@ private val ZoneBlueButton = Color(0xFFA9C8D9)
 @Composable
 fun SafeZoneScreen(
     onAddClick: () -> Unit = {},
-    onEditClick: () -> Unit = {},
+    onEditClick: (String) -> Unit = {},
     onDeleteClick: () -> Unit = {}
 ) {
     var safeZones by remember { mutableStateOf<List<SafeZone>>(emptyList()) }
@@ -366,7 +366,7 @@ fun SafeZoneScreen(
                                     }
 
                                     Button(
-                                        onClick = onEditClick,
+                                        onClick = { onEditClick(zone.id) },
                                         modifier = Modifier.weight(1f),
                                         shape = RoundedCornerShape(8.dp),
                                         colors = ButtonDefaults.buttonColors(

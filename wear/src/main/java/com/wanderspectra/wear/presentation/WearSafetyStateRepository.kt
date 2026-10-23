@@ -17,6 +17,14 @@ data class WearSafeZone(
         get() = radiusFeet * 0.3048f
 }
 
+data class SafeZoneExitEvent(
+    val childId: String,
+    val safeZoneId: String,
+    val latitude: Double,
+    val longitude: Double,
+    val timestamp: Long
+)
+
 object WearSafetyStateRepository {
 
     private val _isElopementDetected = MutableStateFlow(false)
@@ -28,6 +36,12 @@ object WearSafetyStateRepository {
     private val _activeSafeZone = MutableStateFlow<WearSafeZone?>(null)
     val activeSafeZone: StateFlow<WearSafeZone?> = _activeSafeZone.asStateFlow()
 
+    private var wasInsideSafeZone: Boolean? = null
+
+    private val _safeZoneExitEvent = MutableStateFlow<SafeZoneExitEvent?>(null)
+    val safeZoneExitEvent: StateFlow<SafeZoneExitEvent?> =
+        _safeZoneExitEvent.asStateFlow()
+
     fun setElopementDetected(detected: Boolean) {
         _isElopementDetected.value = detected
     }
@@ -37,9 +51,17 @@ object WearSafetyStateRepository {
     }
 
     fun updateActiveSafeZone(safeZone: WearSafeZone) {
+        val previousZone = _activeSafeZone.value
+
+        if (previousZone != safeZone) {
+            wasInsideSafeZone = null
+            _safeZoneExitEvent.value = null
+        }
+
         _activeSafeZone.value = safeZone
 
         if (!safeZone.monitoringEnabled) {
+            wasInsideSafeZone = null
             _isElopementDetected.value = false
         }
     }
@@ -47,6 +69,8 @@ object WearSafetyStateRepository {
     fun clearActiveSafeZone() {
         _activeSafeZone.value = null
         _isElopementDetected.value = false
+        wasInsideSafeZone = null
+        _safeZoneExitEvent.value = null
     }
 
     fun checkLocationAgainstSafeZone(latitude: Double, longitude: Double) {
@@ -54,6 +78,7 @@ object WearSafetyStateRepository {
 
         if (safeZone == null || !safeZone.monitoringEnabled) {
             _isElopementDetected.value = false
+            wasInsideSafeZone = null
             return
         }
 
@@ -64,12 +89,23 @@ object WearSafetyStateRepository {
             lng2 = safeZone.lng
         )
 
-        val exited = distanceMeters > safeZone.radiusMeters
-        if (exited) {
-            _isElopementDetected.value = true
-        } else if (_isElopementDetected.value && distanceMeters <= safeZone.radiusMeters) {
-            _isElopementDetected.value = false
+        val isInside = distanceMeters <= safeZone.radiusMeters
+
+        // Generate an event only for an actual inside-to-outside transition.
+        if (wasInsideSafeZone == true && !isInside) {
+            _safeZoneExitEvent.value = SafeZoneExitEvent(
+                childId = safeZone.childId,
+                safeZoneId = safeZone.id,
+                latitude = latitude,
+                longitude = longitude,
+                timestamp = System.currentTimeMillis()
+            )
         }
+
+        wasInsideSafeZone = isInside
+
+        // Preserve the existing Stop and Wait behavior.
+        _isElopementDetected.value = !isInside
     }
 
     fun calculateDistanceMeters(
