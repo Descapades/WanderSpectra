@@ -13,6 +13,10 @@ import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
+import android.location.LocationListener
+import android.os.Looper
+import android.os.Handler
+
 
 data class WearLocationData(
     val latitude: Double,
@@ -46,35 +50,78 @@ object WearLocationManager {
         onResult: (WearLocationData?) -> Unit
     ) {
         if (!hasLocationPermission(context)) {
-            Log.w(TAG, "Location permissions not granted on Wear OS device")
+            Log.w(TAG, "Location permissions not granted")
             onResult(null)
             return
         }
 
-        val fusedClient: FusedLocationProviderClient =
-            LocationServices.getFusedLocationProviderClient(context)
+        val locationManager =
+            context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
-        fusedClient.lastLocation
-            .addOnSuccessListener { location: Location? ->
-                if (location != null && isFreshLocation(location)) {
-                    Log.d(TAG, "Using fresh last known location: ${location.latitude}, ${location.longitude}")
-                    onResult(
-                        WearLocationData(
-                            latitude = location.latitude,
-                            longitude = location.longitude,
-                            accuracy = location.accuracy,
-                            timestamp = location.time
-                        )
+        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            Log.w(TAG, "GPS provider is disabled")
+            onResult(null)
+            return
+        }
+
+        val handler = Handler(Looper.getMainLooper())
+        var completed = false
+
+        val listener = object : LocationListener {
+            override fun onLocationChanged(location: Location) {
+                if (completed) return
+                completed = true
+
+                locationManager.removeUpdates(this)
+                handler.removeCallbacksAndMessages(null)
+
+                Log.d(
+                    TAG,
+                    "ACTIVE GPS UPDATE: ${location.latitude}, ${location.longitude}"
+                )
+
+                onResult(
+                    WearLocationData(
+                        latitude = location.latitude,
+                        longitude = location.longitude,
+                        accuracy = location.accuracy,
+                        timestamp = location.time
                     )
-                } else {
-                    Log.d(TAG, "Last known location is null or stale, requesting current location")
-                    requestFreshLocation(context, fusedClient, onResult)
-                }
+                )
             }
-            .addOnFailureListener { exception ->
-                Log.e(TAG, "Failed to get last known location", exception)
-                requestFreshLocation(context, fusedClient, onResult)
+        }
+
+        val timeoutRunnable = Runnable {
+            if (!completed) {
+                completed = true
+                locationManager.removeUpdates(listener)
+                Log.w(TAG, "GPS request timed out after 15 seconds")
+                onResult(null)
             }
+        }
+
+        try {
+            Log.d(TAG, "Starting active GPS location request")
+
+            locationManager.requestLocationUpdates(
+                LocationManager.GPS_PROVIDER,
+                1000L,
+                0f,
+                listener,
+                Looper.getMainLooper()
+            )
+
+            handler.postDelayed(timeoutRunnable, 15_000L)
+
+        } catch (e: Exception) {
+            if (!completed) {
+                completed = true
+                handler.removeCallbacks(timeoutRunnable)
+                locationManager.removeUpdates(listener)
+                Log.e(TAG, "Failed to request GPS location", e)
+                onResult(null)
+            }
+        }
     }
 
     @SuppressLint("MissingPermission")

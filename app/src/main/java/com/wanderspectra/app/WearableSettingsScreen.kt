@@ -436,7 +436,8 @@ fun ConnectWearableScreen(
                     selectedDevice?.let { node ->
                         WearConnectionManager.sendConnectionRequest(
                             context = context,
-                            nodeId = node.id
+                            nodeId = node.id,
+                            childName = childName
                         ) { connected, battery, lat, lng ->
                             if (connected) {
                                 onDeviceConnected(

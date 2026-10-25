@@ -59,6 +59,7 @@ enum class AppDestination {
     COMMUNITY,
     CAREGIVER_ACCOUNT,
     SAFE_ZONE_SETTINGS,
+    SAFE_ZONE_EDIT,
     WEARABLE_SETTINGS,
     ALERT_NOTIFICATIONS,
     PRIVACY_PERMISSIONS,
@@ -75,6 +76,7 @@ fun AppShell(
 ) {
     var showSettingsMenu by remember { mutableStateOf(false) }
     var currentDestination by remember { mutableStateOf(AppDestination.HOME) }
+    var editingSafeZoneId by remember { mutableStateOf<String?>(null) }
     var openIncidentId by remember { mutableStateOf<String?>(null) }
     var incidentStatus by remember { mutableStateOf("") }
     var checkLat by remember { mutableStateOf(30.43) }
@@ -200,7 +202,30 @@ fun AppShell(
                         )
                         AppDestination.COMMUNITY -> CommunityContent()
                         AppDestination.CAREGIVER_ACCOUNT -> CaregiverAccountContent()
-                        AppDestination.SAFE_ZONE_SETTINGS -> SafeZoneSettingsContent()
+                        AppDestination.SAFE_ZONE_SETTINGS -> SafeZoneScreen(
+                            onAddClick = {
+                                editingSafeZoneId = null
+                                currentDestination = AppDestination.SAFE_ZONE_EDIT
+                            },
+                            onEditClick = { zoneId ->
+                                editingSafeZoneId = zoneId
+                                currentDestination = AppDestination.SAFE_ZONE_EDIT
+                            }
+                        )
+
+                        AppDestination.SAFE_ZONE_EDIT -> {
+                            child?.let { childProfile ->
+                                SafeZoneSettingsContent(
+                                    childId = childProfile.childId,
+                                    editingZoneId = editingSafeZoneId,
+                                    onSaveSuccess = {
+                                        editingSafeZoneId = null
+                                        currentDestination = AppDestination.SAFE_ZONE_SETTINGS
+                                    }
+                                )
+                            }
+                        }
+
                         AppDestination.WEARABLE_SETTINGS -> {
                             child?.let { childProfile ->
                                 WearableSettingsContent(

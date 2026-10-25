@@ -31,9 +31,16 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.android.gms.maps.CameraUpdateFactory
+import com.wanderspectra.app.ui.theme.SafeMint
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.delay
+import android.location.Geocoder
+import com.wanderspectra.app.ui.theme.SecondaryBlue
+import com.wanderspectra.app.ui.theme.SecondaryRed
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private val HomeBlue = Color(0xFF4681B2)
 private val HomeRed = Color(0xFFC34A5B)
@@ -93,10 +100,21 @@ private fun HomeStatusCard() {
 
     val childRepository = remember { ChildProfileRepository() }
     val wearableRepository = remember { WearableRepository() }
-
+    val safeZoneRepository = remember { SafeZoneRepository() }
+    var activeSafeZone by remember { mutableStateOf<SafeZone?>(null) }
     var childName by remember { mutableStateOf("Child") }
     var watchConnected by remember { mutableStateOf<Boolean?>(null) }
     var batteryLevel by remember { mutableStateOf<Int?>(null) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            safeZoneRepository.getLatest { zone ->
+                activeSafeZone = zone
+            }
+
+            delay(5_000L)
+        }
+    }
 
     LaunchedEffect(Unit) {
         childRepository.getChildProfiles(
@@ -157,18 +175,30 @@ private fun HomeStatusCard() {
                     modifier = Modifier
                         .size(13.dp)
                         .background(
-                            HomeRed,
-                            RoundedCornerShape(50)
+                            color = if (activeSafeZone?.monitoringEnabled == true) {
+                                SafeMint
+                            } else {
+                                HomeRed
+                            },
+                            shape = RoundedCornerShape(50)
                         )
                 )
 
                 Spacer(modifier = Modifier.width(10.dp))
 
                 Text(
-                    text = "Safe Zone Unavailable",
+                    text = when {
+                        activeSafeZone == null -> "Safe Zone Unavailable"
+                        activeSafeZone?.monitoringEnabled == true -> "SAFE ZONE ON"
+                        else -> "SAFE ZONE OFF"
+                    },
                     fontFamily = Salsa,
                     fontSize = 18.sp,
-                    color = HomeRed
+                    color = if (activeSafeZone?.monitoringEnabled == true) {
+                        SafeMint
+                    } else {
+                        HomeRed
+                    }
                 )
             }
 
@@ -210,17 +240,18 @@ private fun HomeLocationCard(
     val context = LocalContext.current
     val childRepository = remember { ChildProfileRepository() }
     val wearableRepository = remember { WearableRepository() }
-
     var wearableLocation by remember { mutableStateOf<LatLng?>(null) }
     var locationText by remember { mutableStateOf("Test Wearable Location") }
     var lastUpdatedText by remember { mutableStateOf("Test location") }
     var wearableDeviceId by remember { mutableStateOf<String?>(null) }
+    var trackedChildId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         childRepository.getChildProfiles(
             onSuccess = { children ->
                 val child = children.firstOrNull()
                 if (child != null) {
+                    trackedChildId = child.childId
                     wearableRepository.getWearable(
                         childId = child.childId,
                         onSuccess = { wearable ->
@@ -228,7 +259,6 @@ private fun HomeLocationCard(
                                 wearableDeviceId = wearable.deviceId
                                 if (wearable.latitude != null && wearable.longitude != null) {
                                     wearableLocation = LatLng(wearable.latitude, wearable.longitude)
-                                    locationText = "%.4f, %.4f".format(wearable.latitude, wearable.longitude)
                                 }
                                 val timestamp = if (wearable.locationTimestamp > 0L) {
                                     wearable.locationTimestamp
@@ -246,6 +276,82 @@ private fun HomeLocationCard(
             },
             onFailure = {}
         )
+    }
+
+    LaunchedEffect(trackedChildId, wearableDeviceId) {
+        val childId = trackedChildId ?: return@LaunchedEffect
+
+        while (true) {
+            WearConnectionManager.getAvailableWearables(context) { nodes ->
+
+                val node = nodes.firstOrNull {
+                    it.id == wearableDeviceId
+                } ?: nodes.firstOrNull()
+
+                if (node != null) {
+                    WearConnectionManager.requestWearableLocation(
+                        context = context,
+                        nodeId = node.id
+                    ) { result ->
+
+                        if (result.connected &&
+                            result.latitude != null &&
+                            result.longitude != null
+                        ) {
+                            val latitude = result.latitude
+                            val longitude = result.longitude
+
+                            wearableRepository.updateWearableLocation(
+                                childId = childId,
+                                latitude = latitude,
+                                longitude = longitude,
+                                timestamp = result.timestamp,
+                                onSuccess = {
+                                    wearableLocation = LatLng(latitude, longitude)
+
+                                    lastUpdatedText =
+                                        formatLastUpdatedTime(result.timestamp)
+                                },
+                                onFailure = { exception ->
+                                    android.util.Log.e(
+                                        "HomeLocationCard",
+                                        "Failed to save wearable location",
+                                        exception
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            delay(30_000L)
+        }
+    }
+
+    LaunchedEffect(wearableLocation) {
+        val location = wearableLocation ?: return@LaunchedEffect
+
+        locationText = "Loading address..."
+
+        try {
+            val address = withContext(Dispatchers.IO) {
+                @Suppress("DEPRECATION")
+                Geocoder(context, Locale.getDefault())
+                    .getFromLocation(
+                        location.latitude,
+                        location.longitude,
+                        1
+                    )
+                    ?.firstOrNull()
+                    ?.getAddressLine(0)
+            }
+
+            locationText = address ?: "Address unavailable"
+
+        } catch (e: Exception) {
+            locationText = "Address unavailable"
+        }
     }
 
     val displayLocation = wearableLocation ?: LatLng(27.7731, -82.4076)
@@ -367,9 +473,9 @@ private fun HomeLocationCard(
                 shape = RoundedCornerShape(9.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = HomeButtonBlue,
-                    contentColor = HomeBlue
+                    contentColor = SecondaryBlue
                 ),
-                border = BorderStroke(1.dp, HomeBlue)
+                border = BorderStroke(1.dp, SecondaryBlue)
             ) {
                 Text(
                     text = "Play Sound",
@@ -388,9 +494,9 @@ private fun HomeLocationCard(
                 shape = RoundedCornerShape(9.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = HomeButtonRed,
-                    contentColor = HomeRed
+                    contentColor = SecondaryRed
                 ),
-                border = BorderStroke(1.dp, HomeRed)
+                border = BorderStroke(1.dp, SecondaryRed)
             ) {
                 Text(
                     text = "CHILD IS MISSING",

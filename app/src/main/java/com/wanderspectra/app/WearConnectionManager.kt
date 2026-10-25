@@ -7,6 +7,8 @@ import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Node
 import com.google.android.gms.wearable.Wearable
 import org.json.JSONObject
+import com.google.android.gms.wearable.PutDataMapRequest
+import com.google.android.gms.wearable.PutDataRequest
 
 data class WearableLocationResult(
     val connected: Boolean,
@@ -24,6 +26,8 @@ object WearConnectionManager {
     private const val LOCATION_PATH = "/wanderspectra/location"
     private const val LOCATION_RESPONSE_PATH = "/wanderspectra/location_response"
     private const val PLAY_SOUND_PATH = "/wanderspectra/play_sound"
+    private const val SAFEZONE_PATH = "/wanderspectra/safezone"
+    private const val SAFEZONE_DELETE_PATH = "/wanderspectra/safezone/delete"
 
     private fun safeLogE(tag: String, msg: String, throwable: Throwable? = null) {
         try {
@@ -66,6 +70,76 @@ object WearConnectionManager {
 
                 onResult(emptyList())
             }
+    }
+
+    fun getWearableForChild(
+        context: Context,
+        childId: String,
+        onResult: (Node?) -> Unit
+    ) {
+        if (childId.isBlank()) {
+            onResult(null)
+            return
+        }
+
+        WearableRepository().getWearable(
+            childId = childId,
+            onSuccess = { wearable ->
+
+                val deviceId = wearable?.deviceId
+
+                if (deviceId.isNullOrBlank()) {
+                    onResult(null)
+                } else {
+                    getAvailableWearables(context) { nodes ->
+
+                        val matchingNode = nodes.firstOrNull {
+                            it.id == deviceId
+                        }
+
+                        onResult(matchingNode)
+                    }
+                }
+            },
+            onFailure = { exception ->
+                safeLogE(
+                    TAG,
+                    "Failed to retrieve wearable for child $childId",
+                    exception
+                )
+
+                onResult(null)
+            }
+        )
+    }
+
+    fun syncChildSafeZone(
+        context: Context,
+        childId: String,
+        safeZone: SafeZone,
+        enabled: Boolean,
+        onResult: (Boolean) -> Unit
+    ) {
+        getWearableForChild(context, childId) { node ->
+
+            if (node == null) {
+                onResult(false)
+                return@getWearableForChild
+            }
+
+            val childZone = safeZone.copy(
+                childId = childId,
+                monitoringEnabled = enabled
+            )
+
+            sendSafeZoneToWearable(
+                context = context,
+                nodeId = node.id,
+                safeZone = childZone,
+                childId = childId,
+                onResult = onResult
+            )
+        }
     }
 
     fun parseLocationResponse(rawString: String): WearableLocationResult {
@@ -124,6 +198,7 @@ object WearConnectionManager {
     fun sendConnectionRequest(
         context: Context,
         nodeId: String,
+        childName: String,
         onResult: (Boolean, Int, Double?, Double?) -> Unit
     ) {
         val messageClient = Wearable.getMessageClient(context)
@@ -162,7 +237,9 @@ object WearConnectionManager {
             .sendMessage(
                 nodeId,
                 CONNECT_PATH,
-                "WanderSpectra connection request".toByteArray()
+                JSONObject().apply {
+                    put("childName", childName)
+                }.toString().toByteArray(Charsets.UTF_8)
             )
             .addOnSuccessListener {
                 safeLogD(
@@ -194,7 +271,11 @@ object WearConnectionManager {
         nodeId: String,
         onResult: (Boolean, Int) -> Unit
     ) {
-        sendConnectionRequest(context, nodeId) { connected, battery, _, _ ->
+        sendConnectionRequest(
+            context = context,
+            nodeId = nodeId,
+            childName = ""
+        ) { connected, battery, _, _ ->
             onResult(connected, battery)
         }
     }
@@ -279,6 +360,147 @@ object WearConnectionManager {
             }
             .addOnFailureListener { exception ->
                 safeLogE(TAG, "Failed to send play sound message to $nodeId", exception)
+                onResult(false)
+            }
+    }
+
+    fun sendSafeZoneToWearable(
+        context: Context,
+        nodeId: String,
+        safeZone: SafeZone,
+        childId: String = "",
+        onResult: (Boolean) -> Unit
+    ) {
+        val payload = JSONObject().apply {
+            put("id", safeZone.id)
+            put("childId", childId)
+            put("lat", safeZone.lat)
+            put("lng", safeZone.lng)
+            put("radius", safeZone.radius)
+            put("monitoringEnabled", safeZone.monitoringEnabled)
+        }
+
+        Wearable.getMessageClient(context)
+            .sendMessage(
+                nodeId,
+                SAFEZONE_PATH,
+                payload.toString().toByteArray(Charsets.UTF_8)
+            )
+            .addOnSuccessListener {
+                safeLogD(
+                    TAG,
+                    "Safe Zone message sent to wearable $nodeId: $payload"
+                )
+                onResult(true)
+            }
+            .addOnFailureListener { exception ->
+                safeLogE(
+                    TAG,
+                    "Failed to send Safe Zone to wearable $nodeId",
+                    exception
+                )
+                onResult(false)
+            }
+    }
+    fun sendSafeZoneDeleteToWearable(
+        context: Context,
+        nodeId: String,
+        zoneId: String,
+        onResult: (Boolean) -> Unit
+    ) {
+        if (zoneId.isBlank()) {
+            onResult(false)
+            return
+        }
+
+        val payload = JSONObject().apply {
+            put("id", zoneId)
+        }
+
+        Wearable.getMessageClient(context)
+            .sendMessage(
+                nodeId,
+                SAFEZONE_DELETE_PATH,
+                payload.toString().toByteArray(Charsets.UTF_8)
+            )
+            .addOnSuccessListener {
+                safeLogD(
+                    TAG,
+                    "Safe Zone deletion message sent to $nodeId for zone $zoneId"
+                )
+                onResult(true)
+            }
+            .addOnFailureListener { exception ->
+                safeLogE(
+                    TAG,
+                    "Failed to send Safe Zone deletion message to $nodeId",
+                    exception
+                )
+                onResult(false)
+            }
+    }
+    fun publishSafeZoneDeletion(
+        context: Context,
+        zoneId: String,
+        onResult: (Boolean) -> Unit
+    ) {
+        if (zoneId.isBlank()) {
+            onResult(false)
+            return
+        }
+
+        val dataRequest = PutDataMapRequest.create(
+            "/wanderspectra/safezone/state"
+        ).apply {
+            dataMap.putBoolean("deleted", true)
+            dataMap.putString("zoneId", zoneId)
+            dataMap.putLong("updatedAt", System.currentTimeMillis())
+        }.asPutDataRequest().setUrgent()
+
+        Wearable.getDataClient(context)
+            .putDataItem(dataRequest)
+            .addOnSuccessListener {
+                safeLogD(
+                    TAG,
+                    "Safe Zone deletion state published for $zoneId"
+                )
+                onResult(true)
+            }
+            .addOnFailureListener { exception ->
+                safeLogE(
+                    TAG,
+                    "Failed to publish Safe Zone deletion state",
+                    exception
+                )
+                onResult(false)
+            }
+    }
+    fun publishSafeZoneActive(
+        context: Context,
+        zoneId: String,
+        onResult: (Boolean) -> Unit
+    ) {
+        if (zoneId.isBlank()) {
+            onResult(false)
+            return
+        }
+
+        val dataRequest = PutDataMapRequest.create(
+            "/wanderspectra/safezone/state"
+        ).apply {
+            dataMap.putBoolean("deleted", false)
+            dataMap.putString("zoneId", zoneId)
+            dataMap.putLong("updatedAt", System.currentTimeMillis())
+        }.asPutDataRequest().setUrgent()
+
+        Wearable.getDataClient(context)
+            .putDataItem(dataRequest)
+            .addOnSuccessListener {
+                safeLogD(TAG, "Safe Zone active state published for $zoneId")
+                onResult(true)
+            }
+            .addOnFailureListener { exception ->
+                safeLogE(TAG, "Failed to publish Safe Zone active state", exception)
                 onResult(false)
             }
     }
