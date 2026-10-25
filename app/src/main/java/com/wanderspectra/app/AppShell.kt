@@ -79,8 +79,7 @@ fun AppShell(
     var editingSafeZoneId by remember { mutableStateOf<String?>(null) }
     var openIncidentId by remember { mutableStateOf<String?>(null) }
     var incidentStatus by remember { mutableStateOf("") }
-    var checkLat by remember { mutableStateOf(30.43) }
-    var checkLng by remember { mutableStateOf(-86.57) }
+    var selectedIncidentReport by remember { mutableStateOf<IncidentRecord?>(null) }
     val context = LocalContext.current
     val caregiverUid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
     val emergencyStore = remember(context, caregiverUid) {
@@ -196,10 +195,10 @@ fun AppShell(
                             }
                         )
                         AppDestination.HISTORY -> IncidentHistoryScreen(
-                            childId = child?.childId ?: "",
-                            childName = child?.preferredName ?: "",
+                            childId = if (openIncidentId != null) emergencyChildId else child?.childId.orEmpty(),
+                            childName = if (openIncidentId != null) emergencyChildName else child?.preferredName.orEmpty(),
                             onViewReport = { incident ->
-                                // Report navigation will be connected separately.
+                                selectedIncidentReport = incident
                             }
                         )
                         AppDestination.SAFETY_CIRCLE -> SafetyCircleManagementScreen(
@@ -257,15 +256,10 @@ fun AppShell(
                                     else -> {
                                         incidentBusy = true
                                         incidentStatus = "Saving incident..."
-                                        val incident = Incident(
+                                        ElopementWorkflow().startConfirmedIncident(
                                             childId = selectedChild.childId,
-                                            caregiverId = caregiverUid,
-                                            status = "open",
-                                            startTime = System.currentTimeMillis(),
-                                            lastKnownLat = checkLat,
-                                            lastKnownLng = checkLng
-                                        )
-                                        IncidentRepository().startIncident(incident) { ok, message, id ->
+                                            caregiverId = caregiverUid
+                                        ) { ok, message, id ->
                                             incidentBusy = false
                                             incidentStatus = message
                                             if (ok && !id.isNullOrBlank()) {
@@ -299,8 +293,6 @@ fun AppShell(
                         AppDestination.ELOPEMENT_MODE -> ElopementModeContent(
                             incidentId = openIncidentId,
                             statusText = incidentStatus,
-                            pointLat = checkLat,
-                            pointLng = checkLng,
                             childName = emergencyChildName,
                             caregiverId = caregiverUid,
                             childId = emergencyChildId,
@@ -351,6 +343,10 @@ fun AppShell(
                     currentDestination = destination
                 }
             )
+        }
+
+        selectedIncidentReport?.let { report ->
+            IncidentReportDialog(report = report, onDismiss = { selectedIncidentReport = null })
         }
 
         if (showSettingsMenu) {

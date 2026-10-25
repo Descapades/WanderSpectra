@@ -18,8 +18,8 @@ import com.wanderspectra.app.ui.theme.*
 fun ElopementModeContent(
     incidentId: String?,
     statusText: String,
-    pointLat: Double,
-    pointLng: Double,
+    pointLat: Double = 0.0,
+    pointLng: Double = 0.0,
     childName: String = "",
     onChildSafe: (String) -> Unit,
     onBackHome: () -> Unit,
@@ -42,6 +42,7 @@ fun ElopementModeContent(
             fontSize = 22.sp, textAlign = TextAlign.Center)
         Text("$childName is missing", color = PrimaryBlue, fontFamily = Salsa, fontSize = 18.sp)
         Text(statusText, fontFamily = Salsa, textAlign = TextAlign.Center)
+        incidentId?.let { Text("Incident: $it", fontFamily = Salsa, fontSize = 12.sp) }
         Button(onClick = { showLocation = !showLocation }, modifier = Modifier.fillMaxWidth()) {
             Text(if (showLocation) "Hide Wearable Location" else "View Wearable Location", fontFamily = Salsa)
         }
