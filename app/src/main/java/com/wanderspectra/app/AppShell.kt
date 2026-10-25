@@ -101,6 +101,8 @@ fun AppShell(
     val notificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { }
+    var emergencyProfileReturn by remember { mutableStateOf(AppDestination.CHILD_PROFILE) }
+    var childProfiles by remember { mutableStateOf<List<ChildProfile>>(emptyList()) }
     var child by remember {
         mutableStateOf<ChildProfile?>(null)
     }
@@ -112,9 +114,11 @@ fun AppShell(
     LaunchedEffect(Unit) {
         childRepository.getChildProfiles(
             onSuccess = { children ->
+                childProfiles = children
                 child = children.firstOrNull()
             },
             onFailure = {
+                childProfiles = emptyList()
                 child = null
             }
         )
@@ -174,6 +178,7 @@ fun AppShell(
                         ) {
                             androidx.compose.material3.TextButton(
                                 onClick = {
+                                    emergencyProfileReturn = AppDestination.CHILD_PROFILE
                                     currentDestination = AppDestination.EMERGENCY_PROFILE
                                 }
                             ) {
@@ -184,9 +189,10 @@ fun AppShell(
                             }
                         }
                         AppDestination.EMERGENCY_PROFILE -> EmergencyProfileContent(
-                            profile = child,
+                            profile = if (emergencyProfileReturn == AppDestination.ELOPEMENT_MODE)
+                                childProfiles.firstOrNull { it.childId == emergencyChildId } else child,
                             onBack = {
-                                currentDestination = AppDestination.CHILD_PROFILE
+                                currentDestination = emergencyProfileReturn
                             }
                         )
                         AppDestination.HISTORY -> IncidentHistoryScreen(
@@ -198,7 +204,7 @@ fun AppShell(
                         )
                         AppDestination.SAFETY_CIRCLE -> SafetyCircleManagementScreen(
                             caregiverId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty(),
-                            childId = child?.childId.orEmpty()
+                            childId = if (openIncidentId != null) emergencyChildId else child?.childId.orEmpty()
                         )
                         AppDestination.COMMUNITY -> CommunityContent()
                         AppDestination.CAREGIVER_ACCOUNT -> CaregiverAccountContent()
@@ -296,6 +302,15 @@ fun AppShell(
                             pointLat = checkLat,
                             pointLng = checkLng,
                             childName = emergencyChildName,
+                            caregiverId = caregiverUid,
+                            childId = emergencyChildId,
+                            onEmergencyProfile = {
+                                emergencyProfileReturn = AppDestination.ELOPEMENT_MODE
+                                currentDestination = AppDestination.EMERGENCY_PROFILE
+                            },
+                            emergencyProfileAvailable = childProfiles.any { it.childId == emergencyChildId },
+                            onSafetyCircle = { currentDestination = AppDestination.SAFETY_CIRCLE },
+                            onCommunity = { currentDestination = AppDestination.COMMUNITY },
                             isBusy = incidentBusy,
                             onChildSafe = { id ->
                                 if (!incidentBusy && id == openIncidentId) {
@@ -508,3 +523,4 @@ fun SettingsMenuItem(
             .padding(horizontal = 18.dp, vertical = 12.dp)
     )
 }
+
