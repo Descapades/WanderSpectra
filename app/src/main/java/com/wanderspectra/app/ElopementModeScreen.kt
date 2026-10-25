@@ -1,4 +1,3 @@
-
 package com.wanderspectra.app
 
 import androidx.compose.foundation.layout.Arrangement
@@ -74,6 +73,8 @@ fun ElopementModeContent(
         Spacer(modifier = Modifier.height(12.dp))
         Text(text = statusText, fontFamily = Salsa, textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(24.dp))
+        EmergencyServicesShortcut()
+        Spacer(modifier = Modifier.height(12.dp))
         Button(
             onClick = { if (incidentId != null) onChildSafe(incidentId) },
             enabled = incidentId != null && !isBusy,
@@ -86,4 +87,3 @@ fun ElopementModeContent(
         }
     }
 }
-
