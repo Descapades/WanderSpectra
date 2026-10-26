@@ -65,7 +65,8 @@ enum class AppDestination {
     PRIVACY_PERMISSIONS,
     HELP_ABOUT,
     CHILD_MISSING,
-    ELOPEMENT_MODE
+    ELOPEMENT_MODE,
+    EMERGENCY_PROFILE
 }
 
 @Composable
@@ -78,12 +79,29 @@ fun AppShell(
     var editingSafeZoneId by remember { mutableStateOf<String?>(null) }
     var openIncidentId by remember { mutableStateOf<String?>(null) }
     var incidentStatus by remember { mutableStateOf("") }
-    var checkLat by remember { mutableStateOf(30.43) }
-    var checkLng by remember { mutableStateOf(-86.57) }
+    var selectedIncidentReport by remember { mutableStateOf<IncidentRecord?>(null) }
     val context = LocalContext.current
+    val caregiverUid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+    val emergencyStore = remember(context, caregiverUid) {
+        context.getSharedPreferences("elopement_state_" + caregiverUid, android.content.Context.MODE_PRIVATE)
+    }
+    var emergencyChildName by remember { mutableStateOf("") }
+    var emergencyChildId by remember { mutableStateOf("") }
+    var incidentBusy by remember { mutableStateOf(false) }
+    LaunchedEffect(caregiverUid) {
+        openIncidentId = emergencyStore.getString("incidentId", null)
+        emergencyChildName = emergencyStore.getString("childName", "").orEmpty()
+        emergencyChildId = emergencyStore.getString("childId", "").orEmpty()
+        if (openIncidentId != null) {
+            incidentStatus = "Active incident restored"
+            currentDestination = AppDestination.ELOPEMENT_MODE
+        }
+    }
     val notificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { }
+    var emergencyProfileReturn by remember { mutableStateOf(AppDestination.CHILD_PROFILE) }
+    var childProfiles by remember { mutableStateOf<List<ChildProfile>>(emptyList()) }
     var child by remember {
         mutableStateOf<ChildProfile?>(null)
     }
@@ -95,9 +113,11 @@ fun AppShell(
     LaunchedEffect(Unit) {
         childRepository.getChildProfiles(
             onSuccess = { children ->
+                childProfiles = children
                 child = children.firstOrNull()
             },
             onFailure = {
+                childProfiles = emptyList()
                 child = null
             }
         )
@@ -147,17 +167,44 @@ fun AppShell(
                 ) {
                     when (currentDestination) {
                         AppDestination.HOME -> HomeContent(
-                            onChildMissing = { currentDestination = AppDestination.CHILD_MISSING }
-                        )
-                        AppDestination.CHILD_PROFILE -> ChildProfileContent()
-                        AppDestination.HISTORY -> IncidentHistoryScreen(
-                            childId = child?.childId ?: "",
-                            childName = child?.preferredName ?: "",
-                            onViewReport = { incident ->
-                                // Report navigation will be connected separately.
+                            onChildMissing = {
+                                currentDestination = if (openIncidentId != null) AppDestination.ELOPEMENT_MODE
+                                    else AppDestination.CHILD_MISSING
                             }
                         )
-                        AppDestination.SAFETY_CIRCLE -> SafetyCircleContent()
+                        AppDestination.CHILD_PROFILE -> Column(
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            androidx.compose.material3.TextButton(
+                                onClick = {
+                                    emergencyProfileReturn = AppDestination.CHILD_PROFILE
+                                    currentDestination = AppDestination.EMERGENCY_PROFILE
+                                }
+                            ) {
+                                Text("View Emergency Profile")
+                            }
+                            Box(modifier = Modifier.weight(1f)) {
+                                ChildProfileContent()
+                            }
+                        }
+                        AppDestination.EMERGENCY_PROFILE -> EmergencyProfileContent(
+                            profile = if (emergencyProfileReturn == AppDestination.ELOPEMENT_MODE)
+                                childProfiles.firstOrNull { it.childId == emergencyChildId } else child,
+                            onBack = {
+                                currentDestination = emergencyProfileReturn
+                            }
+                        )
+                        AppDestination.HISTORY -> IncidentHistoryScreen(
+                            childId = if (openIncidentId != null) emergencyChildId else child?.childId.orEmpty(),
+                            childName = if (openIncidentId != null) emergencyChildName else child?.preferredName.orEmpty(),
+                            onViewReport = { incident ->
+                                selectedIncidentReport = incident
+                            }
+                        )
+                        AppDestination.SAFETY_CIRCLE -> SafetyCircleManagementScreen(
+                            caregiverId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty(),
+                            childId = if (openIncidentId != null) emergencyChildId else child?.childId.orEmpty()
+                        )
                         AppDestination.COMMUNITY -> CommunityContent()
                         AppDestination.CAREGIVER_ACCOUNT -> CaregiverAccountContent()
                         AppDestination.SAFE_ZONE_SETTINGS -> SafeZoneScreen(
@@ -195,51 +242,82 @@ fun AppShell(
                         AppDestination.PRIVACY_PERMISSIONS -> PrivacyPermissionsContent()
                         AppDestination.HELP_ABOUT -> HelpAboutContent()
                         AppDestination.CHILD_MISSING -> ChildMissingContent(
+                            childName = child?.preferredName?.ifBlank { child?.fullName.orEmpty() }.orEmpty(),
                             statusText = incidentStatus,
+                            isBusy = incidentBusy,
                             onConfirm = {
-                                incidentStatus = "Saving incident..."
-                                SafeZoneRepository().getLatest { zone ->
-                                    val incident = Incident(
-                                        childId = "test-child",
-                                        caregiverId = FirebaseAuth.getInstance().currentUser?.uid ?: "test-caregiver",
-                                        status = "open",
-                                        startTime = System.currentTimeMillis(),
-                                        lastKnownLat = checkLat,
-                                        lastKnownLng = checkLng
-                                    )
-                                    IncidentRepository().startIncident(incident) { ok, message, id ->
-                                        incidentStatus = message
-                                        if (ok && id != null) {
-                                            openIncidentId = id
-                                            if (Build.VERSION.SDK_INT >= 33) {
-                                                val granted = ContextCompat.checkSelfPermission(
-                                                    context,
-                                                    Manifest.permission.POST_NOTIFICATIONS
-                                                ) == PackageManager.PERMISSION_GRANTED
-                                                if (!granted) {
+                                val selectedChild = child
+                                when {
+                                    incidentBusy -> Unit
+                                    openIncidentId != null -> currentDestination = AppDestination.ELOPEMENT_MODE
+                                    caregiverUid.isBlank() -> incidentStatus = "Sign in before activating Elopement Mode."
+                                    selectedChild == null || selectedChild.childId.isBlank() ->
+                                        incidentStatus = "Load a child profile before activating Elopement Mode."
+                                    else -> {
+                                        incidentBusy = true
+                                        incidentStatus = "Saving incident..."
+                                        ElopementWorkflow().startConfirmedIncident(
+                                            childId = selectedChild.childId,
+                                            caregiverId = caregiverUid
+                                        ) { ok, message, id ->
+                                            incidentBusy = false
+                                            incidentStatus = message
+                                            if (ok && !id.isNullOrBlank()) {
+                                                openIncidentId = id
+                                                emergencyChildId = selectedChild.childId
+                                                emergencyChildName = selectedChild.preferredName.ifBlank { selectedChild.fullName }
+                                                emergencyStore.edit()
+                                                    .putString("incidentId", id)
+                                                    .putString("childId", emergencyChildId)
+                                                    .putString("childName", emergencyChildName)
+                                                    .apply()
+                                                currentDestination = AppDestination.ELOPEMENT_MODE
+                                                if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(
+                                                    context, Manifest.permission.POST_NOTIFICATIONS
+                                                ) != PackageManager.PERMISSION_GRANTED) {
                                                     notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                                                 }
+                                                ElopementNotifier.show(context, emergencyChildName)
                                             }
-                                            ElopementNotifier.show(context)
-                                            currentDestination = AppDestination.ELOPEMENT_MODE
                                         }
                                     }
                                 }
                             },
                             onCancel = {
-                                openIncidentId = null
-                                incidentStatus = ""
-                                currentDestination = AppDestination.HOME
+                                if (!incidentBusy) {
+                                    incidentStatus = ""
+                                    currentDestination = AppDestination.HOME
+                                }
                             }
                         )
                         AppDestination.ELOPEMENT_MODE -> ElopementModeContent(
                             incidentId = openIncidentId,
                             statusText = incidentStatus,
-                            pointLat = checkLat,
-                            pointLng = checkLng,
+                            childName = emergencyChildName,
+                            caregiverId = caregiverUid,
+                            childId = emergencyChildId,
+                            onEmergencyProfile = {
+                                emergencyProfileReturn = AppDestination.ELOPEMENT_MODE
+                                currentDestination = AppDestination.EMERGENCY_PROFILE
+                            },
+                            emergencyProfileAvailable = childProfiles.any { it.childId == emergencyChildId },
+                            onSafetyCircle = { currentDestination = AppDestination.SAFETY_CIRCLE },
+                            onCommunity = { currentDestination = AppDestination.COMMUNITY },
+                            isBusy = incidentBusy,
                             onChildSafe = { id ->
-                                IncidentRepository().closeIncident(id) { _, message ->
-                                    incidentStatus = message
+                                if (!incidentBusy && id == openIncidentId) {
+                                    incidentBusy = true
+                                    IncidentRepository().closeIncident(id) { ok, message ->
+                                        incidentBusy = false
+                                        incidentStatus = message
+                                        if (ok) {
+                                            emergencyStore.edit().clear().apply()
+                                            openIncidentId = null
+                                            emergencyChildId = ""
+                                            emergencyChildName = ""
+                                            currentDestination = AppDestination.HOME
+                                        }
+                                    }
                                 }
                             },
                             onBackHome = { currentDestination = AppDestination.HOME }
@@ -248,12 +326,27 @@ fun AppShell(
                 }
             }
 
+            if (openIncidentId != null && currentDestination != AppDestination.ELOPEMENT_MODE) {
+                androidx.compose.material3.TextButton(onClick = {
+                    currentDestination = AppDestination.ELOPEMENT_MODE
+                }) { Text("Return to active Elopement Mode") }
+            }
+
+            CaregiverSightingNotifications(
+                caregiverId = caregiverUid,
+                childId = child?.childId.orEmpty()
+            )
+
             AppBottomNavigation(
                 currentDestination = currentDestination,
                 onDestinationSelected = { destination ->
                     currentDestination = destination
                 }
             )
+        }
+
+        selectedIncidentReport?.let { report ->
+            IncidentReportDialog(report = report, onDismiss = { selectedIncidentReport = null })
         }
 
         if (showSettingsMenu) {
@@ -426,3 +519,4 @@ fun SettingsMenuItem(
             .padding(horizontal = 18.dp, vertical = 12.dp)
     )
 }
+

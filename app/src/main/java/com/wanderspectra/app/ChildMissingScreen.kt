@@ -1,3 +1,4 @@
+
 package com.wanderspectra.app
 
 import androidx.compose.foundation.layout.Arrangement
@@ -28,7 +29,8 @@ fun ChildMissingContent(
     childName: String = "Jimothy",
     statusText: String = "",
     onConfirm: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    isBusy: Boolean = false
 ) {
     Column(
         modifier = Modifier
@@ -60,6 +62,7 @@ fun ChildMissingContent(
         }
         Button(
             onClick = onConfirm,
+            enabled = !isBusy,
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
                 containerColor = ButtonRed,
@@ -71,6 +74,7 @@ fun ChildMissingContent(
         Spacer(modifier = Modifier.height(12.dp))
         Button(
             onClick = onCancel,
+            enabled = !isBusy,
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
                 containerColor = ButtonBlue,
@@ -81,3 +85,4 @@ fun ChildMissingContent(
         }
     }
 }
+
