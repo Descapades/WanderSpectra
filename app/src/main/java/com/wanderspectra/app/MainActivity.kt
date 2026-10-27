@@ -1,3 +1,4 @@
+
 package com.wanderspectra.app
 
 import android.os.Bundle
@@ -31,6 +32,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        SightingReportNavigation.receive(intent)
 
         FirebaseMessaging.getInstance().token
             .addOnSuccessListener { token ->
@@ -194,6 +196,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        SightingReportNavigation.receive(intent)
+    }
+
     @Suppress("DEPRECATION")
     @Deprecated("Facebook SDK uses onActivityResult for login callbacks")
     override fun onActivityResult(
@@ -205,6 +213,7 @@ class MainActivity : ComponentActivity() {
         callbackManager.onActivityResult(requestCode, resultCode, data)
     }
 }
+
 
 
 
