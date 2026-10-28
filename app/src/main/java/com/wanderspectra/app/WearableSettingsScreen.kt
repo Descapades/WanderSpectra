@@ -29,6 +29,9 @@ import com.wanderspectra.app.ui.theme.PrimaryBlue
 import com.wanderspectra.app.ui.theme.Salsa
 import com.wanderspectra.app.ui.theme.SecondaryBlue
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.key
 
 private val WearableRed = Color(0xFFC34A5B)
 private val WearableButtonBlue = Color(0xFFA9C8D9)
@@ -36,37 +39,32 @@ private val WearableCream = Color(0xFFEDEBE2)
 
 @Composable
 fun WearableSettingsContent(
+    children: List<ChildProfile>
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+    ) {
+        children.forEach { child ->
+            key(child.childId) {
+                ChildWearableCard(child = child)
+            }
+        }
+    }
+}
+
+@Composable
+fun ChildWearableCard(
     child: ChildProfile
 ) {
-
-    var showDeviceSelection by remember {
-        mutableStateOf(false)
-    }
-
-    var isConnected by remember {
-        mutableStateOf(false)
-    }
-
-    var connectedDeviceName by remember {
-        mutableStateOf("")
-    }
-
-    var batteryLevel by remember {
-        mutableStateOf(-1)
-    }
-
-    var latitude by remember {
-        mutableStateOf<Double?>(null)
-    }
-
-    var longitude by remember {
-        mutableStateOf<Double?>(null)
-    }
-
-    val wearableRepository = remember {
-        WearableRepository()
-    }
-
+    var showDeviceSelection by remember { mutableStateOf(false) }
+    var isConnected by remember { mutableStateOf(false) }
+    var connectedDeviceName by remember { mutableStateOf("") }
+    var batteryLevel by remember { mutableStateOf(-1) }
+    var latitude by remember { mutableStateOf<Double?>(null) }
+    var longitude by remember { mutableStateOf<Double?>(null) }
+    val wearableRepository = remember { WearableRepository() }
     val childName = child.preferredName
         .ifBlank { child.fullName }
 
@@ -252,7 +250,7 @@ fun WearableNotConnectedScreen(
                 lineHeight = 22.sp
             )
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(48.dp))
 
             Button(
                 onClick = onFindDevice,
@@ -277,8 +275,6 @@ fun WearableNotConnectedScreen(
                     fontWeight = FontWeight.Bold
                 )
             }
-
-            Spacer(modifier = Modifier.height(110.dp))
         }
     }
 }
@@ -627,7 +623,7 @@ fun WearableConnectedScreen(
                 fontSize = 16.sp
             )
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(48.dp))
 
             Button(
                 onClick = onDisconnectDevice,
@@ -656,8 +652,6 @@ fun WearableConnectedScreen(
                     color = Color(0xFFA72A3C)
                 )
             }
-
-            Spacer(modifier = Modifier.height(110.dp))
         }
     }
 }

@@ -78,6 +78,7 @@ fun AppShell(
     var showSettingsMenu by remember { mutableStateOf(false) }
     var showChildProfileMenu by remember { mutableStateOf(false) }
     var showIncidentHistoryMenu by remember { mutableStateOf(false) }
+    var showWearableSettingsMenu by remember { mutableStateOf(false) }
     var currentDestination by remember { mutableStateOf(AppDestination.HOME) }
     var editingSafeZoneId by remember { mutableStateOf<String?>(null) }
     var openIncidentId by remember { mutableStateOf<String?>(null) }
@@ -277,12 +278,10 @@ fun AppShell(
                         }
 
                         AppDestination.WEARABLE_SETTINGS -> {
-                            child?.let { childProfile ->
                                 WearableSettingsContent(
-                                    child = childProfile
+                                    children = childProfiles
                                 )
                             }
-                        }
                         AppDestination.ALERT_NOTIFICATIONS -> AlertNotificationsContent()
                         AppDestination.PRIVACY_PERMISSIONS -> PrivacyPermissionsContent()
                         AppDestination.HELP_ABOUT -> HelpAboutContent()
