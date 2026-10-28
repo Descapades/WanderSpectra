@@ -77,6 +77,7 @@ fun AppShell(
 ) {
     var showSettingsMenu by remember { mutableStateOf(false) }
     var showChildProfileMenu by remember { mutableStateOf(false) }
+    var showIncidentHistoryMenu by remember { mutableStateOf(false) }
     var currentDestination by remember { mutableStateOf(AppDestination.HOME) }
     var editingSafeZoneId by remember { mutableStateOf<String?>(null) }
     var openIncidentId by remember { mutableStateOf<String?>(null) }
@@ -100,17 +101,11 @@ fun AppShell(
         }
     }
     val notificationPermission = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { }
+        ActivityResultContracts.RequestPermission()) { }
     var emergencyProfileReturn by remember { mutableStateOf(AppDestination.CHILD_PROFILE) }
     var childProfiles by remember { mutableStateOf<List<ChildProfile>>(emptyList()) }
-    var child by remember {
-        mutableStateOf<ChildProfile?>(null)
-    }
-
-    val childRepository = remember {
-        ChildProfileRepository()
-    }
+    var child by remember { mutableStateOf<ChildProfile?>(null) }
+    val childRepository = remember { ChildProfileRepository() }
 
     LaunchedEffect(Unit) {
         childRepository.getChildProfiles(
@@ -392,9 +387,15 @@ fun AppShell(
                 onDestinationSelected = { destination ->
                     currentDestination = destination
                     showChildProfileMenu = false
+                    showIncidentHistoryMenu = false
                 },
                 onChildProfileClick = {
                     showChildProfileMenu = !showChildProfileMenu
+                    showIncidentHistoryMenu = false
+                },
+                onIncidentHistoryClick = {
+                    showIncidentHistoryMenu = !showIncidentHistoryMenu
+                    showChildProfileMenu = false
                 }
             )
         }
@@ -440,6 +441,40 @@ fun AppShell(
                 }
             }
         }
+        if (showIncidentHistoryMenu) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 28.dp, bottom = 105.dp)
+                    .width(200.dp)
+                    .background(
+                        color = BackgroundCream,
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = PrimaryBlue,
+                        shape = RoundedCornerShape(10.dp)
+                    )
+            ) {
+                childProfiles.forEach { profile ->
+                    Text(
+                        text = profile.preferredName.ifBlank { profile.fullName },
+                        color = PrimaryBlue,
+                        fontFamily = Salsa,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                child = profile
+                                openIncidentId = null
+                                currentDestination = AppDestination.HISTORY
+                                showIncidentHistoryMenu = false
+                            }
+                            .padding(12.dp)
+                    )
+                }
+            }
+        }
 
         if (showSettingsMenu) {
             SettingsMenu(
@@ -460,7 +495,8 @@ fun AppShell(
 fun AppBottomNavigation(
     currentDestination: AppDestination,
     onDestinationSelected: (AppDestination) -> Unit,
-    onChildProfileClick: () -> Unit
+    onChildProfileClick: () -> Unit,
+    onIncidentHistoryClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -492,9 +528,7 @@ fun AppBottomNavigation(
             icon = Icons.Default.History,
             contentDescription = "History",
             isSelected = currentDestination == AppDestination.HISTORY,
-            onClick = {
-                onDestinationSelected(AppDestination.HISTORY)
-            }
+            onClick = onIncidentHistoryClick
         )
 
         AppNavigationButton(
