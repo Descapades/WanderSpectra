@@ -305,7 +305,7 @@ fun SafeZoneSettingsContent(
                 }
             },
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxWidth(0.85f)
                 .padding(top = 8.dp),
             shape = RoundedCornerShape(12.dp),
             border = BorderStroke(1.dp, SecondaryBlue),
@@ -431,7 +431,7 @@ fun SafeZoneSettingsContent(
                 }
             },
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxWidth(0.85f)
                 .padding(top = 16.dp),
             shape = RoundedCornerShape(12.dp),
             border = BorderStroke(1.dp, SecondaryBlue),

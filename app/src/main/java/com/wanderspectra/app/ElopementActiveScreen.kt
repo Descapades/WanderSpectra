@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.sp
 import com.wanderspectra.app.ui.theme.*
 
 @Composable
-fun ElopementModeContent(
+fun ElopementActiveContent(
     incidentId: String?,
     statusText: String,
     pointLat: Double = 0.0,

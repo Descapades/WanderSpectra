@@ -50,6 +50,8 @@ import com.wanderspectra.app.ui.theme.PrimaryBlue
 import com.wanderspectra.app.ui.theme.Salsa
 import com.wanderspectra.app.ui.theme.TanSongbird
 import com.wanderspectra.app.ui.theme.ButtonBlue
+import com.wanderspectra.app.ui.theme.ButtonRed
+import com.wanderspectra.app.ui.theme.SecondaryRed
 
 enum class AppDestination {
     HOME,
@@ -153,8 +155,21 @@ fun AppShell(
                     .weight(1f)
                     .fillMaxWidth()
                     .padding(start = 28.dp, end = 28.dp, bottom = 8.dp)
-                    .background(color = ButtonYellow, shape = RoundedCornerShape(14.dp))
-                    .border(width = 1.dp, color = PrimaryBlue, shape = RoundedCornerShape(14.dp))
+                    .background(
+                        color = if (
+                            currentDestination == AppDestination.CHILD_MISSING ||
+                            currentDestination == AppDestination.ELOPEMENT_MODE
+                        ) ButtonRed else ButtonYellow,
+                        shape = RoundedCornerShape(14.dp)
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = if (
+                            currentDestination == AppDestination.CHILD_MISSING ||
+                            currentDestination == AppDestination.ELOPEMENT_MODE
+                        ) SecondaryRed else PrimaryBlue,
+                        shape = RoundedCornerShape(14.dp)
+                    )
                     .padding(14.dp)
             ) {
                 Box(
@@ -285,7 +300,7 @@ fun AppShell(
                         AppDestination.ALERT_NOTIFICATIONS -> AlertNotificationsContent()
                         AppDestination.PRIVACY_PERMISSIONS -> PrivacyPermissionsContent()
                         AppDestination.HELP_ABOUT -> HelpAboutContent()
-                        AppDestination.CHILD_MISSING -> ChildMissingContent(
+                        AppDestination.CHILD_MISSING -> ElopementConfirmationContent(
                             childName = child?.preferredName?.ifBlank { child?.fullName.orEmpty() }.orEmpty(),
                             statusText = incidentStatus,
                             isBusy = incidentBusy,
@@ -334,7 +349,7 @@ fun AppShell(
                                 }
                             }
                         )
-                        AppDestination.ELOPEMENT_MODE -> ElopementModeContent(
+                        AppDestination.ELOPEMENT_MODE -> ElopementActiveContent(
                             incidentId = openIncidentId,
                             statusText = incidentStatus,
                             childName = emergencyChildName,

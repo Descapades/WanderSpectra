@@ -32,6 +32,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.key
+import com.wanderspectra.app.ui.theme.TanSongbird
 
 private val WearableRed = Color(0xFFC34A5B)
 private val WearableButtonBlue = Color(0xFFA9C8D9)
@@ -198,8 +199,8 @@ fun WearableNotConnectedScreen(
             Text(
                 text = childName,
                 color = WearableRed,
-                fontFamily = Salsa,
-                fontSize = 30.sp
+                fontFamily = TanSongbird,
+                fontSize = 20.sp
             )
 
             // Connection status
@@ -324,8 +325,8 @@ fun ConnectWearableScreen(
             Text(
                 text = childName,
                 color = WearableRed,
-                fontFamily = Salsa,
-                fontSize = 30.sp
+                fontFamily = TanSongbird,
+                fontSize = 20.sp
             )
 
             Row(
@@ -508,8 +509,8 @@ fun WearableConnectedScreen(
             Text(
                 text = childName,
                 color = WearableRed,
-                fontFamily = Salsa,
-                fontSize = 30.sp
+                fontFamily = TanSongbird,
+                fontSize = 20.sp
             )
 
             Row(

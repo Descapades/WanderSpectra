@@ -271,7 +271,7 @@ fun ViewChildProfile(
             Button(
                 onClick = onEdit,
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxWidth(0.85f)
                     .height(48.dp),
                 shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(
