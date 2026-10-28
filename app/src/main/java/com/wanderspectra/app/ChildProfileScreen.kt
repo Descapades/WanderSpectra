@@ -34,15 +34,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 
+
 @Composable
-fun ChildProfileContent() {
+fun ChildProfileContent(selectedChild: ChildProfile?,
+                        onProfileUpdated: (ChildProfile) -> Unit
+) {
 
     val repository = remember {
         ChildProfileRepository()
     }
 
-    var childProfile by remember {
-        mutableStateOf<ChildProfile?>(null)
+    var childProfile by remember(selectedChild?.childId) {
+        mutableStateOf(selectedChild)
     }
 
     var isLoading by remember {
@@ -57,17 +60,11 @@ fun ChildProfileContent() {
         mutableStateOf(false)
     }
 
-    LaunchedEffect(Unit) {
-        repository.getChildProfiles(
-            onSuccess = { children ->
-                childProfile = children.firstOrNull()
-                isLoading = false
-            },
-            onFailure = { exception ->
-                errorMessage = exception.message
-                isLoading = false
-            }
-        )
+    LaunchedEffect(selectedChild?.childId) {
+        isEditing = false
+        errorMessage = null
+        childProfile = selectedChild
+        isLoading = false
     }
 
     Box(
@@ -113,6 +110,7 @@ fun ChildProfileContent() {
                                 childProfile = updatedChild,
                                 onSuccess = {
                                     childProfile = updatedChild
+                                    onProfileUpdated(updatedChild)
                                     isEditing = false
                                 },
                                 onFailure = { exception ->

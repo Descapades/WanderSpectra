@@ -73,7 +73,24 @@ fun SafeZoneSettingsContent(
     var status by remember { mutableStateOf("Not saved yet") }
     var isSaving by remember { mutableStateOf(false) }
     var editingZone by remember { mutableStateOf<SafeZone?>(null) }
+    var childProfiles by remember { mutableStateOf<List<ChildProfile>>(emptyList()) }
+    var childMonitoring by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
 
+    LaunchedEffect(Unit) {
+        ChildProfileRepository().getChildProfiles(
+            onSuccess = { children ->
+                childProfiles = children
+            },
+            onFailure = { exception ->
+                Log.e(
+                    "SafeZoneSettings",
+                    "Failed to load child profiles",
+                    exception
+                )
+                status = "Unable to load child profiles."
+            }
+        )
+    }
 
     LaunchedEffect(editingZoneId) {
         if (editingZoneId != null) {
@@ -85,6 +102,11 @@ fun SafeZoneSettingsContent(
                     latText = zone.lat.toString()
                     lngText = zone.lng.toString()
                     monitoring = zone.monitoringEnabled
+                    childMonitoring = zone.childMonitoring
+                    Log.d(
+                        "SafeZoneDebug",
+                        "Loaded ${zone.name} assignments: ${zone.childMonitoring}"
+                    )
 
                     addressText = "Loading address..."
 
@@ -129,6 +151,45 @@ fun SafeZoneSettingsContent(
             fontFamily = TanSongbird,
             fontSize = 16.sp
         )
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "Children to Monitor",
+                color = SecondaryBlue,
+                fontFamily = Salsa,
+                fontSize = 14.sp
+            )
+
+            childProfiles.forEach { child ->
+                val childName = child.preferredName.ifBlank {
+                    child.fullName
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = childName,
+                        color = SecondaryBlue,
+                        fontFamily = Salsa,
+                        fontSize = 14.sp
+                    )
+
+                    Switch(
+                        checked = childMonitoring[child.childId] ?: false,
+                        onCheckedChange = { enabled ->
+                            childMonitoring = childMonitoring + (
+                                    child.childId to enabled
+                                    )
+                        }
+                    )
+                }
+            }
+        }
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -315,6 +376,7 @@ fun SafeZoneSettingsContent(
                     name = name,
                     radius = radiusText.toIntOrNull() ?: 500,
                     monitoringEnabled = monitoring,
+                    childMonitoring = childMonitoring,
                     lat = lat,
                     lng = lng
                 ) ?: SafeZone(
@@ -322,6 +384,7 @@ fun SafeZoneSettingsContent(
                     name = name,
                     radius = radiusText.toIntOrNull() ?: 500,
                     monitoringEnabled = monitoring,
+                    childMonitoring = childMonitoring,
                     lat = lat,
                     lng = lng
                 )

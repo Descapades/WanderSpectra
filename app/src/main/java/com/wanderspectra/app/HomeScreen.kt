@@ -41,6 +41,24 @@ import com.wanderspectra.app.ui.theme.SecondaryBlue
 import com.wanderspectra.app.ui.theme.SecondaryRed
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.compose.runtime.key
+import com.google.maps.android.compose.rememberMarkerState
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import androidx.compose.ui.graphics.toArgb
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
+import androidx.compose.ui.graphics.toArgb
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
+import android.graphics.drawable.BitmapDrawable
+import com.google.android.gms.maps.model.BitmapDescriptor
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.mutableIntStateOf
+import com.google.android.gms.maps.model.LatLngBounds
 
 private val HomeBlue = Color(0xFF4681B2)
 private val HomeRed = Color(0xFFC34A5B)
@@ -49,6 +67,15 @@ private val HomeYellow = Color(0xFFFAE3A6)
 private val HomeCream = Color(0xFFEEE9D5)
 private val HomeButtonBlue = Color(0xFFA9C8D9)
 private val HomeButtonRed = Color(0xFFE2A0A2)
+
+private val ChildMarkerColors = listOf(
+    Color(0xFFC94B5B), // Red
+    Color(0xFF4681B2), // Blue
+    Color(0xFF39885B), // Green
+    Color(0xFFC69B23), // Yellow
+    Color(0xFF8B63B5), // Purple
+    Color(0xFFDB803B)  // Orange
+)
 
 fun formatLastUpdatedTime(timestamp: Long): String {
     if (timestamp <= 0L) return "Unknown"
@@ -74,14 +101,17 @@ fun HomeScreen(
     onSignOut: () -> Unit
 ) {
     AppShell(onSignOut = onSignOut) {
-        HomeContent(onChildMissing = {})
     }
 }
 
 @Composable
 fun HomeContent(
-    onChildMissing: () -> Unit
+    children: List<ChildProfile>,
+    onChildMissing: (ChildProfile) -> Unit
 ) {
+    var focusedChildId by remember { mutableStateOf<String?>(null) }
+    var focusRequest by remember { mutableIntStateOf(0) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -89,324 +119,209 @@ fun HomeContent(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        HomeStatusCard()
+        HomeLocationCard(
+            children = children,
+            focusedChildId = focusedChildId,
+            focusRequest = focusRequest,
+            onChildFocused = { childId ->
+                focusedChildId = childId
+                focusRequest++
+            }
+        )
 
-        HomeLocationCard(onChildMissing = onChildMissing)
+        children.forEachIndexed { index, child ->
+            key(child.childId) {
+                HomeStatusCard(
+                    child = child,
+                    childColor = ChildMarkerColors[index % ChildMarkerColors.size],
+                    onChildMissing = onChildMissing,
+                    onChildSelected = {
+                        focusedChildId = child.childId
+                        focusRequest++
+                    }
+                )
+            }
+        }
     }
 }
 
-@Composable
-private fun HomeStatusCard() {
-
-    val childRepository = remember { ChildProfileRepository() }
-    val wearableRepository = remember { WearableRepository() }
-    val safeZoneRepository = remember { SafeZoneRepository() }
-    var activeSafeZone by remember { mutableStateOf<SafeZone?>(null) }
-    var childName by remember { mutableStateOf("Child") }
-    var watchConnected by remember { mutableStateOf<Boolean?>(null) }
-    var batteryLevel by remember { mutableStateOf<Int?>(null) }
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            safeZoneRepository.getLatest { zone ->
-                activeSafeZone = zone
-            }
-
-            delay(5_000L)
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        childRepository.getChildProfiles(
-            onSuccess = { children ->
-                val child = children.firstOrNull()
-                childName = child?.preferredName
-                    ?.ifBlank { child.fullName }
-                    ?: "Child"
-
-                if (child != null) {
-                    wearableRepository.getWearable(
-                        childId = child.childId,
-                        onSuccess = { wearable ->
-                            watchConnected = wearable?.connected
-                            batteryLevel = wearable?.batteryLevel
-                                ?.takeIf { it >= 0 }
-                        },
-                        onFailure = {
-                            watchConnected = null
-                            batteryLevel = null
-                        }
-                    )
-                }
-            },
-            onFailure = {
-                watchConnected = null
-                batteryLevel = null
-            }
-        )
-    }
-
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(15.dp),
-        color = Color(0xFFEDEBE2),
-        border = BorderStroke(1.dp, HomeBlue)
+    @Composable
+    private fun HomeStatusCard(
+        child: ChildProfile,
+        childColor: Color,
+        onChildMissing: (ChildProfile) -> Unit,
+        onChildSelected: () -> Unit
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 12.dp),
-            horizontalAlignment = Alignment.Start
-        ) {
-            Text(
-                text = childName,
-                fontFamily = TanSongbird,
-                fontSize = 34.sp,
-                color = HomeRed
-            )
 
-            Spacer(modifier = Modifier.height(6.dp))
+        val childRepository = remember { ChildProfileRepository() }
+        val wearableRepository = remember { WearableRepository() }
+        val childMonitoringRepository = remember { ChildSafeZoneMonitoringRepository() }
+        var childSafeZoneMonitoring by remember(child.childId) { mutableStateOf<ChildSafeZoneMonitoring?>(null) }
+        val childName = child.preferredName.ifBlank { child.fullName }
+        val context = LocalContext.current
+        var wearableDeviceId by remember(child.childId) { mutableStateOf<String?>(null) }
+        var watchConnected by remember { mutableStateOf<Boolean?>(null) }
+        var batteryLevel by remember { mutableStateOf<Int?>(null) }
+        var locationText by remember(child.childId) { mutableStateOf("Location unavailable") }
+        var lastUpdatedText by remember(child.childId) { mutableStateOf("Unknown") }
+        var wearableLocation by remember(child.childId) { mutableStateOf<LatLng?>(null) }
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(13.dp)
-                        .background(
-                            color = if (activeSafeZone?.monitoringEnabled == true) {
-                                SafeMint
-                            } else {
-                                HomeRed
-                            },
-                            shape = RoundedCornerShape(50)
+        LaunchedEffect(child.childId) {
+            childSafeZoneMonitoring = null
+
+            while (true) {
+                childMonitoringRepository.get(child.childId) { settings ->
+                    childSafeZoneMonitoring = settings
+                }
+
+                delay(5_000L)
+            }
+        }
+
+        LaunchedEffect(wearableLocation) {
+            val location = wearableLocation
+
+            if (location == null) {
+                locationText = "Location unavailable"
+                return@LaunchedEffect
+            }
+
+            locationText = "Loading address..."
+
+            locationText = try {
+                withContext(Dispatchers.IO) {
+                    @Suppress("DEPRECATION")
+                    Geocoder(context, Locale.getDefault())
+                        .getFromLocation(
+                            location.latitude,
+                            location.longitude,
+                            1
                         )
-                )
+                        ?.firstOrNull()
+                        ?.getAddressLine(0)
+                } ?: "Address unavailable"
+            } catch (e: Exception) {
+                "Address unavailable"
+            }
+        }
 
-                Spacer(modifier = Modifier.width(10.dp))
+        LaunchedEffect(child.childId) {
+            watchConnected = null
+            batteryLevel = null
 
-                Text(
-                    text = when {
-                        activeSafeZone == null -> "Safe Zone Unavailable"
-                        activeSafeZone?.monitoringEnabled == true -> "SAFE ZONE ON"
-                        else -> "SAFE ZONE OFF"
-                    },
-                    fontFamily = Salsa,
-                    fontSize = 18.sp,
-                    color = if (activeSafeZone?.monitoringEnabled == true) {
-                        SafeMint
+            wearableRepository.getWearable(
+                childId = child.childId,
+                onSuccess = { wearable ->
+                    wearableDeviceId = wearable?.deviceId
+                    watchConnected = wearable?.connected
+                    batteryLevel = wearable?.batteryLevel?.takeIf { it >= 0 }
+
+                    wearableLocation = if (
+                        wearable?.latitude != null &&
+                        wearable.longitude != null
+                    ) {
+                        LatLng(wearable.latitude, wearable.longitude)
                     } else {
-                        HomeRed
+                        null
                     }
-                )
-            }
 
-            Spacer(modifier = Modifier.height(12.dp))
+                    val timestamp = wearable?.locationTimestamp
+                        ?.takeIf { it > 0L }
+                        ?: wearable?.lastSync
+                        ?: 0L
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = when (watchConnected) {
-                        true -> "Watch Connected"
-                        false -> "Watch Not Connected"
-                        null -> "Watch Status Unavailable"
-                    },
-                    fontFamily = Salsa,
-                    fontSize = 14.sp,
-                    color = HomeBlue,
-                    maxLines = 1
-                )
-
-                Text(
-                    text = batteryLevel?.let { "Battery $it%" } ?: "Battery --",
-                    fontFamily = Salsa,
-                    fontSize = 14.sp,
-                    color = HomeBlue,
-                    maxLines = 1
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun HomeLocationCard(
-    onChildMissing: () -> Unit
-) {
-    val context = LocalContext.current
-    val childRepository = remember { ChildProfileRepository() }
-    val wearableRepository = remember { WearableRepository() }
-    var wearableLocation by remember { mutableStateOf<LatLng?>(null) }
-    var locationText by remember { mutableStateOf("Test Wearable Location") }
-    var lastUpdatedText by remember { mutableStateOf("Test location") }
-    var wearableDeviceId by remember { mutableStateOf<String?>(null) }
-    var trackedChildId by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(Unit) {
-        childRepository.getChildProfiles(
-            onSuccess = { children ->
-                val child = children.firstOrNull()
-                if (child != null) {
-                    trackedChildId = child.childId
-                    wearableRepository.getWearable(
-                        childId = child.childId,
-                        onSuccess = { wearable ->
-                            if (wearable != null) {
-                                wearableDeviceId = wearable.deviceId
-                                if (wearable.latitude != null && wearable.longitude != null) {
-                                    wearableLocation = LatLng(wearable.latitude, wearable.longitude)
-                                }
-                                val timestamp = if (wearable.locationTimestamp > 0L) {
-                                    wearable.locationTimestamp
-                                } else {
-                                    wearable.lastSync
-                                }
-                                if (timestamp > 0L) {
-                                    lastUpdatedText = formatLastUpdatedTime(timestamp)
-                                }
-                            }
-                        },
-                        onFailure = {}
-                    )
+                    lastUpdatedText = formatLastUpdatedTime(timestamp)
+                },
+                onFailure = {
+                    wearableDeviceId = null
+                    watchConnected = null
+                    batteryLevel = null
                 }
-            },
-            onFailure = {}
-        )
-    }
-
-    LaunchedEffect(trackedChildId, wearableDeviceId) {
-        val childId = trackedChildId ?: return@LaunchedEffect
-
-        while (true) {
-            WearConnectionManager.getAvailableWearables(context) { nodes ->
-
-                val node = nodes.firstOrNull {
-                    it.id == wearableDeviceId
-                } ?: nodes.firstOrNull()
-
-                if (node != null) {
-                    WearConnectionManager.requestWearableLocation(
-                        context = context,
-                        nodeId = node.id
-                    ) { result ->
-
-                        if (result.connected &&
-                            result.latitude != null &&
-                            result.longitude != null
-                        ) {
-                            val latitude = result.latitude
-                            val longitude = result.longitude
-
-                            wearableRepository.updateWearableLocation(
-                                childId = childId,
-                                latitude = latitude,
-                                longitude = longitude,
-                                timestamp = result.timestamp,
-                                onSuccess = {
-                                    wearableLocation = LatLng(latitude, longitude)
-
-                                    lastUpdatedText =
-                                        formatLastUpdatedTime(result.timestamp)
-                                },
-                                onFailure = { exception ->
-                                    android.util.Log.e(
-                                        "HomeLocationCard",
-                                        "Failed to save wearable location",
-                                        exception
-                                    )
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
-            delay(30_000L)
+            )
         }
-    }
 
-    LaunchedEffect(wearableLocation) {
-        val location = wearableLocation ?: return@LaunchedEffect
-
-        locationText = "Loading address..."
-
-        try {
-            val address = withContext(Dispatchers.IO) {
-                @Suppress("DEPRECATION")
-                Geocoder(context, Locale.getDefault())
-                    .getFromLocation(
-                        location.latitude,
-                        location.longitude,
-                        1
-                    )
-                    ?.firstOrNull()
-                    ?.getAddressLine(0)
-            }
-
-            locationText = address ?: "Address unavailable"
-
-        } catch (e: Exception) {
-            locationText = "Address unavailable"
-        }
-    }
-
-    val displayLocation = wearableLocation ?: LatLng(27.7731, -82.4076)
-
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(15.dp),
-        color = Color(0xFFEDEBE2),
-        border = BorderStroke(1.dp, HomeBlue)
-    ) {
-        Column(
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .clickable(onClick = onChildSelected),
+            shape = RoundedCornerShape(15.dp),
+            color = Color(0xFFEDEBE2),
+            border = BorderStroke(1.dp, HomeBlue)
         ) {
-
-            val cameraPositionState = rememberCameraPositionState()
-
-            LaunchedEffect(displayLocation) {
-                cameraPositionState.move(
-                    CameraUpdateFactory.newLatLngZoom(
-                        displayLocation,
-                        16f
-                    )
-                )
-            }
-
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(285.dp),
-                shape = RoundedCornerShape(10.dp),
-                border = BorderStroke(1.dp, HomeBlue)
-            ) {
-                GoogleMap(
-                    modifier = Modifier.fillMaxSize(),
-                    cameraPositionState = cameraPositionState
-                ) {
-                    Marker(
-                        state = MarkerState(
-                            position = displayLocation
-                        ),
-                        title = "Wearable Location"
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                horizontalAlignment = Alignment.Start
             ) {
+                Text(
+                    text = childName,
+                    fontFamily = TanSongbird,
+                    fontSize = 34.sp,
+                    color = childColor
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+                val isSafeZoneOn =
+                    childSafeZoneMonitoring?.monitoringEnabled == true &&
+                            !childSafeZoneMonitoring?.activeSafeZoneId.isNullOrBlank()
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(13.dp)
+                            .background(
+                                color = if (isSafeZoneOn) SafeMint else HomeRed,
+                                shape = RoundedCornerShape(50)
+                            )
+                    )
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    Text(
+                        text = if (isSafeZoneOn) {
+                            "SAFE ZONE ON"
+                        } else {
+                            "SAFE ZONE OFF"
+                        },
+                        fontFamily = Salsa,
+                        fontSize = 18.sp,
+                        color = if (isSafeZoneOn) SafeMint else HomeRed
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = when (watchConnected) {
+                            true -> "Watch Connected"
+                            false -> "Watch Not Connected"
+                            null -> "Watch Status Unavailable"
+                        },
+                        fontFamily = Salsa,
+                        fontSize = 14.sp,
+                        color = HomeBlue,
+                        maxLines = 1
+                    )
+
+                    Text(
+                        text = batteryLevel?.let { "Battery $it%" } ?: "Battery --",
+                        fontFamily = Salsa,
+                        fontSize = 14.sp,
+                        color = HomeBlue,
+                        maxLines = 1
+                    )
+                }
+                Spacer(modifier = Modifier.height(18.dp))
+
                 Text(
                     text = "Location:",
                     fontFamily = Salsa,
@@ -416,13 +331,12 @@ private fun HomeLocationCard(
 
                 Text(
                     text = locationText,
-                    modifier = Modifier.padding(start = 16.dp),
                     fontFamily = Salsa,
                     fontSize = 17.sp,
                     color = HomeBlue
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
                     text = "Last Updated:",
@@ -433,78 +347,410 @@ private fun HomeLocationCard(
 
                 Text(
                     text = lastUpdatedText,
-                    modifier = Modifier.padding(start = 16.dp),
                     fontFamily = Salsa,
                     fontSize = 17.sp,
                     color = HomeBlue
                 )
-            }
 
-            Spacer(modifier = Modifier.height(22.dp))
+                Spacer(modifier = Modifier.height(22.dp))
 
-            Button(
-                onClick = {
-                    android.widget.Toast.makeText(context, "Playing sound on wearable...", android.widget.Toast.LENGTH_SHORT).show()
-                    if (!wearableDeviceId.isNullOrBlank()) {
-                        WearConnectionManager.playSoundOnWearable(context, wearableDeviceId!!) { success ->
-                            if (!success) {
-                                WearConnectionManager.getAvailableWearables(context) { nodes ->
-                                    val node = nodes.firstOrNull()
-                                    if (node != null) {
-                                        WearConnectionManager.playSoundOnWearable(context, node.id) { _ -> }
-                                    }
+                Button(
+                    onClick = {
+                        val deviceId = wearableDeviceId
+
+                        if (deviceId.isNullOrBlank()) {
+                            android.widget.Toast.makeText(
+                                context,
+                                "No wearable assigned to ${child.preferredName.ifBlank { child.fullName }}",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        } else {
+                            WearConnectionManager.playSoundOnWearable(
+                                context,
+                                deviceId
+                            ) { success ->
+                                if (!success) {
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "Unable to play sound on this child's wearable",
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                             }
                         }
-                    } else {
-                        WearConnectionManager.getAvailableWearables(context) { nodes ->
-                            val node = nodes.firstOrNull()
-                            if (node != null) {
-                                WearConnectionManager.playSoundOnWearable(context, node.id) { _ -> }
-                            } else {
-                                android.widget.Toast.makeText(context, "No connected wearable found", android.widget.Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth(0.82f)
-                    .height(48.dp),
-                shape = RoundedCornerShape(9.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = HomeButtonBlue,
-                    contentColor = SecondaryBlue
-                ),
-                border = BorderStroke(1.dp, SecondaryBlue)
-            ) {
-                Text(
-                    text = "Play Sound",
-                    fontFamily = Salsa,
-                    fontSize = 20.sp
-                )
-            }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(9.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = HomeButtonBlue,
+                        contentColor = SecondaryBlue
+                    ),
+                    border = BorderStroke(1.dp, SecondaryBlue)
+                ) {
+                    Text(
+                        text = "Play Sound",
+                        fontFamily = Salsa,
+                        fontSize = 20.sp
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(18.dp))
 
-            Button(
-                onClick = onChildMissing,
-                modifier = Modifier
-                    .fillMaxWidth(0.82f)
-                    .height(48.dp),
-                shape = RoundedCornerShape(9.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = HomeButtonRed,
-                    contentColor = SecondaryRed
-                ),
-                border = BorderStroke(1.dp, SecondaryRed)
-            ) {
-                Text(
-                    text = "CHILD IS MISSING",
-                    fontFamily = Salsa,
-                    fontSize = 18.sp,
-                    maxLines = 1
-                )
+                Button(
+                    onClick = { onChildMissing(child) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(9.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = HomeButtonRed,
+                        contentColor = SecondaryRed
+                    ),
+                    border = BorderStroke(1.dp, SecondaryRed)
+                ) {
+                    Text(
+                        text = "CHILD IS MISSING",
+                        fontFamily = Salsa,
+                        fontSize = 18.sp,
+                        maxLines = 1
+                    )
+                }
+
             }
         }
     }
+
+    @Composable
+    private fun HomeLocationCard(
+        children: List<ChildProfile>,
+        focusedChildId: String?,
+        focusRequest: Int,
+        onChildFocused: (String) -> Unit
+    ) {
+        val context = LocalContext.current
+        val childRepository = remember { ChildProfileRepository() }
+        val wearableRepository = remember { WearableRepository() }
+        var wearableLocation by remember { mutableStateOf<LatLng?>(null) }
+        var wearableDeviceId by remember { mutableStateOf<String?>(null) }
+        var trackedChildId by remember { mutableStateOf<String?>(null) }
+        var childLocations by remember { mutableStateOf<Map<String, LatLng>>(emptyMap()) }
+        var childMarkerIcons by remember { mutableStateOf<Map<String, BitmapDescriptor>>(emptyMap()) }
+
+        LaunchedEffect(children) {
+            childLocations = emptyMap()
+
+            children.forEach { child ->
+                wearableRepository.getWearable(
+                    childId = child.childId,
+                    onSuccess = { wearable ->
+                        val latitude = wearable?.latitude
+                        val longitude = wearable?.longitude
+
+                        if (latitude != null && longitude != null) {
+                            childLocations = childLocations + (
+                                    child.childId to LatLng(latitude, longitude)
+                                    )
+                        }
+                    },
+                    onFailure = { exception ->
+                        android.util.Log.e(
+                            "HomeLocationCard",
+                            "Failed to load location for ${child.childId}",
+                            exception
+                        )
+                    }
+                )
+            }
+        }
+
+        LaunchedEffect(children) {
+            childMarkerIcons = emptyMap()
+
+            children.forEachIndexed { index, child ->
+                val childColor = ChildMarkerColors[index % ChildMarkerColors.size]
+
+                val photo = if (child.photoUrl.isNotBlank()) {
+                    try {
+                        withContext(Dispatchers.IO) {
+                            val request = ImageRequest.Builder(context)
+                                .data(child.photoUrl)
+                                .allowHardware(false)
+                                .build()
+
+                            val result = context.imageLoader.execute(request)
+
+                            if (result is SuccessResult) {
+                                val drawable = result.drawable
+
+                                if (drawable is BitmapDrawable) {
+                                    drawable.bitmap
+                                } else {
+                                    null
+                                }
+                            } else {
+                                null
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e(
+                            "HomeLocationCard",
+                            "Unable to load marker photo for ${child.childId}",
+                            e
+                        )
+                        null
+                    }
+                } else {
+                    null
+                }
+
+                val markerIcon = createChildMarker(
+                    photo = photo,
+                    color = childColor
+                )
+
+                childMarkerIcons = childMarkerIcons + (child.childId to markerIcon)
+            }
+        }
+
+        LaunchedEffect(trackedChildId, wearableDeviceId) {
+            val childId = trackedChildId ?: return@LaunchedEffect
+
+            while (true) {
+                WearConnectionManager.getAvailableWearables(context) { nodes ->
+
+                    val node = nodes.firstOrNull {
+                        it.id == wearableDeviceId &&
+                                !wearableDeviceId.isNullOrBlank()
+                    }
+
+                    if (node != null) {
+                        WearConnectionManager.requestWearableLocation(
+                            context = context,
+                            nodeId = node.id
+                        ) { result ->
+
+                            if (result.connected &&
+                                result.latitude != null &&
+                                result.longitude != null
+                            ) {
+                                val latitude = result.latitude
+                                val longitude = result.longitude
+
+                                wearableRepository.updateWearableLocation(
+                                    childId = childId,
+                                    latitude = latitude,
+                                    longitude = longitude,
+                                    timestamp = result.timestamp,
+                                    onSuccess = {
+                                        wearableLocation = LatLng(latitude, longitude)
+                                    },
+                                    onFailure = { exception ->
+                                        android.util.Log.e(
+                                            "HomeLocationCard",
+                                            "Failed to save wearable location",
+                                            exception
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                delay(30_000L)
+            }
+        }
+
+        val displayLocation = children.firstNotNullOfOrNull { child ->
+            childLocations[child.childId]
+        }
+        Column(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+
+                val cameraPositionState = rememberCameraPositionState()
+
+                var initialCameraPositionSet by remember {
+                    mutableStateOf(false)
+                }
+
+                LaunchedEffect(childLocations, focusedChildId) {
+                    if (initialCameraPositionSet || focusedChildId != null) {
+                        return@LaunchedEffect
+                    }
+
+                    val locations = children.mapNotNull { child ->
+                        childLocations[child.childId]
+                    }
+
+                    if (locations.isEmpty()) {
+                        return@LaunchedEffect
+                    }
+
+                    if (locations.size == 1) {
+                        cameraPositionState.move(
+                            CameraUpdateFactory.newLatLngZoom(
+                                locations.first(),
+                                16f
+                            )
+                        )
+                    } else {
+                        val bounds = LatLngBounds.builder().apply {
+                            locations.forEach { include(it) }
+                        }.build()
+
+                        cameraPositionState.move(
+                            CameraUpdateFactory.newLatLngBounds(
+                                bounds,
+                                80
+                            )
+                        )
+                    }
+
+                    initialCameraPositionSet = true
+                }
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(340.dp),
+                    shape = RoundedCornerShape(15.dp),
+                    border = BorderStroke(1.dp, HomeBlue)
+                ) {
+                    GoogleMap(
+                        modifier = Modifier.fillMaxSize(),
+                        cameraPositionState = cameraPositionState
+                    ) {
+                        children.forEach { child ->
+                            val location = childLocations[child.childId]
+
+                            if (location != null) {
+                                key(child.childId) {
+                                    val markerState = rememberMarkerState(
+                                        key = child.childId,
+                                        position = location
+                                    )
+
+                                    LaunchedEffect(location) {
+                                        markerState.position = location
+                                    }
+
+                                    Marker(
+                                        state = markerState,
+                                        title = child.preferredName.ifBlank { child.fullName },
+                                        icon = childMarkerIcons[child.childId]
+                                            ?: BitmapDescriptorFactory.defaultMarker(
+                                            floatArrayOf(0f, 210f, 120f, 45f, 270f, 30f)[
+                                                children.indexOf(child) % 6
+                                            ]
+                                        ),
+                                        onClick = {
+                                            onChildFocused(child.childId)
+                                            true
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    LaunchedEffect(focusedChildId, focusRequest) {
+                        val location = focusedChildId?.let { childLocations[it] }
+
+                        if (location != null) {
+                            cameraPositionState.animate(
+                                CameraUpdateFactory.newLatLngZoom(
+                                    location,
+                                    17f
+                                ),
+                                600
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+private fun createChildMarker(
+    photo: Bitmap?,
+    color: Color
+): BitmapDescriptor {
+    val size = 144
+    val borderWidth = 9f
+
+    val bitmap = Bitmap.createBitmap(
+        size,
+        size,
+        Bitmap.Config.ARGB_8888
+    )
+
+    val canvas = Canvas(bitmap)
+
+    val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        this.color = color.toArgb()
+        style = Paint.Style.FILL
+    }
+
+    canvas.drawCircle(
+        size / 2f,
+        size / 2f,
+        size / 2f,
+        borderPaint
+    )
+
+    val imagePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        isFilterBitmap = true
+    }
+
+    val radius = size / 2f - borderWidth
+
+    canvas.save()
+
+    val path = Path().apply {
+        addCircle(
+            size / 2f,
+            size / 2f,
+            radius,
+            Path.Direction.CW
+        )
+    }
+
+    canvas.clipPath(path)
+
+    if (photo != null) {
+        val scale = maxOf(
+            (size - borderWidth * 2) / photo.width,
+            (size - borderWidth * 2) / photo.height
+        )
+
+        val scaledWidth = photo.width * scale
+        val scaledHeight = photo.height * scale
+
+        val destination = RectF(
+            (size - scaledWidth) / 2f,
+            (size - scaledHeight) / 2f,
+            (size + scaledWidth) / 2f,
+            (size + scaledHeight) / 2f
+        )
+
+        canvas.drawBitmap(
+            photo,
+            null,
+            destination,
+            imagePaint
+        )
+    } else {
+        canvas.drawColor(android.graphics.Color.WHITE)
+    }
+
+    canvas.restore()
+
+    return BitmapDescriptorFactory.fromBitmap(bitmap)
 }
+

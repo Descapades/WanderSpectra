@@ -54,6 +54,7 @@ import com.wanderspectra.app.ui.theme.ButtonBlue
 enum class AppDestination {
     HOME,
     CHILD_PROFILE,
+    ADD_CHILD_PROFILE,
     HISTORY,
     SAFETY_CIRCLE,
     COMMUNITY,
@@ -75,6 +76,7 @@ fun AppShell(
     content: @Composable () -> Unit
 ) {
     var showSettingsMenu by remember { mutableStateOf(false) }
+    var showChildProfileMenu by remember { mutableStateOf(false) }
     var currentDestination by remember { mutableStateOf(AppDestination.HOME) }
     var editingSafeZoneId by remember { mutableStateOf<String?>(null) }
     var openIncidentId by remember { mutableStateOf<String?>(null) }
@@ -167,9 +169,14 @@ fun AppShell(
                 ) {
                     when (currentDestination) {
                         AppDestination.HOME -> HomeContent(
-                            onChildMissing = {
-                                currentDestination = if (openIncidentId != null) AppDestination.ELOPEMENT_MODE
-                                    else AppDestination.CHILD_MISSING
+                            children = childProfiles,
+                            onChildMissing = { selectedChild ->
+                                child = selectedChild
+                                currentDestination = if (openIncidentId != null) {
+                                    AppDestination.ELOPEMENT_MODE
+                                } else {
+                                    AppDestination.CHILD_MISSING
+                                }
                             }
                         )
                         AppDestination.CHILD_PROFILE -> Column(
@@ -184,8 +191,51 @@ fun AppShell(
                                 Text("View Emergency Profile")
                             }
                             Box(modifier = Modifier.weight(1f)) {
-                                ChildProfileContent()
+                                ChildProfileContent(
+                                    selectedChild = child,
+                                    onProfileUpdated = { updatedChild ->
+                                        child = updatedChild
+
+                                        childProfiles = childProfiles.map { profile ->
+                                            if (profile.childId == updatedChild.childId) {
+                                                updatedChild
+                                            } else {
+                                                profile
+                                            }
+                                        }
+                                    }
+                                )
                             }
+                        }
+                        AppDestination.ADD_CHILD_PROFILE -> {
+                            EditChildProfile(
+                                child = ChildProfile(),
+                                onCancel = {
+                                    currentDestination = AppDestination.HOME
+                                },
+                                onSave = { newChild ->
+                                    childRepository.createChildProfile(
+                                        childProfile = newChild,
+                                        onSuccess = { newChildId ->
+                                            val savedChild = newChild.copy(
+                                                childId = newChildId,
+                                                caregiverUid = caregiverUid
+                                            )
+
+                                            childProfiles = childProfiles + savedChild
+                                            child = savedChild
+                                            currentDestination = AppDestination.CHILD_PROFILE
+                                        },
+                                        onFailure = { exception ->
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                exception.message ?: "Unable to save child profile.",
+                                                android.widget.Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    )
+                                }
+                            )
                         }
                         AppDestination.EMERGENCY_PROFILE -> EmergencyProfileContent(
                             profile = if (emergencyProfileReturn == AppDestination.ELOPEMENT_MODE)
@@ -341,12 +391,54 @@ fun AppShell(
                 currentDestination = currentDestination,
                 onDestinationSelected = { destination ->
                     currentDestination = destination
+                    showChildProfileMenu = false
+                },
+                onChildProfileClick = {
+                    showChildProfileMenu = !showChildProfileMenu
                 }
             )
         }
 
         selectedIncidentReport?.let { report ->
             IncidentReportDialog(report = report, onDismiss = { selectedIncidentReport = null })
+        }
+
+        if (showChildProfileMenu) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 28.dp, bottom = 105.dp)
+                    .width(200.dp)
+                    .background(
+                        color = BackgroundCream,
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = PrimaryBlue,
+                        shape = RoundedCornerShape(10.dp)
+                    )
+            ) {
+                childProfiles.forEach { profile ->
+                    Text(
+                        text = profile.preferredName.ifBlank { profile.fullName },
+                        color = PrimaryBlue,
+                        fontFamily = Salsa,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                child = profile
+                                currentDestination = AppDestination.CHILD_PROFILE
+                                showChildProfileMenu = false
+                            }
+                            .padding(12.dp)
+                    )
+                }
+                SettingsMenuItem("+ Add Child Profile") {
+                    showChildProfileMenu = false
+                    currentDestination = AppDestination.ADD_CHILD_PROFILE
+                }
+            }
         }
 
         if (showSettingsMenu) {
@@ -367,7 +459,8 @@ fun AppShell(
 @Composable
 fun AppBottomNavigation(
     currentDestination: AppDestination,
-    onDestinationSelected: (AppDestination) -> Unit
+    onDestinationSelected: (AppDestination) -> Unit,
+    onChildProfileClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -392,9 +485,7 @@ fun AppBottomNavigation(
             icon = Icons.Default.Person,
             contentDescription = "Child Profile",
             isSelected = currentDestination == AppDestination.CHILD_PROFILE,
-            onClick = {
-                onDestinationSelected(AppDestination.CHILD_PROFILE)
-            }
+            onClick = onChildProfileClick
         )
 
         AppNavigationButton(

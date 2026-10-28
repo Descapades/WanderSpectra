@@ -52,18 +52,14 @@ fun SafeZoneScreen(
     onDeleteClick: () -> Unit = {}
 ) {
     var safeZones by remember { mutableStateOf<List<SafeZone>>(emptyList()) }
-    var selectedChildId by remember { mutableStateOf<String?>(null) }
-    var childMonitoring by remember { mutableStateOf<ChildSafeZoneMonitoring?>(null) }
+    var childProfiles by remember { mutableStateOf<List<ChildProfile>>(emptyList()) }
+    var childMonitoring by remember { mutableStateOf<Map<String, ChildSafeZoneMonitoring>>(emptyMap()) }
     var loading by remember { mutableStateOf(true) }
     var monitoring by remember { mutableStateOf(false) }
     var updatingMonitoring by remember { mutableStateOf(false) }
-    var monitoringStatuses by remember {
-        mutableStateOf<Map<String, String>>(emptyMap())
-    }
+    var monitoringStatuses by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     val context = LocalContext.current
-    var safeZoneAddresses by remember {
-        mutableStateOf<Map<String, String>>(emptyMap())
-    }
+    var safeZoneAddresses by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var zoneToDelete by remember { mutableStateOf<SafeZone?>(null) }
     var deletingSafeZone by remember { mutableStateOf(false) }
 
@@ -77,22 +73,24 @@ fun SafeZoneScreen(
     LaunchedEffect(Unit) {
         ChildProfileRepository().getChildProfiles(
             onSuccess = { children ->
-                selectedChildId = children.firstOrNull()?.childId
+                childProfiles = children
             },
             onFailure = {
-                selectedChildId = null
+                childProfiles = emptyList()
             }
         )
     }
 
-    LaunchedEffect(selectedChildId) {
-        val childId = selectedChildId
+    LaunchedEffect(childProfiles) {
+        childMonitoring = emptyMap()
 
-        if (childId.isNullOrBlank()) {
-            childMonitoring = null
-        } else {
-            ChildSafeZoneMonitoringRepository().get(childId) { settings ->
-                childMonitoring = settings
+        childProfiles.forEach { child ->
+            ChildSafeZoneMonitoringRepository().get(child.childId) { settings ->
+                if (settings != null) {
+                    childMonitoring = childMonitoring + (
+                            child.childId to settings
+                            )
+                }
             }
         }
     }
@@ -212,101 +210,122 @@ fun SafeZoneScreen(
                                     fontSize = 16.sp,
                                     modifier = Modifier.offset(x = (-16).dp)
                                 )
-                                Row(
+                                Column(
                                     modifier = Modifier.padding(top = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Switch(
-                                        checked = childMonitoring?.let { settings ->
-                                            settings.monitoringEnabled &&
-                                            settings.activeSafeZoneId == zone.id
-                                        } ?: false,
-                                        enabled = !updatingMonitoring,
-                                        onCheckedChange = { enabled ->
-                                            val childId = selectedChildId
+                                    childProfiles
+                                        .filter { child ->
+                                            zone.childMonitoring[child.childId] == true
+                                        }
+                                        .forEach { child ->
+                                        val settings = childMonitoring[child.childId]
 
-                                            if (childId.isNullOrBlank()) {
-                                                monitoringStatuses = monitoringStatuses + (
-                                                        zone.id to "No child profile selected."
-                                                        )
-                                            } else {
-                                                updatingMonitoring = true
+                                        val isEnabled =
+                                            settings?.monitoringEnabled == true &&
+                                                    settings.activeSafeZoneId == zone.id
 
-                                                monitoringStatuses = monitoringStatuses + (
-                                                        zone.id to "Updating monitoring..."
-                                                        )
+                                        val childName = child.preferredName.ifBlank {
+                                            child.fullName
+                                        }
 
-                                                ChildSafeZoneMonitoringRepository().setMonitoring(
-                                                    childId = childId,
-                                                    safeZoneId = zone.id,
-                                                    enabled = enabled
-                                                ) { success, message ->
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = childName,
+                                                color = ZoneBlue,
+                                                fontFamily = Salsa,
+                                                fontSize = 16.sp
+                                            )
 
-                                                    if (success) {
-                                                        childMonitoring = ChildSafeZoneMonitoring(
-                                                            childId = childId,
-                                                            caregiverId = FirebaseAuth.getInstance()
-                                                                .currentUser?.uid.orEmpty(),
-                                                            activeSafeZoneId = if (enabled) zone.id else "",
-                                                            monitoringEnabled = enabled
-                                                        )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Switch(
+                                                    checked = isEnabled,
+                                                    enabled = !updatingMonitoring,
+                                                    onCheckedChange = { enabled ->
+                                                        updatingMonitoring = true
 
-                                                        monitoringStatuses = monitoringStatuses + (
-                                                                zone.id to "Monitoring saved. Syncing watch..."
-                                                                )
-
-                                                        WearConnectionManager.syncChildSafeZone(
-                                                            context = context,
-                                                            childId = childId,
-                                                            safeZone = zone,
-                                                            enabled = enabled
-                                                        ) { synced ->
-
-                                                            monitoringStatuses = monitoringStatuses + (
-                                                                    zone.id to if (synced) {
-                                                                        "Monitoring settings sent to watch."
-                                                                    } else {
-                                                                        "Monitoring saved. Watch not connected or sync failed."
-                                                                    }
+                                                        monitoringStatuses =
+                                                            monitoringStatuses + (
+                                                                    zone.id to "Updating $childName..."
                                                                     )
 
-                                                            updatingMonitoring = false
-                                                        }
-                                                    } else {
-                                                        monitoringStatuses = monitoringStatuses + (
-                                                                zone.id to message
-                                                                )
-                                                        updatingMonitoring = false
-                                                    }
-                                                }
+                                                        ChildSafeZoneMonitoringRepository()
+                                                            .setMonitoring(
+                                                                childId = child.childId,
+                                                                safeZoneId = zone.id,
+                                                                enabled = enabled
+                                                            ) { success, message ->
+
+                                                                if (success) {
+                                                                    childMonitoring =
+                                                                        childMonitoring + (
+                                                                                child.childId to
+                                                                                        ChildSafeZoneMonitoring(
+                                                                                            childId = child.childId,
+                                                                                            caregiverId =
+                                                                                                FirebaseAuth.getInstance()
+                                                                                                    .currentUser?.uid.orEmpty(),
+                                                                                            activeSafeZoneId =
+                                                                                                if (enabled) zone.id else "",
+                                                                                            monitoringEnabled = enabled
+                                                                                        )
+                                                                                )
+
+                                                                    WearConnectionManager.syncChildSafeZone(
+                                                                        context = context,
+                                                                        childId = child.childId,
+                                                                        safeZone = zone,
+                                                                        enabled = enabled
+                                                                    ) { synced ->
+                                                                        monitoringStatuses =
+                                                                            monitoringStatuses + (
+                                                                                    zone.id to if (synced) {
+                                                                                        "$childName monitoring sent to watch."
+                                                                                    } else {
+                                                                                        "$childName monitoring saved. Watch sync failed."
+                                                                                    }
+                                                                                    )
+
+                                                                        updatingMonitoring = false
+                                                                    }
+                                                                } else {
+                                                                    monitoringStatuses =
+                                                                        monitoringStatuses + (
+                                                                                zone.id to message
+                                                                                )
+
+                                                                    updatingMonitoring = false
+                                                                }
+                                                            }
+                                                    },
+                                                    colors = SwitchDefaults.colors(
+                                                        checkedThumbColor = Color.White,
+                                                        checkedTrackColor = ZoneBlue,
+                                                        checkedBorderColor = ZoneBlue,
+                                                        uncheckedThumbColor = Color.White,
+                                                        uncheckedTrackColor = ZonePinkButton,
+                                                        uncheckedBorderColor = ZoneRed
+                                                    ),
+                                                    modifier = Modifier.height(40.dp)
+                                                )
+
+                                                Spacer(Modifier.width(8.dp))
+
+                                                Text(
+                                                    text = if (isEnabled) "On" else "Off",
+                                                    color = if (isEnabled) ZoneBlue else ZoneRed,
+                                                    fontFamily = Salsa,
+                                                    fontSize = 16.sp
+                                                )
                                             }
-                                        },
-                                        colors = SwitchDefaults.colors(
-                                            checkedThumbColor = Color.White,
-                                            checkedTrackColor = ZoneBlue,
-                                            checkedBorderColor = ZoneBlue,
-                                            uncheckedThumbColor = Color.White,
-                                            uncheckedTrackColor = ZonePinkButton,
-                                            uncheckedBorderColor = ZoneRed
-                                        ),
-                                        modifier = Modifier.height(40.dp)
-                                    )
-
-                                    Spacer(Modifier.width(8.dp))
-
-                                    Text(
-                                        text = if (
-                                            childMonitoring?.monitoringEnabled == true &&
-                                            childMonitoring?.activeSafeZoneId == zone.id
-                                        ) "Safe Zone On" else "Safe Zone Off",
-
-                                        color = if (
-                                            childMonitoring?.monitoringEnabled == true &&
-                                            childMonitoring?.activeSafeZoneId == zone.id
-                                        ) ZoneBlue else ZoneRed,
-                                        fontFamily = Salsa,
-                                        fontSize = 16.sp
-                                    )
+                                        }
+                                    }
                                 }
 
                                 val zoneStatus = monitoringStatuses[zone.id].orEmpty()
