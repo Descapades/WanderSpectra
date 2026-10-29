@@ -21,50 +21,17 @@ import com.google.firebase.firestore.FirebaseFirestore
 
 @Composable
 fun CommunityContent() {
-
-    val repository = remember {
-        CommunityAlertRepository()
-    }
-
-    var alerts by remember {
-        mutableStateOf<List<CommunityAlert>>(emptyList())
-    }
-
-    var isLoading by remember {
-        mutableStateOf(true)
-    }
-
-    var errorMessage by remember {
-        mutableStateOf<String?>(null)
-    }
-
-    var selectedAlert by remember {
-        mutableStateOf<CommunityAlert?>(null)
-    }
-
-    var showingSightingForm by remember {
-        mutableStateOf(false)
-    }
-
-    var showingEmergencyProfile by remember {
-        mutableStateOf(false)
-    }
-
-    var emergencyProfile by remember {
-        mutableStateOf<ChildProfile?>(null)
-    }
-
-    var profileLoading by remember {
-        mutableStateOf(false)
-    }
-
-    var profileError by remember {
-        mutableStateOf<String?>(null)
-    }
-
-    var submissionMessage by remember {
-        mutableStateOf<String?>(null)
-    }
+    val repository = remember { CommunityAlertRepository() }
+    var alerts by remember { mutableStateOf<List<CommunityAlert>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var selectedAlert by remember { mutableStateOf<CommunityAlert?>(null) }
+    var showingSightingForm by remember { mutableStateOf(false) }
+    var showingEmergencyProfile by remember { mutableStateOf(false) }
+    var emergencyProfile by remember { mutableStateOf<ChildProfile?>(null) }
+    var profileLoading by remember { mutableStateOf(false) }
+    var profileError by remember { mutableStateOf<String?>(null) }
+    var submissionMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         try {

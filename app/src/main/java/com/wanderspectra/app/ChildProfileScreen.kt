@@ -1,6 +1,7 @@
 package com.wanderspectra.app
 
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -33,32 +34,20 @@ import com.wanderspectra.app.ui.theme.SecondaryBlue
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
+import com.wanderspectra.app.ui.theme.SecondaryRed
+import com.wanderspectra.app.ui.theme.TanSongbird
+import androidx.compose.foundation.border
 
 
 @Composable
 fun ChildProfileContent(selectedChild: ChildProfile?,
                         onProfileUpdated: (ChildProfile) -> Unit
 ) {
-
-    val repository = remember {
-        ChildProfileRepository()
-    }
-
-    var childProfile by remember(selectedChild?.childId) {
-        mutableStateOf(selectedChild)
-    }
-
-    var isLoading by remember {
-        mutableStateOf(true)
-    }
-
-    var errorMessage by remember {
-        mutableStateOf<String?>(null)
-    }
-
-    var isEditing by remember {
-        mutableStateOf(false)
-    }
+    val repository = remember { ChildProfileRepository() }
+    var childProfile by remember(selectedChild?.childId) { mutableStateOf(selectedChild) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isEditing by remember { mutableStateOf(false) }
 
     LaunchedEffect(selectedChild?.childId) {
         isEditing = false
@@ -149,8 +138,8 @@ fun ViewChildProfile(
                 child.fullName
             },
             color = EmergencyRed,
-            fontFamily = Salsa,
-            fontSize = 28.sp
+            fontFamily = TanSongbird,
+            fontSize = 20.sp
         )
         if (child.photoUrl.isNotBlank()) {
             Spacer(modifier = Modifier.height(12.dp))
@@ -242,11 +231,6 @@ fun ViewChildProfile(
             value = child.safetyConcerns
         )
 
-        ProfileField(
-            label = "Safety Prompt:",
-            value = child.safetyPrompt
-        )
-
         Spacer(modifier = Modifier.height(16.dp))
 
         SectionTitle("Emergency Information:")
@@ -272,12 +256,14 @@ fun ViewChildProfile(
                 onClick = onEdit,
                 modifier = Modifier
                     .fillMaxWidth(0.85f)
+                    .align(Alignment.CenterHorizontally)
                     .height(48.dp),
                 shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = ButtonBlue,
                     contentColor = SecondaryBlue
-                )
+                ),
+                border = BorderStroke(1.dp, SecondaryBlue)
             ) {
                 Text(
                     text = "Edit Child Profile",

@@ -66,32 +66,18 @@ fun AddAnotherChild(
     var weight by remember { mutableStateOf("") }
     var hairColor by remember { mutableStateOf("") }
     var eyeColor by remember { mutableStateOf("") }
-
     var allergies by remember { mutableStateOf("") }
     var medicalConsiderations by remember { mutableStateOf("") }
     var criticalInformation by remember { mutableStateOf("") }
-
     var communicationStyle by remember { mutableStateOf("") }
     var helpfulCommunicationInformation by remember { mutableStateOf("") }
-
     var sensorySensitivities by remember { mutableStateOf("") }
     var elopementTriggers by remember { mutableStateOf("") }
     var calmingStrategies by remember { mutableStateOf("") }
     var safetyConcerns by remember { mutableStateOf("") }
-    var safetyPrompt by remember { mutableStateOf("") }
-
-    var validationMessage by remember {
-        mutableStateOf<String?>(null)
-    }
-
-    var selectedPhotoUri by remember {
-        mutableStateOf<Uri?>(null)
-    }
-
-    val childProfileRepository = remember {
-        ChildProfileRepository()
-    }
-
+    var validationMessage by remember { mutableStateOf<String?>(null) }
+    var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    val childProfileRepository = remember { ChildProfileRepository() }
     val photoPickerLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.PickVisualMedia()
@@ -402,13 +388,6 @@ fun AddAnotherChild(
                     onValueChange = { safetyConcerns = it }
                 )
 
-                OnboardingField(
-                    label = "Safety Prompt",
-                    placeholder = "Safety message displayed on watch",
-                    value = safetyPrompt,
-                    onValueChange = { safetyPrompt = it }
-                )
-
                 validationMessage?.let { message ->
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -484,8 +463,6 @@ fun AddAnotherChild(
                                     safetyConcerns =
                                         safetyConcerns.trim(),
 
-                                    safetyPrompt =
-                                        safetyPrompt.trim()
                                 )
 
                                 childProfileRepository.createChildProfile(

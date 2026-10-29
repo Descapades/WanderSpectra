@@ -35,6 +35,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,6 +53,7 @@ import com.wanderspectra.app.ui.theme.TanSongbird
 import com.wanderspectra.app.ui.theme.ButtonBlue
 import com.wanderspectra.app.ui.theme.ButtonRed
 import com.wanderspectra.app.ui.theme.SecondaryRed
+import kotlinx.coroutines.launch
 
 enum class AppDestination {
     HOME,
@@ -109,6 +111,9 @@ fun AppShell(
     var childProfiles by remember { mutableStateOf<List<ChildProfile>>(emptyList()) }
     var child by remember { mutableStateOf<ChildProfile?>(null) }
     val childRepository = remember { ChildProfileRepository() }
+    val communityAlertRepository = remember { CommunityAlertRepository() }
+    val wearableRepository = remember { WearableRepository() }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         childRepository.getChildProfiles(
@@ -193,14 +198,6 @@ fun AppShell(
                         AppDestination.CHILD_PROFILE -> Column(
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            androidx.compose.material3.TextButton(
-                                onClick = {
-                                    emergencyProfileReturn = AppDestination.CHILD_PROFILE
-                                    currentDestination = AppDestination.EMERGENCY_PROFILE
-                                }
-                            ) {
-                                Text("View Emergency Profile")
-                            }
                             Box(modifier = Modifier.weight(1f)) {
                                 ChildProfileContent(
                                     selectedChild = child,
@@ -361,7 +358,156 @@ fun AppShell(
                             },
                             emergencyProfileAvailable = childProfiles.any { it.childId == emergencyChildId },
                             onSafetyCircle = { currentDestination = AppDestination.SAFETY_CIRCLE },
-                            onCommunity = { currentDestination = AppDestination.COMMUNITY },
+                            onCommunity = {
+                                android.util.Log.d("CommunityAlertDebug", "Community Alert button tapped")
+                                val incidentId = openIncidentId
+
+                                if (incidentId.isNullOrBlank()) {
+                                    incidentStatus = "No active incident found."
+                                } else {
+                                    IncidentRepository().getIncidentsForChild(
+                                        childId = emergencyChildId,
+                                        onSuccess = { incidents ->
+                                            android.util.Log.d(
+                                                "CommunityAlertDebug",
+                                                "Incident lookup succeeded. Found ${incidents.size} incidents."
+                                            )
+                                            val activeIncident = incidents.firstOrNull {
+                                                it.incidentId == incidentId &&
+                                                        it.status == "open"
+                                            }
+                                            android.util.Log.d(
+                                                "CommunityAlertDebug",
+                                                "Active incident found: ${activeIncident != null}"
+                                            )
+
+                                            if (activeIncident == null) {
+                                                incidentStatus = "Active incident could not be found."
+                                            } else {
+                                                val latitude = activeIncident.lastKnownLatitude
+                                                val longitude = activeIncident.lastKnownLongitude
+                                                android.util.Log.d(
+                                                    "CommunityAlertDebug",
+                                                    "Wearable location available: ${latitude != null && longitude != null}"
+                                                )
+                                                if (
+                                                    latitude == null ||
+                                                    longitude == null ||
+                                                    !latitude.isFinite() ||
+                                                    !longitude.isFinite() ||
+                                                    latitude !in -90.0..90.0 ||
+                                                    longitude !in -180.0..180.0 ||
+                                                    (latitude == 0.0 && longitude == 0.0)
+                                                ) {
+                                                    incidentStatus =
+                                                        "Last-known wearable location unavailable. Community Alert cannot be published."
+                                                } else {
+                                                    fun publishCommunityAlert(
+                                                        selectedLatitude: Double,
+                                                        selectedLongitude: Double,
+                                                        selectedTimestamp: Long
+                                                    ) {
+                                                        coroutineScope.launch {
+                                                            incidentStatus = "Creating Community Alert..."
+
+                                                            try {
+                                                                communityAlertRepository.createAlert(
+                                                                    CommunityAlert(
+                                                                        incidentId = incidentId,
+                                                                        caregiverId = caregiverUid,
+                                                                        childId = emergencyChildId,
+                                                                        childName = emergencyChildName,
+                                                                        latitude = selectedLatitude,
+                                                                        longitude = selectedLongitude,
+                                                                        locationTimestamp = selectedTimestamp,
+                                                                        alertRadiusKm = 1.0
+                                                                    )
+                                                                )
+
+                                                                incidentStatus = "Community Alert published successfully."
+                                                                currentDestination = AppDestination.COMMUNITY
+
+                                                            } catch (error: Exception) {
+                                                                android.util.Log.e(
+                                                                    "CommunityAlertDebug",
+                                                                    "Community Alert creation failed",
+                                                                    error
+                                                                )
+
+                                                                incidentStatus =
+                                                                    error.message ?: "Unable to publish Community Alert."
+                                                            }
+                                                        }
+                                                    }
+
+                                                    wearableRepository.getWearable(
+                                                        childId = emergencyChildId,
+                                                        onSuccess = { wearable ->
+                                                            val wearableLat = wearable?.latitude
+                                                            val wearableLng = wearable?.longitude
+                                                            val wearableTimestamp = wearable?.locationTimestamp ?: 0L
+
+                                                            val validWearableLocation =
+                                                                wearableLat != null &&
+                                                                        wearableLng != null &&
+                                                                        wearableLat.isFinite() &&
+                                                                        wearableLng.isFinite() &&
+                                                                        wearableLat in -90.0..90.0 &&
+                                                                        wearableLng in -180.0..180.0 &&
+                                                                        !(wearableLat == 0.0 && wearableLng == 0.0) &&
+                                                                        wearableTimestamp > 0L &&
+                                                                        wearableTimestamp <= System.currentTimeMillis()
+                                                            android.util.Log.d(
+                                                                "CommunityAlertDebug",
+                                                                "Wearable GPS valid: $validWearableLocation, timestamp available: ${wearableTimestamp > 0L}"
+                                                            )
+                                                            if (wearableTimestamp > 0L) {
+                                                                val locationAgeSeconds =
+                                                                    (System.currentTimeMillis() - wearableTimestamp) / 1000L
+
+                                                                android.util.Log.d(
+                                                                    "CommunityAlertDebug",
+                                                                    "Wearable GPS age: $locationAgeSeconds seconds"
+                                                                )
+                                                            }
+                                                            if (validWearableLocation) {
+                                                                publishCommunityAlert(
+                                                                    wearableLat!!,
+                                                                    wearableLng!!,
+                                                                    wearableTimestamp
+                                                                )
+                                                            } else {
+                                                                publishCommunityAlert(
+                                                                    latitude,
+                                                                    longitude,
+                                                                    0L
+                                                                )
+                                                            }
+                                                        },
+                                                        onFailure = { error ->
+                                                            android.util.Log.e(
+                                                                "CommunityAlertDebug",
+                                                                "Unable to retrieve wearable data; using incident location",
+                                                                error
+                                                            )
+
+                                                            publishCommunityAlert(
+                                                                latitude,
+                                                                longitude,
+                                                                0L
+                                                            )
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        },
+                                        onFailure = { error ->
+                                            incidentStatus =
+                                                error.message ?: "Unable to retrieve active incident."
+                                        }
+                                    )
+                                }
+                            },
                             isBusy = incidentBusy,
                             onChildSafe = { id ->
                                 if (!incidentBusy && id == openIncidentId) {

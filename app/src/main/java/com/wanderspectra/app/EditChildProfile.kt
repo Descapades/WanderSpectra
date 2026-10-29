@@ -47,87 +47,25 @@ fun EditChildProfile(
     onSave: (ChildProfile) -> Unit
 ) {
     val context = LocalContext.current
-
-    var errorMessage by remember {
-        mutableStateOf<String?>(null)
-    }
-
-    var fullName by remember(child.childId) {
-        mutableStateOf(child.fullName)
-    }
-
-    var preferredName by remember(child.childId) {
-        mutableStateOf(child.preferredName)
-    }
-
-    var birthdate by remember(child.childId) {
-        mutableStateOf(child.birthdate)
-    }
-
-    var height by remember(child.childId) {
-        mutableStateOf(child.height)
-    }
-
-    var weight by remember(child.childId) {
-        mutableStateOf(child.weight)
-    }
-
-    var hairColor by remember(child.childId) {
-        mutableStateOf(child.hairColor)
-    }
-
-    var eyeColor by remember(child.childId) {
-        mutableStateOf(child.eyeColor)
-    }
-
-    var allergies by remember(child.childId) {
-        mutableStateOf(child.allergies)
-    }
-
-    var medicalConsiderations by remember(child.childId) {
-        mutableStateOf(child.medicalConsiderations)
-    }
-
-    var criticalInformation by remember(child.childId) {
-        mutableStateOf(child.criticalInformation)
-    }
-
-    var communicationStyle by remember(child.childId) {
-        mutableStateOf(child.communicationStyle)
-    }
-
-    var helpfulCommunicationInfo by remember(child.childId) {
-        mutableStateOf(child.helpfulCommunicationInfo)
-    }
-
-    var sensorySensitivities by remember(child.childId) {
-        mutableStateOf(child.sensorySensitivities)
-    }
-
-    var elopementTriggers by remember(child.childId) {
-        mutableStateOf(child.elopementTriggers)
-    }
-
-    var calmingStrategies by remember(child.childId) {
-        mutableStateOf(child.calmingStrategies)
-    }
-
-    var safetyConcerns by remember(child.childId) {
-        mutableStateOf(child.safetyConcerns)
-    }
-
-    var safetyPrompt by remember(child.childId) {
-        mutableStateOf(child.safetyPrompt)
-    }
-
-    var photoUrl by remember(child.childId) {
-        mutableStateOf(child.photoUrl)
-    }
-
-    var selectedPhotoUri by remember(child.childId) {
-        mutableStateOf<Uri?>(null)
-    }
-
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var fullName by remember(child.childId) { mutableStateOf(child.fullName) }
+    var preferredName by remember(child.childId) { mutableStateOf(child.preferredName) }
+    var birthdate by remember(child.childId) { mutableStateOf(child.birthdate) }
+    var height by remember(child.childId) { mutableStateOf(child.height) }
+    var weight by remember(child.childId) { mutableStateOf(child.weight) }
+    var hairColor by remember(child.childId) { mutableStateOf(child.hairColor) }
+    var eyeColor by remember(child.childId) { mutableStateOf(child.eyeColor) }
+    var allergies by remember(child.childId) { mutableStateOf(child.allergies) }
+    var medicalConsiderations by remember(child.childId) { mutableStateOf(child.medicalConsiderations) }
+    var criticalInformation by remember(child.childId) { mutableStateOf(child.criticalInformation) }
+    var communicationStyle by remember(child.childId) { mutableStateOf(child.communicationStyle) }
+    var helpfulCommunicationInfo by remember(child.childId) { mutableStateOf(child.helpfulCommunicationInfo) }
+    var sensorySensitivities by remember(child.childId) { mutableStateOf(child.sensorySensitivities) }
+    var elopementTriggers by remember(child.childId) { mutableStateOf(child.elopementTriggers) }
+    var calmingStrategies by remember(child.childId) { mutableStateOf(child.calmingStrategies) }
+    var safetyConcerns by remember(child.childId) { mutableStateOf(child.safetyConcerns) }
+    var photoUrl by remember(child.childId) { mutableStateOf(child.photoUrl) }
+    var selectedPhotoUri by remember(child.childId) { mutableStateOf<Uri?>(null) }
     val photoPickerLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.PickVisualMedia()
@@ -388,15 +326,6 @@ fun EditChildProfile(
             }
         )
 
-        OnboardingField(
-            label = "Safety Prompt",
-            placeholder = "Safety message displayed on watch",
-            value = safetyPrompt,
-            onValueChange = {
-                safetyPrompt = it
-            }
-        )
-
         Spacer(modifier = Modifier.height(24.dp))
 
         Row(
@@ -445,7 +374,6 @@ fun EditChildProfile(
                             elopementTriggers = elopementTriggers.trim(),
                             calmingStrategies = calmingStrategies.trim(),
                             safetyConcerns = safetyConcerns.trim(),
-                            safetyPrompt = safetyPrompt.trim()
                         )
 
                         onSave(updatedChild)

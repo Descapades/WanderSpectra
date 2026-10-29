@@ -143,13 +143,6 @@ fun EmergencyProfileContent(
             EmergencyProfileDetail("Hair Color", profile.hairColor)
             EmergencyProfileDetail("Eye Color", profile.eyeColor)
         }
-
-        EmergencyProfileSection("Wear OS Safety Prompt") {
-            EmergencyProfileDetail(
-                "Configured Prompt",
-                profile.safetyPrompt
-            )
-        }
     }
 }
 

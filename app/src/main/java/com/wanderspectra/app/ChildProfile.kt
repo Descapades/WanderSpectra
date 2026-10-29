@@ -28,7 +28,4 @@ data class ChildProfile(
     val elopementTriggers: String = "",
     val calmingStrategies: String = "",
     val safetyConcerns: String = "",
-
-    // Wear OS Safety Prompt
-    val safetyPrompt: String = ""
 )

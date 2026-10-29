@@ -257,7 +257,7 @@ fun HomeContent(
                 Text(
                     text = childName,
                     fontFamily = TanSongbird,
-                    fontSize = 34.sp,
+                    fontSize = 20.sp,
                     color = childColor
                 )
 

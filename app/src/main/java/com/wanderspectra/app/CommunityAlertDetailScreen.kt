@@ -123,12 +123,12 @@ fun CommunityAlertDetailScreen(
     }
 
     val publicLocation = if (
-        alert.latitude != null &&
-        alert.longitude != null &&
-        alert.latitude in -90.0..90.0 &&
-        alert.longitude in -180.0..180.0
+        alert.approximateLatitude != null &&
+        alert.approximateLongitude != null &&
+        alert.approximateLatitude in -90.0..90.0 &&
+        alert.approximateLongitude in -180.0..180.0
     ) {
-        LatLng(alert.latitude, alert.longitude)
+        LatLng(alert.approximateLatitude, alert.approximateLongitude)
     } else {
         null
     }

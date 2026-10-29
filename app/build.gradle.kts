@@ -51,6 +51,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.foundation)
     testImplementation(libs.junit)
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
     androidTestImplementation(libs.androidx.junit)

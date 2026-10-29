@@ -57,9 +57,9 @@ fun CaregiverSightingNotifications(caregiverId: String, childId: String) {
                             (listeners.keys.toSet() - active).forEach { listeners.remove(it)?.remove() }
                             active.forEach { alertId ->
                                 if (!listeners.containsKey(alertId)) {
-                                    listeners[alertId] = db.collection("sightingReports")
+                                    listeners[alertId] = db.collection("caregiverSightingNotifications")
+                                        .whereEqualTo("caregiverId", caregiverId)
                                         .whereEqualTo("communityAlertId", alertId)
-                                        .whereEqualTo("childId", childId)
                                         .addSnapshotListener reports@{ reports, reportError ->
                                             if (disposed) return@reports
                                             if (reportError != null) {
@@ -67,9 +67,9 @@ fun CaregiverSightingNotifications(caregiverId: String, childId: String) {
                                                 return@reports
                                             }
                                             reports?.documents?.forEach { report ->
-                                                if (report.metadata.hasPendingWrites() || report.getTimestamp("submittedAt") == null) return@forEach
-                                                if (report.getString("communityAlertId") != alertId || report.getString("childId") != childId) return@forEach
-                                                val reportId = report.id
+                                                if (report.metadata.hasPendingWrites()) return@forEach
+                                                if (report.getString("communityAlertId") != alertId) return@forEach
+                                                val reportId = report.getString("reportId") ?: return@forEach
                                                 val seenKey = "$alertId/$reportId"
                                                 if (!seen.getBoolean(seenKey, false)) {
                                                     latest = alertId to reportId
@@ -137,9 +137,9 @@ private fun CaregiverSightingReportDialog(caregiverId: String, alertId: String, 
                     if (!alert.exists() || alert.getString("caregiverId") != caregiverId || alert.getString("status") != "ACTIVE") {
                         text = "This active alert is unavailable for this caregiver."
                     } else {
-                        db.collection("sightingReports").document(reportId).get()
+                        db.collection("publicSightingReports").document(reportId).get()
                             .addOnSuccessListener { report ->
-                                if (!report.exists() || report.getString("communityAlertId") != alertId || report.getString("childId") != alert.getString("childId")) {
+                                if (!report.exists() || report.getString("communityAlertId") != alertId) {
                                     text = "The report does not belong to this alert."
                                 } else {
                                     text = listOf(
