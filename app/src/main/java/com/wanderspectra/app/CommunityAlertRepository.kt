@@ -130,14 +130,30 @@ class CommunityAlertRepository {
 
     // Retrieve all community alerts
     suspend fun getAlerts(): List<CommunityAlert> {
-        return db.collection("publicCommunityAlerts")
-            .whereEqualTo("status", "ACTIVE")
+        val now = com.google.firebase.Timestamp.now()
+        val twentyFourHoursAgo = now.seconds - (24 * 60 * 60)
+
+        return publicAlerts
+            .whereIn("status", listOf("ACTIVE", "RESOLVED"))
             .get()
             .await()
             .documents
             .mapNotNull { document ->
                 document.toObject(CommunityAlert::class.java)
                     ?.copy(id = document.id)
+            }
+            .filter { alert ->
+                when (alert.status) {
+                    "ACTIVE" -> true
+
+                    "RESOLVED" -> {
+                        val resolvedAt = alert.resolvedAt
+                        resolvedAt != null &&
+                                resolvedAt.seconds > twentyFourHoursAgo
+                    }
+
+                    else -> false
+                }
             }
     }
 
@@ -153,14 +169,69 @@ class CommunityAlertRepository {
     }
 
     // Mark an alert as resolved
+
     suspend fun resolveAlert(alertId: String) {
-        alerts.document(alertId).update(
-            mapOf(
-                "status" to "RESOLVED",
-                "resolvedAt" to com.google.firebase.Timestamp.now(),
-                "updatedAt" to com.google.firebase.Timestamp.now()
-            )
-        ).await()
+        val success = withContext(Dispatchers.IO) {
+            val user = FirebaseAuth.getInstance().currentUser
+                ?: throw IllegalStateException("Caregiver is not signed in")
+
+            val token = user.getIdToken(false).await().token
+                ?: throw IllegalStateException("Unable to get Firebase authentication token")
+
+            val connection = (
+                    URL("https://wanderspectra-alerts.destin-champlin.workers.dev/resolve-community-alert")
+                        .openConnection() as HttpURLConnection
+                    )
+
+            try {
+                connection.requestMethod = "POST"
+                connection.setRequestProperty(
+                    "Authorization",
+                    "Bearer $token"
+                )
+                connection.setRequestProperty(
+                    "Content-Type",
+                    "application/json"
+                )
+                connection.connectTimeout = 15000
+                connection.readTimeout = 15000
+                connection.doOutput = true
+
+                val body = JSONObject().apply {
+                    put("alertId", alertId)
+                }
+
+                connection.outputStream.use { output ->
+                    output.write(body.toString().toByteArray(Charsets.UTF_8))
+                }
+
+                val responseCode = connection.responseCode
+
+                if (responseCode !in 200..299) {
+                    val errorBody = connection.errorStream
+                        ?.bufferedReader()
+                        ?.use { it.readText() }
+                        .orEmpty()
+
+                    throw IllegalStateException(
+                        "Community Alert resolution failed ($responseCode): $errorBody"
+                    )
+                }
+
+                val response = connection.inputStream
+                    .bufferedReader()
+                    .use { it.readText() }
+
+                JSONObject(response).optBoolean("success", false)
+            } finally {
+                connection.disconnect()
+            }
+        }
+
+        check(success) {
+            "Cloudflare Worker did not confirm Community Alert resolution"
+        }
     }
+
 }
 

@@ -29,6 +29,8 @@ import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 @Composable
 fun CommunityContent() {
@@ -45,13 +47,20 @@ fun CommunityContent() {
     var submissionMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        try {
-            alerts = repository.getAlerts()
-                .filter { it.status == "ACTIVE" }
-        } catch (e: Exception) {
-            errorMessage = e.message ?: "Unable to load alerts"
-        } finally {
-            isLoading = false
+        while (isActive) {
+            try {
+                alerts = repository.getAlerts().sortedWith(
+                    compareByDescending<CommunityAlert> { it.status == "ACTIVE" }
+                        .thenByDescending { it.createdAt?.seconds ?: 0L }
+                )
+                errorMessage = null
+            } catch (e: Exception) {
+                errorMessage = e.message ?: "Unable to load alerts"
+            } finally {
+                isLoading = false
+            }
+
+            delay(30_000L)
         }
     }
 

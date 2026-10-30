@@ -1,6 +1,7 @@
 
 package com.wanderspectra.app
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -55,7 +56,7 @@ fun ElopementConfirmationContent(
             "Is $childName missing?",
             color = SecondaryRed,
             fontFamily = Salsa,
-            fontSize = 34.sp,
+            fontSize = 30.sp,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(16.dp))
@@ -133,7 +134,8 @@ fun ElopementConfirmationContent(
         Button(
             onClick = onCancel,
             enabled = !isBusy,
-            modifier = Modifier.fillMaxWidth(0.85f)
+            modifier = Modifier
+                .fillMaxWidth(0.85f)
                 .height(48.dp)
                 .border(
                     width = 1.dp,

@@ -516,11 +516,23 @@ fun AppShell(
                                         incidentBusy = false
                                         incidentStatus = message
                                         if (ok) {
-                                            emergencyStore.edit().clear().apply()
-                                            openIncidentId = null
-                                            emergencyChildId = ""
-                                            emergencyChildName = ""
-                                            currentDestination = AppDestination.HOME
+                                            coroutineScope.launch {
+                                                try {
+                                                    communityAlertRepository.resolveAlert(id)
+                                                } catch (error: Exception) {
+                                                    android.util.Log.e(
+                                                        "CommunityAlert",
+                                                        "Unable to resolve Community Alert",
+                                                        error
+                                                    )
+                                                }
+
+                                                emergencyStore.edit().clear().apply()
+                                                openIncidentId = null
+                                                emergencyChildId = ""
+                                                emergencyChildName = ""
+                                                currentDestination = AppDestination.HOME
+                                            }
                                         }
                                     }
                                 }
