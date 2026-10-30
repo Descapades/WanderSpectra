@@ -165,6 +165,7 @@ fun HomeContent(
         var locationText by remember(child.childId) { mutableStateOf("Location unavailable") }
         var lastUpdatedText by remember(child.childId) { mutableStateOf("Unknown") }
         var wearableLocation by remember(child.childId) { mutableStateOf<LatLng?>(null) }
+        var isSoundPlaying by remember(child.childId) { mutableStateOf(false) }
 
         LaunchedEffect(child.childId) {
             childSafeZoneMonitoring = null
@@ -209,35 +210,39 @@ fun HomeContent(
             watchConnected = null
             batteryLevel = null
 
-            wearableRepository.getWearable(
-                childId = child.childId,
-                onSuccess = { wearable ->
-                    wearableDeviceId = wearable?.deviceId
-                    watchConnected = wearable?.connected
-                    batteryLevel = wearable?.batteryLevel?.takeIf { it >= 0 }
+            while (true) {
+                wearableRepository.getWearable(
+                    childId = child.childId,
+                    onSuccess = { wearable ->
+                        wearableDeviceId = wearable?.deviceId
+                        watchConnected = wearable?.connected
+                        batteryLevel = wearable?.batteryLevel?.takeIf { it >= 0 }
 
-                    wearableLocation = if (
-                        wearable?.latitude != null &&
-                        wearable.longitude != null
-                    ) {
-                        LatLng(wearable.latitude, wearable.longitude)
-                    } else {
-                        null
+                        wearableLocation = if (
+                            wearable?.latitude != null &&
+                            wearable.longitude != null
+                        ) {
+                            LatLng(wearable.latitude, wearable.longitude)
+                        } else {
+                            null
+                        }
+
+                        val timestamp = wearable?.locationTimestamp
+                            ?.takeIf { it > 0L }
+                            ?: wearable?.lastSync
+                            ?: 0L
+
+                        lastUpdatedText = formatLastUpdatedTime(timestamp)
+                    },
+                    onFailure = {
+                        wearableDeviceId = null
+                        watchConnected = null
+                        batteryLevel = null
                     }
+                )
 
-                    val timestamp = wearable?.locationTimestamp
-                        ?.takeIf { it > 0L }
-                        ?: wearable?.lastSync
-                        ?: 0L
-
-                    lastUpdatedText = formatLastUpdatedTime(timestamp)
-                },
-                onFailure = {
-                    wearableDeviceId = null
-                    watchConnected = null
-                    batteryLevel = null
-                }
-            )
+                delay(5_000L)
+            }
         }
 
         Surface(
@@ -365,16 +370,35 @@ fun HomeContent(
                                 android.widget.Toast.LENGTH_SHORT
                             ).show()
                         } else {
-                            WearConnectionManager.playSoundOnWearable(
-                                context,
-                                deviceId
-                            ) { success ->
-                                if (!success) {
-                                    android.widget.Toast.makeText(
-                                        context,
-                                        "Unable to play sound on this child's wearable",
-                                        android.widget.Toast.LENGTH_SHORT
-                                    ).show()
+                            if (isSoundPlaying) {
+                                WearConnectionManager.stopSoundOnWearable(
+                                    context,
+                                    deviceId
+                                ) { success ->
+                                    if (success) {
+                                        isSoundPlaying = false
+                                    } else {
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            "Unable to stop sound on this child's wearable",
+                                            android.widget.Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                            } else {
+                                WearConnectionManager.playSoundOnWearable(
+                                    context,
+                                    deviceId
+                                ) { success ->
+                                    if (success) {
+                                        isSoundPlaying = true
+                                    } else {
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            "Unable to play sound on this child's wearable",
+                                            android.widget.Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
                                 }
                             }
                         }
@@ -390,7 +414,7 @@ fun HomeContent(
                     border = BorderStroke(1.dp, SecondaryBlue)
                 ) {
                     Text(
-                        text = "Play Sound",
+                        text = if (isSoundPlaying) "Stop Sound" else "Play Sound",
                         fontFamily = Salsa,
                         fontSize = 20.sp
                     )
@@ -514,49 +538,57 @@ fun HomeContent(
             }
         }
 
-        LaunchedEffect(trackedChildId, wearableDeviceId) {
-            val childId = trackedChildId ?: return@LaunchedEffect
-
+        LaunchedEffect(children) {
             while (true) {
-                WearConnectionManager.getAvailableWearables(context) { nodes ->
+                children.forEach { child ->
+                    wearableRepository.getWearable(
+                        childId = child.childId,
+                        onSuccess = { wearable ->
+                            val deviceId = wearable?.deviceId
 
-                    val node = nodes.firstOrNull {
-                        it.id == wearableDeviceId &&
-                                !wearableDeviceId.isNullOrBlank()
-                    }
+                            if (!deviceId.isNullOrBlank()) {
+                                WearConnectionManager.requestWearableLocation(
+                                    context = context,
+                                    nodeId = deviceId
+                                ) { result ->
+                                    if (
+                                        result.connected &&
+                                        result.latitude != null &&
+                                        result.longitude != null
+                                    ) {
+                                        val latitude = result.latitude
+                                        val longitude = result.longitude
 
-                    if (node != null) {
-                        WearConnectionManager.requestWearableLocation(
-                            context = context,
-                            nodeId = node.id
-                        ) { result ->
-
-                            if (result.connected &&
-                                result.latitude != null &&
-                                result.longitude != null
-                            ) {
-                                val latitude = result.latitude
-                                val longitude = result.longitude
-
-                                wearableRepository.updateWearableLocation(
-                                    childId = childId,
-                                    latitude = latitude,
-                                    longitude = longitude,
-                                    timestamp = result.timestamp,
-                                    onSuccess = {
-                                        wearableLocation = LatLng(latitude, longitude)
-                                    },
-                                    onFailure = { exception ->
-                                        android.util.Log.e(
-                                            "HomeLocationCard",
-                                            "Failed to save wearable location",
-                                            exception
+                                        wearableRepository.updateWearableLocation(
+                                            childId = child.childId,
+                                            latitude = latitude,
+                                            longitude = longitude,
+                                            timestamp = result.timestamp,
+                                            onSuccess = {
+                                                childLocations = childLocations + (
+                                                        child.childId to LatLng(latitude, longitude)
+                                                        )
+                                            },
+                                            onFailure = { exception ->
+                                                android.util.Log.e(
+                                                    "HomeLocationCard",
+                                                    "Failed to save location for ${child.childId}",
+                                                    exception
+                                                )
+                                            }
                                         )
                                     }
-                                )
+                                }
                             }
+                        },
+                        onFailure = { exception ->
+                            android.util.Log.e(
+                                "HomeLocationCard",
+                                "Failed to retrieve wearable for ${child.childId}",
+                                exception
+                            )
                         }
-                    }
+                    )
                 }
 
                 delay(30_000L)

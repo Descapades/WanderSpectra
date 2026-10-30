@@ -31,6 +31,10 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import java.text.SimpleDateFormat
 import java.util.Locale
+import android.location.Geocoder
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private val AlertRed = Color(0xFFC34A5B)
 private val AlertCream = Color(0xFFEEE9D5)
@@ -122,6 +126,8 @@ fun CommunityAlertDetailScreen(
         LatLng(it.latitude, it.longitude)
     }
 
+    val context = LocalContext.current
+
     val publicLocation = if (
         alert.approximateLatitude != null &&
         alert.approximateLongitude != null &&
@@ -131,6 +137,38 @@ fun CommunityAlertDetailScreen(
         LatLng(alert.approximateLatitude, alert.approximateLongitude)
     } else {
         null
+    }
+
+    var publicLocationAddress by remember(publicLocation) {
+        mutableStateOf("Loading location...")
+    }
+
+    LaunchedEffect(publicLocation) {
+        val location = publicLocation
+
+        if (location == null) {
+            publicLocationAddress = "Location unavailable"
+            return@LaunchedEffect
+        }
+
+        publicLocationAddress = "Loading location..."
+
+        publicLocationAddress = withContext(Dispatchers.IO) {
+            try {
+                @Suppress("DEPRECATION")
+                Geocoder(context, Locale.getDefault())
+                    .getFromLocation(
+                        location.latitude,
+                        location.longitude,
+                        1
+                    )
+                    ?.firstOrNull()
+                    ?.getAddressLine(0)
+                    ?: "Approximate location unavailable"
+            } catch (e: Exception) {
+                "Approximate location unavailable"
+            }
+        }
     }
 
     val cameraPositionState = rememberCameraPositionState()
@@ -254,9 +292,7 @@ fun CommunityAlertDetailScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = alert.lastKnownArea.ifBlank {
-                "Location unavailable"
-            },
+            text = publicLocationAddress,
             fontFamily = Salsa,
             fontSize = 18.sp,
             lineHeight = 23.sp,

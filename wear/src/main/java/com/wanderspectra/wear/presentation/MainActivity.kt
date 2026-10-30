@@ -156,7 +156,6 @@ fun WearApp(activity: ComponentActivity) {
         WearLocationPermissionPopup(activity = activity)
 
         when {
-            isPlayingSound -> PlayingSoundScreen()
             isElopement -> StopScreen()
             else -> SafeScreen()
         }

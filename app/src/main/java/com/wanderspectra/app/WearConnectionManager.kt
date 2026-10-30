@@ -26,6 +26,7 @@ object WearConnectionManager {
     private const val LOCATION_PATH = "/wanderspectra/location"
     private const val LOCATION_RESPONSE_PATH = "/wanderspectra/location_response"
     private const val PLAY_SOUND_PATH = "/wanderspectra/play_sound"
+    private const val STOP_SOUND_PATH = "/wanderspectra/stop_sound"
     private const val SAFEZONE_PATH = "/wanderspectra/safezone"
     private const val SAFEZONE_DELETE_PATH = "/wanderspectra/safezone/delete"
 
@@ -360,6 +361,29 @@ object WearConnectionManager {
             }
             .addOnFailureListener { exception ->
                 safeLogE(TAG, "Failed to send play sound message to $nodeId", exception)
+                onResult(false)
+            }
+    }
+
+    fun stopSoundOnWearable(
+        context: Context,
+        nodeId: String,
+        onResult: (Boolean) -> Unit
+    ) {
+        val messageClient = Wearable.getMessageClient(context)
+
+        messageClient
+            .sendMessage(
+                nodeId,
+                STOP_SOUND_PATH,
+                "Stop sound request".toByteArray(Charsets.UTF_8)
+            )
+            .addOnSuccessListener {
+                safeLogD(TAG, "Stop sound message sent successfully to $nodeId")
+                onResult(true)
+            }
+            .addOnFailureListener { exception ->
+                safeLogE(TAG, "Failed to send stop sound message to $nodeId", exception)
                 onResult(false)
             }
     }

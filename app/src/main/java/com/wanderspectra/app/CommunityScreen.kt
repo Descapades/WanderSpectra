@@ -18,6 +18,17 @@ import com.wanderspectra.app.ui.theme.Salsa
 import com.wanderspectra.app.ui.theme.TanSongbird
 import java.util.concurrent.TimeUnit
 import com.google.firebase.firestore.FirebaseFirestore
+import android.location.Geocoder
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.google.android.gms.maps.model.LatLng
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.Locale
 
 @Composable
 fun CommunityContent() {
@@ -213,6 +224,50 @@ fun CommunityAlertCard(
     onClick: () -> Unit = {}
 ) {
     val isActive = alert.status == "ACTIVE"
+    val context = LocalContext.current
+
+    val publicLocation = if (
+        alert.approximateLatitude != null &&
+        alert.approximateLongitude != null &&
+        alert.approximateLatitude in -90.0..90.0 &&
+        alert.approximateLongitude in -180.0..180.0
+    ) {
+        LatLng(alert.approximateLatitude, alert.approximateLongitude)
+    } else {
+        null
+    }
+
+    var publicLocationAddress by remember(publicLocation) {
+        mutableStateOf("Loading location...")
+    }
+
+    LaunchedEffect(publicLocation) {
+        val location = publicLocation
+
+        if (location == null) {
+            publicLocationAddress = "Location unavailable"
+            return@LaunchedEffect
+        }
+
+        publicLocationAddress = "Loading location..."
+
+        publicLocationAddress = withContext(Dispatchers.IO) {
+            try {
+                @Suppress("DEPRECATION")
+                Geocoder(context, Locale.getDefault())
+                    .getFromLocation(
+                        location.latitude,
+                        location.longitude,
+                        1
+                    )
+                    ?.firstOrNull()
+                    ?.getAddressLine(0)
+                    ?: "Approximate location unavailable"
+            } catch (e: Exception) {
+                "Approximate location unavailable"
+            }
+        }
+    }
 
     val alertColor = if (isActive) {
         Color(0xFFC34A5B)
@@ -306,9 +361,7 @@ fun CommunityAlertCard(
 
                 if (isActive) {
                     Text(
-                        text = alert.lastKnownArea.ifBlank {
-                            "Location unavailable"
-                        },
+                        text = publicLocationAddress,
                         color = PrimaryBlue,
                         fontFamily = Salsa,
                         fontSize = 16.sp
