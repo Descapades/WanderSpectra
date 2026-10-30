@@ -2,8 +2,6 @@ package com.wanderspectra.app
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import kotlin.text.get
-import kotlin.text.set
 
 class WearableRepository {
 

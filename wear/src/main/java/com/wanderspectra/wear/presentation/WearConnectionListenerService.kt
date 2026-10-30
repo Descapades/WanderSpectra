@@ -2,10 +2,7 @@ package com.wanderspectra.wear.presentation
 
 import android.content.Context
 import android.media.MediaPlayer
-import android.media.RingtoneManager
 import android.os.BatteryManager
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable
@@ -14,7 +11,6 @@ import com.wanderspectra.wear.location.WearLocationManager
 import org.json.JSONObject
 import android.content.Intent
 import android.os.VibrationEffect
-import androidx.core.content.ContextCompat
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMapItem
@@ -26,8 +22,6 @@ class WearConnectionListenerService : WearableListenerService() {
 
     companion object {
         private const val TAG = "WearConnection"
-        private const val SAFEZONE_PREFS = "wanderspectra_safezone"
-        private const val SAFEZONE_DATA_KEY = "active_safezone"
         private const val CONNECT_PATH = "/wanderspectra/connect"
         private const val CONNECTED_PATH = "/wanderspectra/connected"
         private const val LOCATION_PATH = "/wanderspectra/location"
@@ -40,56 +34,6 @@ class WearConnectionListenerService : WearableListenerService() {
         private var alarmPlayer: MediaPlayer? = null
         private var alarmVibrator: Vibrator? = null
         private val alarmLock = Any()
-    }
-
-    private fun saveSafeZoneLocally(safeZone: WearSafeZone) {
-        val json = JSONObject().apply {
-            put("lat", safeZone.lat)
-            put("lng", safeZone.lng)
-            put("radius", safeZone.radiusFeet)
-            put("monitoringEnabled", safeZone.monitoringEnabled)
-        }
-
-        getSharedPreferences(SAFEZONE_PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putString(SAFEZONE_DATA_KEY, json.toString())
-            .apply()
-
-        Log.d(TAG, "Safe Zone saved locally on watch")
-    }
-
-    private fun restoreSafeZoneLocally() {
-        val savedJson = getSharedPreferences(
-            SAFEZONE_PREFS,
-            Context.MODE_PRIVATE
-        ).getString(SAFEZONE_DATA_KEY, null) ?: return
-
-        try {
-            val json = JSONObject(savedJson)
-
-            val safeZone = WearSafeZone(
-                lat = json.getDouble("lat"),
-                lng = json.getDouble("lng"),
-                radiusFeet = json.getInt("radius"),
-                monitoringEnabled = json.getBoolean("monitoringEnabled")
-            )
-
-            if (
-                !safeZone.lat.isFinite() ||
-                !safeZone.lng.isFinite() ||
-                safeZone.lat !in -90.0..90.0 ||
-                safeZone.lng !in -180.0..180.0 ||
-                safeZone.radiusFeet <= 0
-            ) {
-                Log.w(TAG, "Stored Safe Zone is invalid")
-                return
-            }
-
-            WearSafetyStateRepository.updateActiveSafeZone(safeZone)
-            Log.d(TAG, "Safe Zone restored from watch storage")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to restore Safe Zone", e)
-        }
     }
 
     private fun getBatteryLevel(): Int {
@@ -114,9 +58,7 @@ class WearConnectionListenerService : WearableListenerService() {
                         val dataMap = DataMapItem.fromDataItem(item).dataMap
                         val deleted = dataMap.getBoolean("deleted", false)
                         val zoneId = dataMap.getString("zoneId") ?: ""
-
-                        val activeZone =
-                            WearSafetyStateRepository.activeSafeZone.value
+                        val activeZone = WearSafetyStateRepository.activeSafeZone.value
 
                         if (
                             deleted &&
@@ -133,11 +75,6 @@ class WearConnectionListenerService : WearableListenerService() {
                                         this,
                                         WearGeofenceMonitoringService::class.java
                                     )
-                                )
-
-                                Log.d(
-                                    TAG,
-                                    "Restored deletion state for Safe Zone $zoneId"
                                 )
                             }
                         }
@@ -434,11 +371,6 @@ class WearConnectionListenerService : WearableListenerService() {
             stopWearableAlarm()
 
             try {
-                val alertUri =
-                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                        ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                        ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-
                 val player = MediaPlayer().apply {
                     setAudioAttributes(
                         AudioAttributes.Builder()

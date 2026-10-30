@@ -19,25 +19,19 @@ import androidx.wear.compose.material.ButtonDefaults
 import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.dialog.Alert
 import androidx.wear.compose.material.dialog.Dialog
+import com.wanderspectra.wear.location.WearLocationManager
 
 @Composable
 fun WearLocationPermissionPopup(
-    activity: ComponentActivity
+    activity: ComponentActivity,
+    onLocationPermissionGranted: () -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    var hasPermission by remember {
-        mutableStateOf(WearLocationManager.hasLocationPermission(context))
-    }
-
-    var showRequestPopup by remember {
-        mutableStateOf(!hasPermission)
-    }
-
-    var showDeniedPopup by remember {
-        mutableStateOf(false)
-    }
+    var hasPermission by remember { mutableStateOf(WearLocationManager.hasLocationPermission(context)) }
+    var showRequestPopup by remember { mutableStateOf(!hasPermission) }
+    var showDeniedPopup by remember { mutableStateOf(false) }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -47,6 +41,7 @@ fun WearLocationPermissionPopup(
                 if (currentPermission) {
                     showRequestPopup = false
                     showDeniedPopup = false
+                    onLocationPermissionGranted()
                 }
             }
         }
@@ -65,6 +60,8 @@ fun WearLocationPermissionPopup(
             hasPermission = true
             showRequestPopup = false
             showDeniedPopup = false
+
+            onLocationPermissionGranted()
         } else {
             showRequestPopup = false
             showDeniedPopup = true

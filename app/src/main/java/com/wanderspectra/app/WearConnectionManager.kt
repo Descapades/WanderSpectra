@@ -8,7 +8,6 @@ import com.google.android.gms.wearable.Node
 import com.google.android.gms.wearable.Wearable
 import org.json.JSONObject
 import com.google.android.gms.wearable.PutDataMapRequest
-import com.google.android.gms.wearable.PutDataRequest
 
 data class WearableLocationResult(
     val connected: Boolean,

@@ -2,77 +2,70 @@ package com.wanderspectra.app
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.text.style.TextAlign
-import com.wanderspectra.app.ui.theme.TanSongbird
-import com.wanderspectra.app.ui.theme.Salsa
-import com.wanderspectra.app.ui.theme.ButtonYellow
-import com.wanderspectra.app.ui.theme.CardCream
-import com.wanderspectra.app.ui.theme.EmergencyRed
-import com.wanderspectra.app.ui.theme.SecondaryBlue
-import com.wanderspectra.app.ui.theme.PrimaryBlue
-import androidx.compose.foundation.border
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Text
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import com.wanderspectra.app.ui.theme.BackgroundCream
-import com.wanderspectra.app.ui.theme.ButtonBlue
-import com.wanderspectra.app.ui.theme.ButtonRed
-import com.wanderspectra.app.ui.theme.SecondaryRed
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
-import com.google.firebase.auth.FirebaseAuth
-import android.content.Context
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialException
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-import com.google.firebase.auth.GoogleAuthProvider
-import kotlinx.coroutines.launch
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.platform.LocalContext
-import androidx.activity.compose.rememberLauncherForActivityResult
 import com.facebook.AccessToken
 import com.facebook.CallbackManager
 import com.facebook.FacebookCallback
 import com.facebook.FacebookException
 import com.facebook.login.LoginManager
 import com.facebook.login.LoginResult
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FacebookAuthProvider
-import android.content.Intent
-import androidx.activity.result.contract.ActivityResultContracts
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
+import com.wanderspectra.app.ui.theme.BackgroundCream
+import com.wanderspectra.app.ui.theme.ButtonBlue
+import com.wanderspectra.app.ui.theme.ButtonRed
+import com.wanderspectra.app.ui.theme.ButtonYellow
+import com.wanderspectra.app.ui.theme.CardCream
+import com.wanderspectra.app.ui.theme.EmergencyRed
+import com.wanderspectra.app.ui.theme.PrimaryBlue
+import com.wanderspectra.app.ui.theme.Salsa
+import com.wanderspectra.app.ui.theme.SecondaryBlue
+import com.wanderspectra.app.ui.theme.SecondaryRed
+import com.wanderspectra.app.ui.theme.TanSongbird
+import kotlinx.coroutines.launch
 
 
 @Composable
@@ -97,7 +90,6 @@ fun LoginScreen(
     val coroutineScope = rememberCoroutineScope()
 
     fun handleSuccessfulLogin() {
-        CloudflareAuthTest.run()
         onLoginSuccess()
     }
 

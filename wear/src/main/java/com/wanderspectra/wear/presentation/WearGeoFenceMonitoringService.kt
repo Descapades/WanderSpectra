@@ -11,6 +11,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import com.wanderspectra.wear.location.WearLocationManager
+import androidx.core.app.NotificationCompat
 
 class WearGeofenceMonitoringService : Service() {
 
@@ -150,20 +151,11 @@ class WearGeofenceMonitoringService : Service() {
     }
 
     private fun createNotification(): Notification {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notification.Builder(this, CHANNEL_ID)
-                .setContentTitle("WanderSpectra")
-                .setContentText("Safe Zone monitoring is active")
-                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-                .setOngoing(true)
-                .build()
-        } else {
-            Notification.Builder(this)
-                .setContentTitle("WanderSpectra")
-                .setContentText("Safe Zone monitoring is active")
-                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-                .setOngoing(true)
-                .build()
-        }
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("WanderSpectra")
+            .setContentText("Safe Zone monitoring is active")
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .setOngoing(true)
+            .build()
     }
 }

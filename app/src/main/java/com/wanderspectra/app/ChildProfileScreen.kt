@@ -34,9 +34,8 @@ import com.wanderspectra.app.ui.theme.SecondaryBlue
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
-import com.wanderspectra.app.ui.theme.SecondaryRed
+
 import com.wanderspectra.app.ui.theme.TanSongbird
-import androidx.compose.foundation.border
 
 
 @Composable

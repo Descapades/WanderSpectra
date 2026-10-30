@@ -6,13 +6,8 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
-import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
-import com.google.android.gms.tasks.CancellationTokenSource
 import android.location.LocationListener
 import android.os.Looper
 import android.os.Handler
@@ -28,7 +23,6 @@ data class WearLocationData(
 object WearLocationManager {
 
     private const val TAG = "WearLocationManager"
-    private const val STALE_LOCATION_THRESHOLD_MS = 2 * 60 * 1000L // 2 minutes
 
     fun hasLocationPermission(context: Context): Boolean {
         val fineGranted = ContextCompat.checkSelfPermission(
@@ -71,15 +65,8 @@ object WearLocationManager {
             override fun onLocationChanged(location: Location) {
                 if (completed) return
                 completed = true
-
                 locationManager.removeUpdates(this)
                 handler.removeCallbacksAndMessages(null)
-
-                Log.d(
-                    TAG,
-                    "ACTIVE GPS UPDATE: ${location.latitude}, ${location.longitude}"
-                )
-
                 onResult(
                     WearLocationData(
                         latitude = location.latitude,
@@ -101,8 +88,6 @@ object WearLocationManager {
         }
 
         try {
-            Log.d(TAG, "Starting active GPS location request")
-
             locationManager.requestLocationUpdates(
                 LocationManager.GPS_PROVIDER,
                 1000L,
@@ -122,85 +107,5 @@ object WearLocationManager {
                 onResult(null)
             }
         }
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun requestFreshLocation(
-        context: Context,
-        fusedClient: FusedLocationProviderClient,
-        onResult: (WearLocationData?) -> Unit
-    ) {
-        val cancellationTokenSource = CancellationTokenSource()
-
-        fusedClient.getCurrentLocation(
-            Priority.PRIORITY_HIGH_ACCURACY,
-            cancellationTokenSource.token
-        ).addOnSuccessListener { location: Location? ->
-            if (location != null) {
-                Log.d(TAG, "Current location acquired: ${location.latitude}, ${location.longitude}")
-                onResult(
-                    WearLocationData(
-                        latitude = location.latitude,
-                        longitude = location.longitude,
-                        accuracy = location.accuracy,
-                        timestamp = location.time
-                    )
-                )
-            } else {
-                Log.w(TAG, "Current location task returned null, attempting System LocationManager fallback")
-                fetchFromSystemLocationManager(context, onResult)
-            }
-        }.addOnFailureListener { exception ->
-            Log.e(TAG, "Failed to get current location from FusedLocationClient", exception)
-            fetchFromSystemLocationManager(context, onResult)
-        }
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun fetchFromSystemLocationManager(
-        context: Context,
-        onResult: (WearLocationData?) -> Unit
-    ) {
-        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
-        if (locationManager == null) {
-            onResult(null)
-            return
-        }
-
-        try {
-            val gpsLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-            val networkLocation = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-
-            val bestLocation = when {
-                gpsLocation != null && networkLocation != null -> {
-                    if (gpsLocation.time > networkLocation.time) gpsLocation else networkLocation
-                }
-                gpsLocation != null -> gpsLocation
-                else -> networkLocation
-            }
-
-            if (bestLocation != null) {
-                Log.d(TAG, "System LocationManager fallback location: ${bestLocation.latitude}, ${bestLocation.longitude}")
-                onResult(
-                    WearLocationData(
-                        latitude = bestLocation.latitude,
-                        longitude = bestLocation.longitude,
-                        accuracy = bestLocation.accuracy,
-                        timestamp = bestLocation.time
-                    )
-                )
-            } else {
-                Log.w(TAG, "System LocationManager returned no location")
-                onResult(null)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error accessing System LocationManager", e)
-            onResult(null)
-        }
-    }
-
-    private fun isFreshLocation(location: Location): Boolean {
-        val locationAge = System.currentTimeMillis() - location.time
-        return locationAge < STALE_LOCATION_THRESHOLD_MS
     }
 }

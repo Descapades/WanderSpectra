@@ -1,8 +1,6 @@
 
 package com.wanderspectra.app
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -18,10 +16,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.wanderspectra.app.ui.theme.BackgroundCream
 import com.wanderspectra.app.ui.theme.ButtonBlue
 import com.wanderspectra.app.ui.theme.ButtonRed
 import com.wanderspectra.app.ui.theme.EmergencyRed
@@ -30,9 +30,6 @@ import com.wanderspectra.app.ui.theme.Salsa
 import com.wanderspectra.app.ui.theme.SecondaryBlue
 import com.wanderspectra.app.ui.theme.SecondaryRed
 import com.wanderspectra.app.ui.theme.TanSongbird
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
 
 @Composable
 fun ElopementConfirmationContent(
