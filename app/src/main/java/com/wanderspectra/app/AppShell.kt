@@ -76,8 +76,7 @@ enum class AppDestination {
 
 @Composable
 fun AppShell(
-    onSignOut: () -> Unit,
-    content: @Composable () -> Unit
+    onSignOut: () -> Unit
 ) {
     var showSettingsMenu by remember { mutableStateOf(false) }
     var showChildProfileMenu by remember { mutableStateOf(false) }
@@ -359,7 +358,6 @@ fun AppShell(
                             emergencyProfileAvailable = childProfiles.any { it.childId == emergencyChildId },
                             onSafetyCircle = { currentDestination = AppDestination.SAFETY_CIRCLE },
                             onCommunity = {
-                                android.util.Log.d("CommunityAlertDebug", "Community Alert button tapped")
                                 val incidentId = openIncidentId
 
                                 if (incidentId.isNullOrBlank()) {
@@ -368,28 +366,17 @@ fun AppShell(
                                     IncidentRepository().getIncidentsForChild(
                                         childId = emergencyChildId,
                                         onSuccess = { incidents ->
-                                            android.util.Log.d(
-                                                "CommunityAlertDebug",
-                                                "Incident lookup succeeded. Found ${incidents.size} incidents."
-                                            )
                                             val activeIncident = incidents.firstOrNull {
                                                 it.incidentId == incidentId &&
                                                         it.status == "open"
                                             }
-                                            android.util.Log.d(
-                                                "CommunityAlertDebug",
-                                                "Active incident found: ${activeIncident != null}"
-                                            )
 
                                             if (activeIncident == null) {
                                                 incidentStatus = "Active incident could not be found."
                                             } else {
                                                 val latitude = activeIncident.lastKnownLatitude
                                                 val longitude = activeIncident.lastKnownLongitude
-                                                android.util.Log.d(
-                                                    "CommunityAlertDebug",
-                                                    "Wearable location available: ${latitude != null && longitude != null}"
-                                                )
+
                                                 if (
                                                     latitude == null ||
                                                     longitude == null ||
@@ -457,18 +444,10 @@ fun AppShell(
                                                                         !(wearableLat == 0.0 && wearableLng == 0.0) &&
                                                                         wearableTimestamp > 0L &&
                                                                         wearableTimestamp <= System.currentTimeMillis()
-                                                            android.util.Log.d(
-                                                                "CommunityAlertDebug",
-                                                                "Wearable GPS valid: $validWearableLocation, timestamp available: ${wearableTimestamp > 0L}"
-                                                            )
+
                                                             if (wearableTimestamp > 0L) {
                                                                 val locationAgeSeconds =
                                                                     (System.currentTimeMillis() - wearableTimestamp) / 1000L
-
-                                                                android.util.Log.d(
-                                                                    "CommunityAlertDebug",
-                                                                    "Wearable GPS age: $locationAgeSeconds seconds"
-                                                                )
                                                             }
                                                             if (validWearableLocation) {
                                                                 publishCommunityAlert(

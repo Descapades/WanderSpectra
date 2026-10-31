@@ -17,6 +17,8 @@ import com.google.android.gms.wearable.DataMapItem
 import android.os.Vibrator
 import android.media.AudioAttributes
 import com.wanderspectra.wear.R
+import android.os.Build
+import android.os.VibratorManager
 
 class WearConnectionListenerService : WearableListenerService() {
 
@@ -115,14 +117,10 @@ class WearConnectionListenerService : WearableListenerService() {
                             stopService(
                                 Intent(this, WearGeofenceMonitoringService::class.java)
                             )
-
-                            Log.d(TAG, "Safe Zone $zoneId deletion synchronized")
                         } else {
                             Log.e(TAG, "Failed to clear synchronized Safe Zone")
                         }
                     }
-                } else {
-                    Log.d(TAG, "Safe Zone active state received")
                 }
             }
         }
@@ -140,7 +138,6 @@ class WearConnectionListenerService : WearableListenerService() {
                         )
 
                         val childName = json.optString("childName", "").trim()
-                        Log.d(TAG, "PAIRING DEBUG: Received childName='$childName'")
 
                         if (childName.isNotBlank()) {
                             getSharedPreferences(
@@ -149,17 +146,11 @@ class WearConnectionListenerService : WearableListenerService() {
                             ).edit()
                                 .putString("childName", childName)
                                 .apply()
-
-                            Log.d(TAG, "Child greeting name saved")
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to read child name", e)
                     }
                 }
-                Log.d(
-                    TAG,
-                    "Request received (${messageEvent.path}) from node ${messageEvent.sourceNodeId}"
-                )
 
                 val batteryLevel = getBatteryLevel()
 
@@ -196,12 +187,6 @@ class WearConnectionListenerService : WearableListenerService() {
                             responsePath,
                             responseData
                         )
-                        .addOnSuccessListener {
-                            Log.d(
-                                TAG,
-                                "Location & battery response sent successfully to caregiver app via $responsePath: $responseJson"
-                            )
-                        }
                         .addOnFailureListener { exception ->
                             Log.e(TAG, "Failed to send response to caregiver app", exception)
                         }
@@ -209,12 +194,10 @@ class WearConnectionListenerService : WearableListenerService() {
             }
 
             PLAY_SOUND_PATH -> {
-                Log.d(TAG, "Play sound request received from node ${messageEvent.sourceNodeId}")
                 playWearableSound(this)
             }
 
             STOP_SOUND_PATH -> {
-                Log.d(TAG, "Stop sound request received from node ${messageEvent.sourceNodeId}")
                 stopWearableAlarm()
             }
 
@@ -225,10 +208,6 @@ class WearConnectionListenerService : WearableListenerService() {
                         "elopement"
                     )
                 WearSafetyStateRepository.setElopementDetected(isElopement)
-                Log.d(
-                    TAG,
-                    "Elopement message received: $payload, setElopementDetected($isElopement)"
-                )
             }
 
             SAFEZONE_DELETE_PATH -> {
@@ -249,8 +228,6 @@ class WearConnectionListenerService : WearableListenerService() {
                             stopService(
                                 Intent(this, WearGeofenceMonitoringService::class.java)
                             )
-
-                            Log.d(TAG, "Safe Zone $zoneId deleted from watch")
                         } else {
                             Log.e(TAG, "Failed to clear Safe Zone from storage")
                         }
@@ -293,7 +270,6 @@ class WearConnectionListenerService : WearableListenerService() {
                     WearSafeZoneStorage.save(this, safeZone)
                     WearSafetyStateRepository.updateActiveSafeZone(safeZone)
                     if (safeZone.monitoringEnabled) {
-                        Log.d(TAG, "Safe Zone monitoring enabled. Attempting to start service.")
 
                         val serviceIntent = Intent(
                             this,
@@ -306,7 +282,6 @@ class WearConnectionListenerService : WearableListenerService() {
                                 serviceIntent
                             )
 
-                            Log.d(TAG, "Geofence monitoring service start requested")
                         } catch (e: Exception) {
                             Log.e(
                                 TAG,
@@ -315,17 +290,12 @@ class WearConnectionListenerService : WearableListenerService() {
                             )
                         }
                     } else {
-                        Log.d(TAG, "Safe Zone monitoring disabled. Stopping service.")
 
                         stopService(
                             Intent(this, WearGeofenceMonitoringService::class.java)
                         )
                     }
-                    Log.d(
-                        TAG,
-                        "Updated Safe Zone for childId=$childId: " +
-                                "lat=$lat, lng=$lng, radius=$radius ft"
-                    )
+
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to parse safezone payload", e)
                 }
@@ -357,14 +327,13 @@ class WearConnectionListenerService : WearableListenerService() {
             }
 
             WearSafetyStateRepository.setPlayingSound(false)
-            Log.d(TAG, "Wearable alarm and vibration stopped")
         }
     }
 
     private fun playWearableSound(context: Context) {
         synchronized(alarmLock) {
             if (alarmPlayer?.isPlaying == true) {
-                Log.d(TAG, "Wearable alarm already playing")
+
                 return
             }
 
@@ -392,7 +361,13 @@ class WearConnectionListenerService : WearableListenerService() {
                 alarmPlayer = player
                 player.start()
 
-                val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val vibratorManager = context.getSystemService(VibratorManager::class.java)
+                    vibratorManager.defaultVibrator
+                } else {
+                    @Suppress("DEPRECATION")
+                    context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                }
                 alarmVibrator = vibrator
 
                 val vibrationPattern = longArrayOf(0, 500, 250, 500, 750)
@@ -402,7 +377,6 @@ class WearConnectionListenerService : WearableListenerService() {
                 )
 
                 WearSafetyStateRepository.setPlayingSound(true)
-                Log.d(TAG, "Continuous wearable alarm and vibration started")
 
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to start wearable alarm", e)

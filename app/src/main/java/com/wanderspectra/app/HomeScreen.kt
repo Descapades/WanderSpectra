@@ -107,8 +107,7 @@ fun formatLastUpdatedTime(timestamp: Long): String {
 fun HomeScreen(
     onSignOut: () -> Unit
 ) {
-    AppShell(onSignOut = onSignOut) {
-    }
+    AppShell(onSignOut = onSignOut)
 }
 
 @Composable

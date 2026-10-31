@@ -103,11 +103,6 @@ fun SafeZoneSettingsContent(
                     lngText = zone.lng.toString()
                     monitoring = zone.monitoringEnabled
                     childMonitoring = zone.childMonitoring
-                    Log.d(
-                        "SafeZoneDebug",
-                        "Loaded ${zone.name} assignments: ${zone.childMonitoring}"
-                    )
-
                     addressText = "Loading address..."
 
                     scope.launch {

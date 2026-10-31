@@ -28,10 +28,6 @@ class CommunityAlertMessagingService : FirebaseMessagingService() {
         if (alertType != "COMMUNITY_ALERT") return
         if (alertId.isBlank()) return
 
-
-        // Never log or expose the child's exact GPS coordinates.
-        Log.d("CommunityAlert", "Community Alert received")
-
         showCommunityAlertNotification(alertId)
     }
 
@@ -60,7 +56,6 @@ class CommunityAlertMessagingService : FirebaseMessagingService() {
                 Manifest.permission.POST_NOTIFICATIONS
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            Log.d("CommunityAlert", "Notification permission not granted")
             return
         }
 

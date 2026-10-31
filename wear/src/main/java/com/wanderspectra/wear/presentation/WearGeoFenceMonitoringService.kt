@@ -35,7 +35,6 @@ class WearGeofenceMonitoringService : Service() {
             val safeZone = WearSafetyStateRepository.activeSafeZone.value
 
             if (safeZone == null || !safeZone.monitoringEnabled) {
-                Log.d(TAG, "No enabled Safe Zone. Stopping monitoring.")
                 stopMonitoring()
                 return
             }
@@ -56,11 +55,6 @@ class WearGeofenceMonitoringService : Service() {
                             location.latitude,
                             location.longitude
                         )
-                        Log.d(
-                            TAG,
-                            "Elopement state after GPS check: " +
-                                    WearSafetyStateRepository.isElopementDetected.value
-                        )
                         val exitEvent = WearSafetyStateRepository.safeZoneExitEvent.value
 
                         if (exitEvent != null &&
@@ -75,11 +69,6 @@ class WearGeofenceMonitoringService : Service() {
                                         "timestamp=${exitEvent.timestamp}"
                             )
                         }
-
-                        Log.d(
-                            TAG,
-                            "Geofence checked: ${location.latitude}, ${location.longitude}"
-                        )
                     } else {
                         Log.w(TAG, "Location unavailable. Will retry.")
                     }

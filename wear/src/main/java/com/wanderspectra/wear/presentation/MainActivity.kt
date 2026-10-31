@@ -65,12 +65,10 @@ class MainActivity : ComponentActivity() {
         val safeZone = WearSafetyStateRepository.activeSafeZone.value
 
         if (safeZone == null || !safeZone.monitoringEnabled) {
-            Log.d("MainActivity", "No enabled Safe Zone. Monitoring not started.")
             return
         }
 
         if (!WearLocationManager.hasLocationPermission(this)) {
-            Log.d("MainActivity", "Location permission missing. Monitoring not started.")
             return
         }
 
@@ -81,7 +79,6 @@ class MainActivity : ComponentActivity() {
 
         try {
             ContextCompat.startForegroundService(this, intent)
-            Log.d("MainActivity", "Starting Safe Zone monitoring service")
         } catch (e: Exception) {
             Log.e("MainActivity", "Unable to start Safe Zone monitoring", e)
         }

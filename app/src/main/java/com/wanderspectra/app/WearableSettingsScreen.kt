@@ -73,11 +73,6 @@ fun ChildWearableCard(
         wearableRepository.getWearable(
             childId = child.childId,
             onSuccess = { wearable ->
-                android.util.Log.d(
-                    "WearableFirestore",
-                    "Retrieved wearable: $wearable"
-                )
-
                 if (wearable != null) {
                     connectedDeviceName = wearable.deviceName
                     batteryLevel = wearable.batteryLevel
@@ -142,10 +137,6 @@ fun ChildWearableCard(
                     childId = child.childId,
                     wearable = wearable,
                     onSuccess = {
-                        android.util.Log.d(
-                            "WearableFirestore",
-                            "Wearable saved successfully"
-                        )
                     },
                     onFailure = { exception ->
                         android.util.Log.e(

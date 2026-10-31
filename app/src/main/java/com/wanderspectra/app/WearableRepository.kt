@@ -22,18 +22,9 @@ class WearableRepository {
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
     ) {
-        android.util.Log.d(
-            "WearableFirestore",
-            "ABOUT TO SAVE: $wearable"
-        )
-
         wearableDocument(childId)
             .set(wearable)
             .addOnSuccessListener {
-                android.util.Log.d(
-                    "WearableFirestore",
-                    "SAVED TO FIRESTORE: $wearable"
-                )
                 onSuccess()
             }
             .addOnFailureListener { exception ->
