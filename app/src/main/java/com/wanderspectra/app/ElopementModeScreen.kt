@@ -38,6 +38,7 @@ fun ElopementModeContent(
     onBackHome: () -> Unit
 ) {
     var zoneText by remember { mutableStateOf("Checking zone...") }
+    var radiusText by remember { mutableStateOf("") }
 
     LaunchedEffect(pointLat, pointLng) {
         SafeZoneRepository().getLatest { zone ->
@@ -48,6 +49,7 @@ fun ElopementModeContent(
             } else {
                 "Inside safe zone"
             }
+            radiusText = if (zone == null) "" else "Radius: ${zone.radius} ft"
         }
     }
 
@@ -69,6 +71,14 @@ fun ElopementModeContent(
         Text(text = "$childName is missing", color = PrimaryBlue, fontFamily = Salsa, fontSize = 18.sp)
         Spacer(modifier = Modifier.height(12.dp))
         Text(text = zoneText, color = SecondaryRed, fontFamily = Salsa, fontSize = 16.sp)
+        if (radiusText.isNotBlank()) {
+            Text(
+                text = radiusText,
+                color = PrimaryBlue,
+                fontFamily = Salsa,
+                fontSize = 16.sp
+            )
+        }
         Spacer(modifier = Modifier.height(12.dp))
         Text(text = statusText, fontFamily = Salsa, textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(24.dp))
