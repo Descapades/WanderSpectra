@@ -107,30 +107,8 @@ class MainActivity : ComponentActivity() {
                         },
 
                         onFinish = {
-                            val childProfile = confirmedChildren.firstOrNull()
-
-                            if (childProfile != null) {
-                                childProfileRepository.createChildProfile(
-                                    childProfile = childProfile,
-                                    onSuccess = { childId ->
-                                        childProfileRepository.getChildProfile(
-                                            childId = childId,
-                                            onSuccess = { savedChild ->
-                                                if (savedChild != null) {
-                                                    showChildConfirmation = false
-                                                    showHome = true
-                                                }
-                                            },
-                                            onFailure = { exception ->
-                                                exception.printStackTrace()
-                                            }
-                                        )
-                                    },
-                                    onFailure = { exception ->
-                                        exception.printStackTrace()
-                                    }
-                                )
-                            }
+                            showChildConfirmation = false
+                            showHome = true
                         }
                     )
 

@@ -74,6 +74,7 @@ fun AddAnotherChild(
     var validationMessage by remember { mutableStateOf<String?>(null) }
     var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
     val childProfileRepository = remember { ChildProfileRepository() }
+    var isSaving by remember { mutableStateOf(false) }
     val photoPickerLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.PickVisualMedia()
@@ -401,28 +402,23 @@ fun AddAnotherChild(
 
                 Button(
                     onClick = {
-
+                        if (isSaving) return@Button
                         when {
-
                             childName.isBlank() -> {
                                 validationMessage =
                                     "Please enter the child's name."
                             }
-
                             birthdate.isBlank() -> {
                                 validationMessage =
                                     "Please enter the child's birthdate."
                             }
-
                             communicationStyle.isBlank() -> {
                                 validationMessage =
                                     "Please enter the child's communication style."
                             }
-
                             else -> {
-
                                 validationMessage = null
-
+                                isSaving = true
                                 val childProfile = ChildProfile(
                                     fullName = childName.trim(),
                                     preferredName = preferredName.trim(),
@@ -432,43 +428,26 @@ fun AddAnotherChild(
                                     weight = weight.trim(),
                                     hairColor = hairColor.trim(),
                                     eyeColor = eyeColor.trim(),
-
-                                    communicationStyle =
-                                        communicationStyle.trim(),
-
-                                    helpfulCommunicationInfo =
-                                        helpfulCommunicationInformation.trim(),
-
+                                    communicationStyle = communicationStyle.trim(),
+                                    helpfulCommunicationInfo = helpfulCommunicationInformation.trim(),
                                     allergies = allergies.trim(),
-
-                                    medicalConsiderations =
-                                        medicalConsiderations.trim(),
-
-                                    criticalInformation =
-                                        criticalInformation.trim(),
-
-                                    sensorySensitivities =
-                                        sensorySensitivities.trim(),
-
-                                    elopementTriggers =
-                                        elopementTriggers.trim(),
-
-                                    calmingStrategies =
-                                        calmingStrategies.trim(),
-
-                                    safetyConcerns =
-                                        safetyConcerns.trim(),
-
-                                )
+                                    medicalConsiderations = medicalConsiderations.trim(),
+                                    criticalInformation = criticalInformation.trim(),
+                                    sensorySensitivities = sensorySensitivities.trim(),
+                                    elopementTriggers = elopementTriggers.trim(),
+                                    calmingStrategies = calmingStrategies.trim(),
+                                    safetyConcerns = safetyConcerns.trim(),
+                                    )
 
                                 childProfileRepository.createChildProfile(
                                     childProfile = childProfile,
-
-                                    onSuccess = { _ ->
-                                        onChildProfileCreated(childProfile)
+                                    onSuccess = { childId ->
+                                        onChildProfileCreated(
+                                            childProfile.copy(childId = childId)
+                                        )
                                     },
-
                                     onFailure = {
+                                        isSaving = false
                                         validationMessage =
                                             "Child profile could not be saved. Please try again."
                                     }
@@ -476,6 +455,7 @@ fun AddAnotherChild(
                             }
                         }
                     },
+                    enabled = !isSaving,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp)

@@ -184,12 +184,12 @@ fun OnboardingScreen(
                                     childProfileRepository.createChildProfile(
                                         childProfile = childProfile,
 
-                                        onSuccess = { _ ->
+                                        onSuccess = { childId ->
                                             isRegistering = false
                                             registrationMessage =
                                                 "Account and child profile created successfully."
 
-                                            onAccountCreated(childProfile)
+                                            onAccountCreated(childProfile.copy(childId = childId))
                                         },
 
                                         onFailure = {
