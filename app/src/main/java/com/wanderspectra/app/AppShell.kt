@@ -252,8 +252,8 @@ fun AppShell(
                             }
                         )
                         AppDestination.HISTORY -> IncidentHistoryScreen(
-                            childId = if (openIncidentId != null) emergencyChildId else child?.childId.orEmpty(),
-                            childName = if (openIncidentId != null) emergencyChildName else child?.preferredName.orEmpty(),
+                            childId = child?.childId.orEmpty(),
+                            childName = child?.preferredName?.ifBlank { child?.fullName.orEmpty() }.orEmpty(),
                             onViewReport = { incident ->
                                 selectedIncidentReport = incident
                             }
@@ -617,7 +617,6 @@ fun AppShell(
                             .fillMaxWidth()
                             .clickable {
                                 child = profile
-                                openIncidentId = null
                                 currentDestination = AppDestination.HISTORY
                                 showIncidentHistoryMenu = false
                             }
@@ -795,4 +794,5 @@ fun SettingsMenuItem(
             .padding(horizontal = 18.dp, vertical = 12.dp)
     )
 }
+
 
