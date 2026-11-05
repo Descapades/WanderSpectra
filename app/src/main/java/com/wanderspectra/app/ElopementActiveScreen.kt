@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -256,7 +257,11 @@ fun ElopementActiveContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { incidentId?.let(onChildSafe) },
+            onClick = {
+                incidentId?.let { id ->
+                    onChildSafe(id)
+                }
+            },
             enabled = incidentId != null && !isBusy,
             modifier = Modifier
                 .fillMaxWidth(0.85f)

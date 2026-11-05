@@ -20,8 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wanderspectra.app.ui.theme.BackgroundCream
+import com.wanderspectra.app.ui.theme.EmergencyRed
 import com.wanderspectra.app.ui.theme.PrimaryBlue
 import com.wanderspectra.app.ui.theme.Salsa
+import com.wanderspectra.app.ui.theme.TanSongbird
 
 /**
  * SCRUM-44: Connects incident retrieval to the reusable history interface.
@@ -116,15 +118,9 @@ fun IncidentHistoryScreen(
             ) {
                 Text(
                     text = "Incident History",
-                    color = PrimaryBlue,
-                    fontFamily = Salsa,
-                    fontSize = 24.sp
-                )
-
-                Text(
-                    text = "Select a child to view their incident history.",
-                    color = PrimaryBlue,
-                    fontSize = 16.sp
+                    color = EmergencyRed,
+                    fontFamily = TanSongbird,
+                    fontSize = 20.sp
                 )
             }
         }

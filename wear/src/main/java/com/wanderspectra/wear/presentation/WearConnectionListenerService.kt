@@ -128,7 +128,16 @@ class WearConnectionListenerService : WearableListenerService() {
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
         super.onMessageReceived(messageEvent)
+        if (messageEvent.path == CONNECT_PATH) {
+            getSharedPreferences(
+                "wanderspectra_connection",
+                Context.MODE_PRIVATE
+            ).edit()
+                .putString("caregiverNodeId", messageEvent.sourceNodeId)
+                .apply()
 
+            Log.i(TAG, "Caregiver phone node ID saved")
+        }
         when (messageEvent.path) {
             CONNECT_PATH, LOCATION_PATH -> {
                 if (messageEvent.path == CONNECT_PATH) {

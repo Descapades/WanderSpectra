@@ -251,13 +251,26 @@ fun AppShell(
                                 currentDestination = emergencyProfileReturn
                             }
                         )
-                        AppDestination.HISTORY -> IncidentHistoryScreen(
-                            childId = child?.childId.orEmpty(),
-                            childName = child?.preferredName?.ifBlank { child?.fullName.orEmpty() }.orEmpty(),
-                            onViewReport = { incident ->
-                                selectedIncidentReport = incident
+                        AppDestination.HISTORY -> {
+                            if (selectedIncidentReport != null) {
+                                IncidentReportScreen(
+                                    report = selectedIncidentReport!!,
+                                    onBack = {
+                                        selectedIncidentReport = null
+                                    }
+                                )
+                            } else {
+                                IncidentHistoryScreen(
+                                    childId = child?.childId.orEmpty(),
+                                    childName = child?.preferredName
+                                        ?.ifBlank { child?.fullName.orEmpty() }
+                                        .orEmpty(),
+                                    onViewReport = { incident ->
+                                        selectedIncidentReport = incident
+                                    }
+                                )
                             }
-                        )
+                        }
                         AppDestination.SAFETY_CIRCLE -> SafetyCircleManagementScreen(
                             caregiverId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty(),
                             childId = if (openIncidentId != null) emergencyChildId else child?.childId.orEmpty()
@@ -549,10 +562,6 @@ fun AppShell(
                     showChildProfileMenu = false
                 }
             )
-        }
-
-        selectedIncidentReport?.let { report ->
-            IncidentReportDialog(report = report, onDismiss = { selectedIncidentReport = null })
         }
 
         if (showChildProfileMenu) {

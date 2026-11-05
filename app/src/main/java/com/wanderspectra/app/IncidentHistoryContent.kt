@@ -24,6 +24,20 @@ import com.wanderspectra.app.ui.theme.PrimaryBlue
 import com.wanderspectra.app.ui.theme.Salsa
 import java.text.SimpleDateFormat
 import java.util.Locale
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import android.content.Context
+import android.location.Geocoder
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import androidx.compose.ui.Alignment
+import com.wanderspectra.app.ui.theme.CardCream
+import com.wanderspectra.app.ui.theme.EmergencyRed
+import com.wanderspectra.app.ui.theme.TanSongbird
 
 /**
  * SCRUM-44: Reusable Incident History interface.
@@ -54,25 +68,19 @@ fun IncidentHistoryContent(
             ) {
                 Text(
                     text = "Incident History",
-                    color = PrimaryBlue,
-                    fontFamily = Salsa,
-                    fontSize = 28.sp
+                    color = EmergencyRed,
+                    fontFamily = TanSongbird,
+                    fontSize = 20.sp
                 )
 
                 if (childName.isNotBlank()) {
                     Text(
                         text = childName,
                         color = PrimaryBlue,
-                        fontFamily = Salsa,
-                        fontSize = 20.sp
+                        fontFamily = TanSongbird,
+                        fontSize = 16.sp
                     )
                 }
-
-                Text(
-                    text = "Previously recorded elopement incidents",
-                    color = PrimaryBlue,
-                    fontSize = 15.sp
-                )
             }
         }
 
@@ -116,98 +124,310 @@ private fun IncidentHistoryCard(
     incident: IncidentRecord,
     onViewReport: (IncidentRecord) -> Unit
 ) {
+    val context = LocalContext.current
+
+    var destinationAddress by remember(incident.incidentId) {
+        mutableStateOf("Not recorded")
+    }
+
+    LaunchedEffect(
+        incident.incidentId,
+        incident.lastKnownLatitude,
+        incident.lastKnownLongitude,
+        incident.routePoints
+    ) {
+        val startLatitude = incident.lastKnownLatitude
+        val startLongitude = incident.lastKnownLongitude
+
+        val farthestPoint = if (
+            startLatitude != null &&
+            startLongitude != null
+        ) {
+            incident.routePoints.maxByOrNull { point ->
+                val pointLatitude = point["latitude"] as? Double
+                val pointLongitude = point["longitude"] as? Double
+
+                if (pointLatitude == null || pointLongitude == null) {
+                    0f
+                } else {
+                    val results = FloatArray(1)
+
+                    android.location.Location.distanceBetween(
+                        startLatitude,
+                        startLongitude,
+                        pointLatitude,
+                        pointLongitude,
+                        results
+                    )
+
+                    results[0]
+                }
+            }
+        } else {
+            null
+        }
+
+        val latitude = farthestPoint?.get("latitude") as? Double
+        val longitude = farthestPoint?.get("longitude") as? Double
+
+        destinationAddress = if (
+            latitude != null &&
+            longitude != null &&
+            latitude.isFinite() &&
+            longitude.isFinite() &&
+            latitude in -90.0..90.0 &&
+            longitude in -180.0..180.0
+        ) {
+            withContext(Dispatchers.IO) {
+                getDestinationAddress(context, latitude, longitude)
+            }
+        } else {
+            "Not recorded"
+        }
+    }
+
+    val durationMinutes =
+        if (incident.startTime != null && incident.endTime != null) {
+            ((incident.endTime.toDate().time -
+                    incident.startTime.toDate().time) / 60000L)
+                .coerceAtLeast(0L)
+        } else {
+            null
+        }
+
+    val statusText = when (incident.status.lowercase()) {
+        "open", "active" -> "Active"
+        "closed", "resolved", "safe" -> "Resolved"
+        else -> "Not recorded"
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .background(
+                color = CardCream,
+                shape = RoundedCornerShape(8.dp)
+            )
             .border(
                 1.dp,
                 PrimaryBlue,
-                RoundedCornerShape(12.dp)
+                RoundedCornerShape(8.dp)
             )
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(
+                start = 12.dp,
+                end = 12.dp,
+                top = 12.dp,
+                bottom = 4.dp
+            ),
+        verticalArrangement = Arrangement.spacedBy(3.dp)
     ) {
         Text(
             text = formatIncidentDate(incident.startTime),
-            color = PrimaryBlue,
+            color = EmergencyRed,
             fontFamily = Salsa,
             fontSize = 20.sp
         )
 
         Text(
-            text = "Elopement Incident",
+            text = when (incident.type) {
+                "SAFE_ZONE_EXIT" -> "Safe Zone Exit"
+                else -> "Elopement Incident"
+            },
+            color = EmergencyRed,
+            fontFamily = Salsa,
+            fontSize = 20.sp,
+            modifier = Modifier.padding(start = 14.dp)
+        )
+
+        Text(
+            text = "${formatIncidentTime(incident.startTime)} – " +
+                    if (incident.status.lowercase() in listOf("open", "active")) {
+                        "Now"
+                    } else {
+                        formatIncidentTime(incident.endTime)
+                    },
             color = PrimaryBlue,
             fontFamily = Salsa,
-            fontSize = 17.sp
+            fontSize = 20.sp,
+            modifier = Modifier.padding(start = 14.dp)
         )
 
-        IncidentHistoryDetail(
-            label = "Start Time",
-            value = formatIncidentTime(incident.startTime)
-        )
-
-        IncidentHistoryDetail(
-            label = "End Time",
-            value = formatIncidentTime(incident.endTime)
-        )
-
-        IncidentHistoryDetail(
-            label = "Status",
-            value = incident.status.ifBlank { "Not recorded" }
-        )
-
-        val coordinates =
-            if (
-                incident.lastKnownLatitude != null &&
-                incident.lastKnownLongitude != null
-            ) {
-                "${incident.lastKnownLatitude}, " +
-                    "${incident.lastKnownLongitude}"
-            } else {
-                "Not recorded"
-            }
-
-        IncidentHistoryDetail(
-            label = "Last Known Coordinates",
-            value = coordinates
-        )
-
-        TextButton(
-            onClick = { onViewReport(incident) }
+        Row(
+            modifier = Modifier.padding(start = 14.dp)
         ) {
             Text(
-                text = "View Report >",
+                text = "Duration: ",
+                color = EmergencyRed,
+                fontFamily = Salsa,
+                fontSize = 20.sp
+            )
+
+            Text(
+                text = if (
+                    incident.type == "SAFE_ZONE_EXIT" &&
+                    incident.status.lowercase() in listOf("open", "active")
+                ) {
+                    "In progress"
+                } else {
+                    durationMinutes?.let { "$it minutes" } ?: "Not recorded"
+                },
                 color = PrimaryBlue,
                 fontFamily = Salsa,
-                fontSize = 16.sp
+                fontSize = 20.sp
             )
+        }
+
+        Row(
+            modifier = Modifier.padding(start = 14.dp)
+        ) {
+            Text(
+                text = "Safe Zone: ",
+                color = EmergencyRed,
+                fontFamily = Salsa,
+                fontSize = 20.sp
+            )
+
+            Text(
+                text = if (incident.type == "SAFE_ZONE_EXIT") {
+                    incident.safeZoneName?.takeIf { it.isNotBlank() }
+                        ?: "Not recorded"
+                } else {
+                    "Not recorded"
+                },
+                color = PrimaryBlue,
+                fontFamily = Salsa,
+                fontSize = 20.sp
+            )
+        }
+
+        val distanceText = incident.distanceTraveledMeters?.let { meters ->
+            val miles = meters / 1609.344
+
+            String.format(
+                java.util.Locale.US,
+                "%.2f miles",
+                miles
+            )
+        } ?: "Not recorded"
+
+        Text(
+            text = buildAnnotatedString {
+                withStyle(SpanStyle(color = EmergencyRed)) {
+                    append("Distance Traveled: ")
+                }
+                withStyle(SpanStyle(color = PrimaryBlue)) {
+                    append(distanceText)
+                }
+            },
+            fontFamily = Salsa,
+            fontSize = 20.sp,
+            modifier = Modifier.padding(start = 14.dp)
+        )
+
+        Text(
+            text = buildAnnotatedString {
+                withStyle(SpanStyle(color = EmergencyRed)) {
+                    append("Farthest Location: ")
+                }
+                withStyle(SpanStyle(color = PrimaryBlue)) {
+                    append(destinationAddress)
+                }
+            },
+            fontFamily = Salsa,
+            fontSize = 20.sp,
+            modifier = Modifier.padding(start = 14.dp)
+        )
+
+        Row(
+            modifier = Modifier.padding(start = 14.dp)
+        ) {
+            Text(
+                text = "Status: ",
+                color = EmergencyRed,
+                fontFamily = Salsa,
+                fontSize = 20.sp
+            )
+
+            Text(
+                text = statusText,
+                color = PrimaryBlue,
+                fontFamily = Salsa,
+                fontSize = 20.sp
+            )
+        }
+
+        if (incident.status.lowercase() in listOf("closed", "resolved", "safe")) {
+            val resolutionText = when (incident.resolutionType) {
+                "RETURNED_TO_SAFE_ZONE" -> "Returned to Safe Zone"
+                "CAREGIVER_CONFIRMED_SAFE" -> "Manually Marked Safe"
+                else -> "Not recorded"
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Text(
+                    text = "Resolution:",
+                    color = EmergencyRed,
+                    fontFamily = Salsa,
+                    fontSize = 20.sp
+                )
+
+                Text(
+                    text = resolutionText,
+                    color = PrimaryBlue,
+                    fontFamily = Salsa,
+                    fontSize = 20.sp,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            TextButton(
+                onClick = { onViewReport(incident) },
+                contentPadding = PaddingValues(
+                    horizontal = 8.dp,
+                    vertical = 0.dp
+                )
+            ) {
+                Text(
+                    text = "View Report >",
+                    color = PrimaryBlue,
+                    fontFamily = Salsa,
+                    fontSize = 20.sp
+                )
+            }
         }
     }
 }
 
-/**
- * Shared layout for a displayed incident field.
- */
-@Composable
-private fun IncidentHistoryDetail(
-    label: String,
-    value: String
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(2.dp)
-    ) {
-        Text(
-            text = label,
-            color = PrimaryBlue,
-            fontFamily = Salsa,
-            fontSize = 14.sp
+private fun getDestinationAddress(
+    context: Context,
+    latitude: Double,
+    longitude: Double
+): String {
+    return try {
+        val geocoder = Geocoder(context, Locale.getDefault())
+
+        @Suppress("DEPRECATION")
+        val addresses = geocoder.getFromLocation(
+            latitude,
+            longitude,
+            1
         )
 
-        Text(
-            text = value,
-            color = PrimaryBlue,
-            fontSize = 16.sp
-        )
+        addresses?.firstOrNull()?.getAddressLine(0)
+            ?: "Address unavailable"
+    } catch (exception: Exception) {
+        "Address unavailable"
     }
 }
 
