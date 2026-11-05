@@ -7,6 +7,6 @@ data class Incident(
     val status: String = "open",
     val startTime: Long = 0L,
     val endTime: Long? = null,
-    val lastKnownLat: Double = 0.0,
-    val lastKnownLng: Double = 0.0
+    val lastKnownLat: Double? = null,
+    val lastKnownLng: Double? = null
 )

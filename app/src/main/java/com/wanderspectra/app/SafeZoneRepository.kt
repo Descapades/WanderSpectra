@@ -59,6 +59,7 @@ class SafeZoneRepository(
         val data = hashMapOf(
             "name" to zone.name,
             "childId" to zone.childId,
+            "childMonitoring" to zone.childMonitoring,
             "caregiverId" to caregiverId,
             "radius" to zone.radius,
             "monitoringEnabled" to zone.monitoringEnabled,
@@ -102,6 +103,7 @@ class SafeZoneRepository(
         val updates = mapOf(
             "name" to zone.name,
             "childId" to zone.childId,
+            "childMonitoring" to zone.childMonitoring,
             "radius" to zone.radius,
             "monitoringEnabled" to zone.monitoringEnabled,
             "lat" to zone.lat,
@@ -184,6 +186,17 @@ class SafeZoneRepository(
                         id = doc.id,
                         name = doc.getString("name") ?: "",
                         childId = doc.getString("childId") ?: "",
+                        childMonitoring = (doc.get("childMonitoring") as? Map<*, *>)
+                            ?.entries
+                            ?.mapNotNull { (key, value) ->
+                                if (key is String && value is Boolean) {
+                                    key to value
+                                } else {
+                                    null
+                                }
+                            }
+                            ?.toMap()
+                            ?: emptyMap(),
                         radius = doc.getLong("radius")?.toInt() ?: 500,
                         monitoringEnabled = doc.getBoolean("monitoringEnabled") ?: true,
                         lat = doc.getDouble("lat") ?: 0.0,
@@ -253,6 +266,17 @@ class SafeZoneRepository(
                     name = document.getString("name").orEmpty(),
                     radius = document.getLong("radius")?.toInt() ?: 500,
                     monitoringEnabled = document.getBoolean("monitoringEnabled") ?: true,
+                    childMonitoring = (document.get("childMonitoring") as? Map<*, *>)
+                        ?.entries
+                        ?.mapNotNull { (key, value) ->
+                            if (key is String && value is Boolean) {
+                                key to value
+                            } else {
+                                null
+                            }
+                        }
+                        ?.toMap()
+                        ?: emptyMap(),
                     lat = document.getDouble("lat") ?: 0.0,
                     lng = document.getDouble("lng") ?: 0.0
                 )

@@ -457,7 +457,6 @@ fun SightingReportScreen(
 
                         val report = SightingReport(
                             communityAlertId = alert.id,
-                            childId = alert.childId,
                             latitude = location.latitude,
                             longitude = location.longitude,
                             sightingTime = Timestamp(sightingDate),

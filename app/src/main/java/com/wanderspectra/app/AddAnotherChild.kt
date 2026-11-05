@@ -1,24 +1,29 @@
 package com.wanderspectra.app
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,32 +32,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.wanderspectra.app.ui.theme.BackgroundCream
 import com.wanderspectra.app.ui.theme.ButtonBlue
+import com.wanderspectra.app.ui.theme.ButtonYellow
 import com.wanderspectra.app.ui.theme.CardCream
 import com.wanderspectra.app.ui.theme.EmergencyRed
 import com.wanderspectra.app.ui.theme.PrimaryBlue
 import com.wanderspectra.app.ui.theme.Salsa
 import com.wanderspectra.app.ui.theme.SecondaryBlue
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.size
-import androidx.compose.ui.res.painterResource
-import com.wanderspectra.app.ui.theme.ButtonYellow
 import com.wanderspectra.app.ui.theme.TanSongbird
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.width
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import coil.compose.AsyncImage
 
 @Composable
 fun AddAnotherChild(
@@ -66,32 +62,19 @@ fun AddAnotherChild(
     var weight by remember { mutableStateOf("") }
     var hairColor by remember { mutableStateOf("") }
     var eyeColor by remember { mutableStateOf("") }
-
     var allergies by remember { mutableStateOf("") }
     var medicalConsiderations by remember { mutableStateOf("") }
     var criticalInformation by remember { mutableStateOf("") }
-
     var communicationStyle by remember { mutableStateOf("") }
     var helpfulCommunicationInformation by remember { mutableStateOf("") }
-
     var sensorySensitivities by remember { mutableStateOf("") }
     var elopementTriggers by remember { mutableStateOf("") }
     var calmingStrategies by remember { mutableStateOf("") }
     var safetyConcerns by remember { mutableStateOf("") }
-    var safetyPrompt by remember { mutableStateOf("") }
-
-    var validationMessage by remember {
-        mutableStateOf<String?>(null)
-    }
-
-    var selectedPhotoUri by remember {
-        mutableStateOf<Uri?>(null)
-    }
-
-    val childProfileRepository = remember {
-        ChildProfileRepository()
-    }
-
+    var validationMessage by remember { mutableStateOf<String?>(null) }
+    var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    val childProfileRepository = remember { ChildProfileRepository() }
+    var isSaving by remember { mutableStateOf(false) }
     val photoPickerLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.PickVisualMedia()
@@ -402,13 +385,6 @@ fun AddAnotherChild(
                     onValueChange = { safetyConcerns = it }
                 )
 
-                OnboardingField(
-                    label = "Safety Prompt",
-                    placeholder = "Safety message displayed on watch",
-                    value = safetyPrompt,
-                    onValueChange = { safetyPrompt = it }
-                )
-
                 validationMessage?.let { message ->
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -426,28 +402,23 @@ fun AddAnotherChild(
 
                 Button(
                     onClick = {
-
+                        if (isSaving) return@Button
                         when {
-
                             childName.isBlank() -> {
                                 validationMessage =
                                     "Please enter the child's name."
                             }
-
                             birthdate.isBlank() -> {
                                 validationMessage =
                                     "Please enter the child's birthdate."
                             }
-
                             communicationStyle.isBlank() -> {
                                 validationMessage =
                                     "Please enter the child's communication style."
                             }
-
                             else -> {
-
                                 validationMessage = null
-
+                                isSaving = true
                                 val childProfile = ChildProfile(
                                     fullName = childName.trim(),
                                     preferredName = preferredName.trim(),
@@ -457,45 +428,26 @@ fun AddAnotherChild(
                                     weight = weight.trim(),
                                     hairColor = hairColor.trim(),
                                     eyeColor = eyeColor.trim(),
-
-                                    communicationStyle =
-                                        communicationStyle.trim(),
-
-                                    helpfulCommunicationInfo =
-                                        helpfulCommunicationInformation.trim(),
-
+                                    communicationStyle = communicationStyle.trim(),
+                                    helpfulCommunicationInfo = helpfulCommunicationInformation.trim(),
                                     allergies = allergies.trim(),
-
-                                    medicalConsiderations =
-                                        medicalConsiderations.trim(),
-
-                                    criticalInformation =
-                                        criticalInformation.trim(),
-
-                                    sensorySensitivities =
-                                        sensorySensitivities.trim(),
-
-                                    elopementTriggers =
-                                        elopementTriggers.trim(),
-
-                                    calmingStrategies =
-                                        calmingStrategies.trim(),
-
-                                    safetyConcerns =
-                                        safetyConcerns.trim(),
-
-                                    safetyPrompt =
-                                        safetyPrompt.trim()
-                                )
+                                    medicalConsiderations = medicalConsiderations.trim(),
+                                    criticalInformation = criticalInformation.trim(),
+                                    sensorySensitivities = sensorySensitivities.trim(),
+                                    elopementTriggers = elopementTriggers.trim(),
+                                    calmingStrategies = calmingStrategies.trim(),
+                                    safetyConcerns = safetyConcerns.trim(),
+                                    )
 
                                 childProfileRepository.createChildProfile(
                                     childProfile = childProfile,
-
-                                    onSuccess = { _ ->
-                                        onChildProfileCreated(childProfile)
+                                    onSuccess = { childId ->
+                                        onChildProfileCreated(
+                                            childProfile.copy(childId = childId)
+                                        )
                                     },
-
                                     onFailure = {
+                                        isSaving = false
                                         validationMessage =
                                             "Child profile could not be saved. Please try again."
                                     }
@@ -503,6 +455,7 @@ fun AddAnotherChild(
                             }
                         }
                     },
+                    enabled = !isSaving,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp)

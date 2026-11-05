@@ -2,7 +2,6 @@ package com.wanderspectra.app
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import androidx.compose.runtime.LaunchedEffect
 
 class ChildProfileRepository {
 

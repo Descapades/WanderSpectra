@@ -38,11 +38,6 @@ object CloudflareAuthTest {
 
                         val status = connection.responseCode
 
-                        Log.d(
-                            "CloudflareTest",
-                            "HTTP status: $status"
-                        )
-
                         connection.disconnect()
 
                     } catch (e: Exception) {

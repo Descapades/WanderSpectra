@@ -8,7 +8,6 @@ import com.google.android.gms.wearable.Node
 import com.google.android.gms.wearable.Wearable
 import org.json.JSONObject
 import com.google.android.gms.wearable.PutDataMapRequest
-import com.google.android.gms.wearable.PutDataRequest
 
 data class WearableLocationResult(
     val connected: Boolean,
@@ -26,20 +25,13 @@ object WearConnectionManager {
     private const val LOCATION_PATH = "/wanderspectra/location"
     private const val LOCATION_RESPONSE_PATH = "/wanderspectra/location_response"
     private const val PLAY_SOUND_PATH = "/wanderspectra/play_sound"
+    private const val STOP_SOUND_PATH = "/wanderspectra/stop_sound"
     private const val SAFEZONE_PATH = "/wanderspectra/safezone"
     private const val SAFEZONE_DELETE_PATH = "/wanderspectra/safezone/delete"
 
     private fun safeLogE(tag: String, msg: String, throwable: Throwable? = null) {
         try {
             Log.e(tag, msg, throwable)
-        } catch (_: Throwable) {
-            // Ignored in plain JVM unit test environment
-        }
-    }
-
-    private fun safeLogD(tag: String, msg: String) {
-        try {
-            Log.d(tag, msg)
         } catch (_: Throwable) {
             // Ignored in plain JVM unit test environment
         }
@@ -52,13 +44,6 @@ object WearConnectionManager {
         Wearable.getNodeClient(context)
             .connectedNodes
             .addOnSuccessListener { nodes ->
-                nodes.forEach { node ->
-                    safeLogD(
-                        TAG,
-                        "Available Wear device: ${node.displayName} (${node.id})"
-                    )
-                }
-
                 onResult(nodes)
             }
             .addOnFailureListener { exception ->
@@ -215,11 +200,6 @@ object WearConnectionManager {
                     val rawPayload = messageEvent.data.toString(Charsets.UTF_8)
                     val result = parseLocationResponse(rawPayload)
 
-                    safeLogD(
-                        TAG,
-                        "WanderSpectra connection confirmed. Battery: ${result.batteryLevel}%, Lat: ${result.latitude}, Lng: ${result.longitude}"
-                    )
-
                     messageClient.removeListener(responseListener)
 
                     onResult(
@@ -241,12 +221,6 @@ object WearConnectionManager {
                     put("childName", childName)
                 }.toString().toByteArray(Charsets.UTF_8)
             )
-            .addOnSuccessListener {
-                safeLogD(
-                    TAG,
-                    "Connection request sent. Waiting for Wear response."
-                )
-            }
             .addOnFailureListener { exception ->
                 safeLogE(
                     TAG,
@@ -299,10 +273,6 @@ object WearConnectionManager {
                     val rawPayload = messageEvent.data.toString(Charsets.UTF_8)
                     val result = parseLocationResponse(rawPayload)
 
-                    safeLogD(
-                        TAG,
-                        "Location response received from Wear device: $result"
-                    )
 
                     messageClient.removeListener(responseListener)
 
@@ -318,12 +288,6 @@ object WearConnectionManager {
                 LOCATION_PATH,
                 "Request location".toByteArray()
             )
-            .addOnSuccessListener {
-                safeLogD(
-                    TAG,
-                    "Location request sent to Wear device $nodeId"
-                )
-            }
             .addOnFailureListener { exception ->
                 safeLogE(
                     TAG,
@@ -355,11 +319,33 @@ object WearConnectionManager {
                 "Play sound request".toByteArray(Charsets.UTF_8)
             )
             .addOnSuccessListener {
-                safeLogD(TAG, "Play sound message sent successfully to $nodeId")
+
                 onResult(true)
             }
             .addOnFailureListener { exception ->
                 safeLogE(TAG, "Failed to send play sound message to $nodeId", exception)
+                onResult(false)
+            }
+    }
+
+    fun stopSoundOnWearable(
+        context: Context,
+        nodeId: String,
+        onResult: (Boolean) -> Unit
+    ) {
+        val messageClient = Wearable.getMessageClient(context)
+
+        messageClient
+            .sendMessage(
+                nodeId,
+                STOP_SOUND_PATH,
+                "Stop sound request".toByteArray(Charsets.UTF_8)
+            )
+            .addOnSuccessListener {
+                onResult(true)
+            }
+            .addOnFailureListener { exception ->
+                safeLogE(TAG, "Failed to send stop sound message to $nodeId", exception)
                 onResult(false)
             }
     }
@@ -387,10 +373,6 @@ object WearConnectionManager {
                 payload.toString().toByteArray(Charsets.UTF_8)
             )
             .addOnSuccessListener {
-                safeLogD(
-                    TAG,
-                    "Safe Zone message sent to wearable $nodeId: $payload"
-                )
                 onResult(true)
             }
             .addOnFailureListener { exception ->
@@ -424,10 +406,6 @@ object WearConnectionManager {
                 payload.toString().toByteArray(Charsets.UTF_8)
             )
             .addOnSuccessListener {
-                safeLogD(
-                    TAG,
-                    "Safe Zone deletion message sent to $nodeId for zone $zoneId"
-                )
                 onResult(true)
             }
             .addOnFailureListener { exception ->
@@ -460,10 +438,6 @@ object WearConnectionManager {
         Wearable.getDataClient(context)
             .putDataItem(dataRequest)
             .addOnSuccessListener {
-                safeLogD(
-                    TAG,
-                    "Safe Zone deletion state published for $zoneId"
-                )
                 onResult(true)
             }
             .addOnFailureListener { exception ->
@@ -496,7 +470,6 @@ object WearConnectionManager {
         Wearable.getDataClient(context)
             .putDataItem(dataRequest)
             .addOnSuccessListener {
-                safeLogD(TAG, "Safe Zone active state published for $zoneId")
                 onResult(true)
             }
             .addOnFailureListener { exception ->

@@ -1,6 +1,7 @@
 package com.wanderspectra.app
 
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -34,40 +35,24 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 
+import com.wanderspectra.app.ui.theme.TanSongbird
+
+
 @Composable
-fun ChildProfileContent() {
+fun ChildProfileContent(selectedChild: ChildProfile?,
+                        onProfileUpdated: (ChildProfile) -> Unit
+) {
+    val repository = remember { ChildProfileRepository() }
+    var childProfile by remember(selectedChild?.childId) { mutableStateOf(selectedChild) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isEditing by remember { mutableStateOf(false) }
 
-    val repository = remember {
-        ChildProfileRepository()
-    }
-
-    var childProfile by remember {
-        mutableStateOf<ChildProfile?>(null)
-    }
-
-    var isLoading by remember {
-        mutableStateOf(true)
-    }
-
-    var errorMessage by remember {
-        mutableStateOf<String?>(null)
-    }
-
-    var isEditing by remember {
-        mutableStateOf(false)
-    }
-
-    LaunchedEffect(Unit) {
-        repository.getChildProfiles(
-            onSuccess = { children ->
-                childProfile = children.firstOrNull()
-                isLoading = false
-            },
-            onFailure = { exception ->
-                errorMessage = exception.message
-                isLoading = false
-            }
-        )
+    LaunchedEffect(selectedChild?.childId) {
+        isEditing = false
+        errorMessage = null
+        childProfile = selectedChild
+        isLoading = false
     }
 
     Box(
@@ -113,6 +98,7 @@ fun ChildProfileContent() {
                                 childProfile = updatedChild,
                                 onSuccess = {
                                     childProfile = updatedChild
+                                    onProfileUpdated(updatedChild)
                                     isEditing = false
                                 },
                                 onFailure = { exception ->
@@ -151,8 +137,8 @@ fun ViewChildProfile(
                 child.fullName
             },
             color = EmergencyRed,
-            fontFamily = Salsa,
-            fontSize = 28.sp
+            fontFamily = TanSongbird,
+            fontSize = 20.sp
         )
         if (child.photoUrl.isNotBlank()) {
             Spacer(modifier = Modifier.height(12.dp))
@@ -244,11 +230,6 @@ fun ViewChildProfile(
             value = child.safetyConcerns
         )
 
-        ProfileField(
-            label = "Safety Prompt:",
-            value = child.safetyPrompt
-        )
-
         Spacer(modifier = Modifier.height(16.dp))
 
         SectionTitle("Emergency Information:")
@@ -273,13 +254,15 @@ fun ViewChildProfile(
             Button(
                 onClick = onEdit,
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxWidth(0.85f)
+                    .align(Alignment.CenterHorizontally)
                     .height(48.dp),
                 shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = ButtonBlue,
                     contentColor = SecondaryBlue
-                )
+                ),
+                border = BorderStroke(1.dp, SecondaryBlue)
             ) {
                 Text(
                     text = "Edit Child Profile",

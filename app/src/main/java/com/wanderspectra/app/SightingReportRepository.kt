@@ -3,10 +3,15 @@ package com.wanderspectra.app
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import java.net.HttpURLConnection
+import java.net.URL
+import org.json.JSONObject
 
 class SightingReportRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
+    private val sightingWorkerUrl =
+        "https://wanderspectra-alerts.destin-champlin.workers.dev/submit-sighting"
 
     fun submitReport(
         report: SightingReport,
@@ -66,7 +71,6 @@ class SightingReportRepository(
                 val reportData = report.copy(
                     id = reportRef.id,
                     reporterId = reporterId,
-                    childId = alert.childId,
                     submittedAt = null
                 )
 
@@ -74,7 +78,6 @@ class SightingReportRepository(
                     "id" to reportData.id,
                     "communityAlertId" to reportData.communityAlertId,
                     "reporterId" to reportData.reporterId,
-                    "childId" to reportData.childId,
                     "latitude" to reportData.latitude,
                     "longitude" to reportData.longitude,
                     "locationDescription" to reportData.locationDescription,
@@ -86,10 +89,23 @@ class SightingReportRepository(
 
                 reportRef.set(data)
                     .addOnSuccessListener {
-                        onDone(
-                            true,
-                            "Sighting submitted successfully."
-                        )
+                        notifyWorker(reportRef.id) { notified ->
+                            if (!notified) {
+                                android.util.Log.w(
+                                    "SightingReport",
+                                    "Sighting saved, but caregiver notification failed."
+                                )
+                            }
+
+                            onDone(
+                                true,
+                                if (notified) {
+                                    "Sighting submitted successfully."
+                                } else {
+                                    "Sighting saved, but caregiver notification could not be confirmed."
+                                }
+                            )
+                        }
                     }
                     .addOnFailureListener { error ->
                         onDone(
@@ -103,6 +119,74 @@ class SightingReportRepository(
                     false,
                     error.message ?: "Unable to verify Community Alert."
                 )
+            }
+    }
+
+    private fun notifyWorker(reportId: String, onResult: (Boolean) -> Unit) {
+        FirebaseAuth.getInstance().currentUser
+            ?.getIdToken(false)
+            ?.addOnSuccessListener { tokenResult ->
+                val idToken = tokenResult.token
+
+                if (idToken == null) {
+                    onResult(false)
+                    return@addOnSuccessListener
+                }
+
+                Thread {
+                    var connection: HttpURLConnection? = null
+
+                    try {
+                        connection = URL(sightingWorkerUrl)
+                            .openConnection() as HttpURLConnection
+
+                        connection.requestMethod = "POST"
+                        connection.setRequestProperty(
+                            "Authorization",
+                            "Bearer $idToken"
+                        )
+                        connection.setRequestProperty(
+                            "Content-Type",
+                            "application/json"
+                        )
+                        connection.connectTimeout = 10000
+                        connection.readTimeout = 10000
+                        connection.doOutput = true
+
+                        val body = JSONObject()
+                            .put("reportId", reportId)
+                            .toString()
+
+                        connection.outputStream.use {
+                            it.write(body.toByteArray(Charsets.UTF_8))
+                        }
+
+                        val success = connection.responseCode in 200..299
+
+                        android.os.Handler(
+                            android.os.Looper.getMainLooper()
+                        ).post {
+                            onResult(success)
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e(
+                            "SightingReport",
+                            "Worker notification request failed",
+                            e
+                        )
+
+                        android.os.Handler(
+                            android.os.Looper.getMainLooper()
+                        ).post {
+                            onResult(false)
+                        }
+                    } finally {
+                        connection?.disconnect()
+                    }
+                }.start()
+            }
+            ?.addOnFailureListener {
+                onResult(false)
             }
     }
 }

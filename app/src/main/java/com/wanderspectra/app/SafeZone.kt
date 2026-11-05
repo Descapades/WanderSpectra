@@ -7,6 +7,7 @@ data class SafeZone(
     val childId: String = "",
     val radius: Int = 500,
     val monitoringEnabled: Boolean = true,
+    val childMonitoring: Map<String, Boolean> = emptyMap(),
     val lat: Double = 0.0,
     val lng: Double = 0.0
 )

@@ -1,16 +1,10 @@
+
 package com.wanderspectra.app
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import com.wanderspectra.app.ui.theme.WanderSpectraTheme
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.runtime.LaunchedEffect
@@ -31,13 +25,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        SightingReportNavigation.receive(intent)
 
         FirebaseMessaging.getInstance().token
             .addOnSuccessListener { token ->
                 val user = FirebaseAuth.getInstance().currentUser
 
                 if (user == null) {
-                    Log.d("FCMTest", "No signed-in user")
                     return@addOnSuccessListener
                 }
 
@@ -47,11 +41,6 @@ class MainActivity : ComponentActivity() {
                     .get()
                     .addOnSuccessListener { document ->
                         val savedToken = document.getString("fcmToken")
-
-                        Log.d(
-                            "FCMTest",
-                            "Current token matches Firestore: ${token == savedToken}"
-                        )
                     }
                     .addOnFailureListener {
                         Log.e("FCMTest", "Unable to read Firestore token")
@@ -67,33 +56,13 @@ class MainActivity : ComponentActivity() {
                 NotificationPermissionPopup(activity = this@MainActivity)
                 LocationPermissionPopup(activity = this@MainActivity)
 
-                var showSplash by remember {
-                    mutableStateOf(true)
-                }
-
-                var showOnboarding by remember {
-                    mutableStateOf(false)
-                }
-
-                var showHome by remember {
-                    mutableStateOf(FirebaseAuth.getInstance().currentUser != null)
-                }
-
-                var showAddAnotherChild by remember {
-                    mutableStateOf(false)
-                }
-
-                var showChildConfirmation by remember {
-                    mutableStateOf(false)
-                }
-
-                var confirmedChildren by remember {
-                    mutableStateOf<List<ChildProfile>>(emptyList())
-                }
-
-                val childProfileRepository = remember {
-                    ChildProfileRepository()
-                }
+                var showSplash by remember { mutableStateOf(true) }
+                var showOnboarding by remember { mutableStateOf(false) }
+                var showHome by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
+                var showAddAnotherChild by remember { mutableStateOf(false) }
+                var showChildConfirmation by remember { mutableStateOf(false) }
+                var confirmedChildren by remember { mutableStateOf<List<ChildProfile>>(emptyList()) }
+                val childProfileRepository = remember { ChildProfileRepository() }
 
                 LaunchedEffect(Unit) {
                     delay(2000)
@@ -138,34 +107,8 @@ class MainActivity : ComponentActivity() {
                         },
 
                         onFinish = {
-                            val childProfile = confirmedChildren.firstOrNull()
-
-                            if (childProfile != null) {
-                                childProfileRepository.createChildProfile(
-                                    childProfile = childProfile,
-                                    onSuccess = { childId ->
-                                        childProfileRepository.getChildProfile(
-                                            childId = childId,
-                                            onSuccess = { savedChild ->
-                                                if (savedChild != null) {
-                                                    println("Retrieved child profile: ${savedChild.fullName}")
-                                                    println("Child ID: ${savedChild.childId}")
-                                                    println("Caregiver UID: ${savedChild.caregiverUid}")
-
-                                                    showChildConfirmation = false
-                                                    showHome = true
-                                                }
-                                            },
-                                            onFailure = { exception ->
-                                                exception.printStackTrace()
-                                            }
-                                        )
-                                    },
-                                    onFailure = { exception ->
-                                        exception.printStackTrace()
-                                    }
-                                )
-                            }
+                            showChildConfirmation = false
+                            showHome = true
                         }
                     )
 
@@ -194,6 +137,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        SightingReportNavigation.receive(intent)
+    }
+
     @Suppress("DEPRECATION")
     @Deprecated("Facebook SDK uses onActivityResult for login callbacks")
     override fun onActivityResult(
@@ -205,6 +154,7 @@ class MainActivity : ComponentActivity() {
         callbackManager.onActivityResult(requestCode, resultCode, data)
     }
 }
+
 
 
 

@@ -1,36 +1,55 @@
 package com.wanderspectra.app
 
+import android.location.Geocoder
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.LatLng
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
-import com.wanderspectra.app.ui.theme.ButtonBlue
 import com.wanderspectra.app.ui.theme.PrimaryBlue
 import com.wanderspectra.app.ui.theme.Salsa
 import com.wanderspectra.app.ui.theme.SecondaryBlue
 import com.wanderspectra.app.ui.theme.SecondaryRed
 import com.wanderspectra.app.ui.theme.TanSongbird
-import java.util.concurrent.TimeUnit
-import com.google.firebase.Timestamp
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 private val AlertRed = Color(0xFFC34A5B)
 private val AlertCream = Color(0xFFEEE9D5)
@@ -122,15 +141,49 @@ fun CommunityAlertDetailScreen(
         LatLng(it.latitude, it.longitude)
     }
 
+    val context = LocalContext.current
+
     val publicLocation = if (
-        alert.latitude != null &&
-        alert.longitude != null &&
-        alert.latitude in -90.0..90.0 &&
-        alert.longitude in -180.0..180.0
+        alert.approximateLatitude != null &&
+        alert.approximateLongitude != null &&
+        alert.approximateLatitude in -90.0..90.0 &&
+        alert.approximateLongitude in -180.0..180.0
     ) {
-        LatLng(alert.latitude, alert.longitude)
+        LatLng(alert.approximateLatitude, alert.approximateLongitude)
     } else {
         null
+    }
+
+    var publicLocationAddress by remember(publicLocation) {
+        mutableStateOf("Loading location...")
+    }
+
+    LaunchedEffect(publicLocation) {
+        val location = publicLocation
+
+        if (location == null) {
+            publicLocationAddress = "Location unavailable"
+            return@LaunchedEffect
+        }
+
+        publicLocationAddress = "Loading location..."
+
+        publicLocationAddress = withContext(Dispatchers.IO) {
+            try {
+                @Suppress("DEPRECATION")
+                Geocoder(context, Locale.getDefault())
+                    .getFromLocation(
+                        location.latitude,
+                        location.longitude,
+                        1
+                    )
+                    ?.firstOrNull()
+                    ?.getAddressLine(0)
+                    ?: "Approximate location unavailable"
+            } catch (e: Exception) {
+                "Approximate location unavailable"
+            }
+        }
     }
 
     val cameraPositionState = rememberCameraPositionState()
@@ -254,9 +307,7 @@ fun CommunityAlertDetailScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = alert.lastKnownArea.ifBlank {
-                "Location unavailable"
-            },
+            text = publicLocationAddress,
             fontFamily = Salsa,
             fontSize = 18.sp,
             lineHeight = 23.sp,

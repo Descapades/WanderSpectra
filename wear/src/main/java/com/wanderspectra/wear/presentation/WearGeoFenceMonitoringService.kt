@@ -11,6 +11,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import com.wanderspectra.wear.location.WearLocationManager
+import androidx.core.app.NotificationCompat
 
 class WearGeofenceMonitoringService : Service() {
 
@@ -34,7 +35,6 @@ class WearGeofenceMonitoringService : Service() {
             val safeZone = WearSafetyStateRepository.activeSafeZone.value
 
             if (safeZone == null || !safeZone.monitoringEnabled) {
-                Log.d(TAG, "No enabled Safe Zone. Stopping monitoring.")
                 stopMonitoring()
                 return
             }
@@ -55,11 +55,6 @@ class WearGeofenceMonitoringService : Service() {
                             location.latitude,
                             location.longitude
                         )
-                        Log.d(
-                            TAG,
-                            "Elopement state after GPS check: " +
-                                    WearSafetyStateRepository.isElopementDetected.value
-                        )
                         val exitEvent = WearSafetyStateRepository.safeZoneExitEvent.value
 
                         if (exitEvent != null &&
@@ -74,11 +69,6 @@ class WearGeofenceMonitoringService : Service() {
                                         "timestamp=${exitEvent.timestamp}"
                             )
                         }
-
-                        Log.d(
-                            TAG,
-                            "Geofence checked: ${location.latitude}, ${location.longitude}"
-                        )
                     } else {
                         Log.w(TAG, "Location unavailable. Will retry.")
                     }
@@ -150,20 +140,11 @@ class WearGeofenceMonitoringService : Service() {
     }
 
     private fun createNotification(): Notification {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notification.Builder(this, CHANNEL_ID)
-                .setContentTitle("WanderSpectra")
-                .setContentText("Safe Zone monitoring is active")
-                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-                .setOngoing(true)
-                .build()
-        } else {
-            Notification.Builder(this)
-                .setContentTitle("WanderSpectra")
-                .setContentText("Safe Zone monitoring is active")
-                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-                .setOngoing(true)
-                .build()
-        }
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("WanderSpectra")
+            .setContentText("Safe Zone monitoring is active")
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .setOngoing(true)
+            .build()
     }
 }

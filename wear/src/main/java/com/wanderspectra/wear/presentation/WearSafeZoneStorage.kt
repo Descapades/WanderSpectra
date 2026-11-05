@@ -28,7 +28,6 @@ object WearSafeZoneStorage {
             .commit()
 
         if (saved) {
-            Log.d(TAG, "Safe Zone saved locally")
         } else {
             Log.e(TAG, "Failed to save Safe Zone locally")
         }
@@ -65,7 +64,6 @@ object WearSafeZoneStorage {
 
             WearSafetyStateRepository.updateActiveSafeZone(safeZone)
 
-            Log.d(TAG, "Safe Zone restored successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to restore Safe Zone", e)
         }
@@ -80,7 +78,6 @@ object WearSafeZoneStorage {
             .commit()
 
         if (cleared) {
-            Log.d(TAG, "Saved Safe Zone removed from local storage")
         } else {
             Log.e(TAG, "Failed to remove saved Safe Zone")
         }

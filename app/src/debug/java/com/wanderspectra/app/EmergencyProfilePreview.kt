@@ -41,7 +41,6 @@ private fun EmergencyProfilePopulatedPreview() {
             calmingStrategies =
                 "Use a quiet voice and allow personal space.",
             safetyConcerns = "May move toward nearby water",
-            safetyPrompt = "Stop and wait for your caregiver."
         ),
         onBack = {}
     )
