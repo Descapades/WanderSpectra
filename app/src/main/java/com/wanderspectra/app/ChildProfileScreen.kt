@@ -2,6 +2,8 @@ package com.wanderspectra.app
 
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -34,6 +36,8 @@ import com.wanderspectra.app.ui.theme.SecondaryBlue
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
+import com.wanderspectra.app.ui.theme.BackgroundCream
+import com.wanderspectra.app.ui.theme.CardCream
 
 import com.wanderspectra.app.ui.theme.TanSongbird
 
@@ -130,6 +134,16 @@ fun ViewChildProfile(
             .fillMaxSize()
             .padding(18.dp)
             .verticalScroll(rememberScrollState())
+            .background(
+                color = CardCream,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .border(
+                width = 1.dp,
+                color = PrimaryBlue,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .padding(20.dp)
     ) {
 
         Text(

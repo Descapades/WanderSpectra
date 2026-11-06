@@ -1,5 +1,6 @@
 package com.wanderspectra.app
 
+import SightingReportDetailScreen
 import android.location.Geocoder
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
@@ -50,13 +51,17 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.wanderspectra.app.ui.theme.CardCream
+import com.wanderspectra.app.ui.theme.EmergencyRed
+import com.google.android.gms.maps.model.LatLngBounds
 
 private val AlertRed = Color(0xFFC34A5B)
 private val AlertCream = Color(0xFFEEE9D5)
 private val ButtonPink = Color(0xFFE5A1A7)
 private val ProfileBlue = Color(0xFF9BBACA)
 
-private data class AlertSighting(
+data class AlertSighting(
     val id: String,
     val latitude: Double,
     val longitude: Double,
@@ -73,6 +78,18 @@ fun CommunityAlertDetailScreen(
     onReportSighting: () -> Unit,
     onViewChildProfile: (() -> Unit)? = null
 ) {
+    var selectedSighting by remember(alert.id) {
+        mutableStateOf<AlertSighting?>(null)
+    }
+
+    if (selectedSighting != null) {
+        SightingReportDetailScreen(
+            sighting = selectedSighting!!,
+            onBack = { selectedSighting = null }
+        )
+        return
+    }
+
     var sightings by remember(alert.id) {
         mutableStateOf<List<AlertSighting>>(emptyList())
     }
@@ -83,7 +100,7 @@ fun CommunityAlertDetailScreen(
 
     DisposableEffect(alert.id) {
         val registration = FirebaseFirestore.getInstance()
-            .collection("publicSightingReports")
+            .collection("sightingReports")
             .whereEqualTo("communityAlertId", alert.id)
             .orderBy("submittedAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
@@ -188,13 +205,44 @@ fun CommunityAlertDetailScreen(
 
     val cameraPositionState = rememberCameraPositionState()
 
-    LaunchedEffect(alert.id, publicLocation, latestSighting?.id) {
-        val mapLocation = latestLocation ?: publicLocation
+    LaunchedEffect(alert.id, publicLocation, sightings) {
+        val locations = buildList {
+            publicLocation?.let { add(it) }
 
-        mapLocation?.let {
-            cameraPositionState.animate(
-                CameraUpdateFactory.newLatLngZoom(it, 13f)
-            )
+            sightings.forEach { sighting ->
+                add(
+                    LatLng(
+                        sighting.latitude,
+                        sighting.longitude
+                    )
+                )
+            }
+        }
+
+        when (locations.size) {
+            0 -> Unit
+
+            1 -> {
+                cameraPositionState.animate(
+                    CameraUpdateFactory.newLatLngZoom(
+                        locations.first(),
+                        14f
+                    )
+                )
+            }
+
+            else -> {
+                val bounds = LatLngBounds.builder().apply {
+                    locations.forEach { include(it) }
+                }.build()
+
+                cameraPositionState.animate(
+                    CameraUpdateFactory.newLatLngBounds(
+                        bounds,
+                        100
+                    )
+                )
+            }
         }
     }
 
@@ -268,10 +316,11 @@ fun CommunityAlertDetailScreen(
                 ) {
                     publicLocation?.let { location ->
                         Marker(
-                            state = MarkerState(position = publicLocation),
+                            state = MarkerState(position = location),
                             title = "Last Known Area"
                         )
                     }
+
                     sightings.forEach { sighting ->
                         Marker(
                             state = MarkerState(
@@ -280,12 +329,11 @@ fun CommunityAlertDetailScreen(
                                     sighting.longitude
                                 )
                             ),
-                            title = if (sighting.id == latestSighting?.id) {
-                                "Latest Reported Sighting (Unverified)"
-                            } else {
-                                "Reported Sighting (Unverified)"
-                            },
-                            snippet = "Direction: ${sighting.direction}"
+                            title = "Reported Sighting (Unverified)",
+                            snippet = "Direction: ${sighting.direction}",
+                            icon = BitmapDescriptorFactory.defaultMarker(
+                                BitmapDescriptorFactory.HUE_AZURE
+                            )
                         )
                     }
                 }
@@ -375,52 +423,42 @@ fun CommunityAlertDetailScreen(
 
             else -> {
                 val dateFormatter = SimpleDateFormat(
-                    "MMM d, h:mm a",
+                    "MMM d, yyyy 'at' h:mm a",
                     Locale.getDefault()
                 )
 
                 sightings.forEach { sighting ->
                     Surface(
+                        onClick = {
+                            selectedSighting = sighting
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 10.dp),
                         shape = RoundedCornerShape(10.dp),
-                        color = AlertCream,
+                        color = CardCream,
                         border = BorderStroke(1.dp, PrimaryBlue)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(14.dp)
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Unverified Sighting",
+                                text = sighting.sightingTime?.toDate()?.let {
+                                    dateFormatter.format(it)
+                                } ?: "Unknown Date",
                                 fontFamily = Salsa,
                                 fontSize = 18.sp,
-                                color = SecondaryRed
+                                color = EmergencyRed,
+                                modifier = Modifier.weight(1f)
                             )
 
                             Text(
-                                text = "Seen: " + (
-                                        sighting.sightingTime?.toDate()?.let {
-                                            dateFormatter.format(it)
-                                        } ?: "Unknown"
-                                        ),
+                                text = "›",
                                 fontFamily = Salsa,
-                                color = PrimaryBlue
+                                fontSize = 28.sp,
+                                color = EmergencyRed
                             )
-
-                            Text(
-                                text = "Direction: ${sighting.direction}",
-                                fontFamily = Salsa,
-                                color = PrimaryBlue
-                            )
-
-                            if (sighting.details.isNotBlank()) {
-                                Text(
-                                    text = sighting.details,
-                                    fontFamily = Salsa,
-                                    color = PrimaryBlue
-                                )
-                            }
                         }
                     }
                 }

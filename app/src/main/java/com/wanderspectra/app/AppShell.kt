@@ -296,6 +296,10 @@ fun AppShell(
                                     onSaveSuccess = {
                                         editingSafeZoneId = null
                                         currentDestination = AppDestination.SAFE_ZONE_SETTINGS
+                                    },
+                                    onBack = {
+                                        editingSafeZoneId = null
+                                        currentDestination = AppDestination.SAFE_ZONE_SETTINGS
                                     }
                                 )
                             }
