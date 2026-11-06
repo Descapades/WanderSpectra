@@ -34,7 +34,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import androidx.compose.ui.Alignment
 import com.wanderspectra.app.ui.theme.CardCream
 import com.wanderspectra.app.ui.theme.EmergencyRed
 import com.wanderspectra.app.ui.theme.TanSongbird
@@ -363,28 +362,21 @@ private fun IncidentHistoryCard(
                 else -> "Not recorded"
             }
 
-            Row(
+            Text(
+                text = buildAnnotatedString {
+                    withStyle(SpanStyle(color = EmergencyRed)) {
+                        append("Resolution: ")
+                    }
+                    withStyle(SpanStyle(color = PrimaryBlue)) {
+                        append(resolutionText)
+                    }
+                },
+                fontFamily = Salsa,
+                fontSize = 20.sp,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                Text(
-                    text = "Resolution:",
-                    color = EmergencyRed,
-                    fontFamily = Salsa,
-                    fontSize = 20.sp
-                )
-
-                Text(
-                    text = resolutionText,
-                    color = PrimaryBlue,
-                    fontFamily = Salsa,
-                    fontSize = 20.sp,
-                    modifier = Modifier.weight(1f)
-                )
-            }
+                    .padding(start = 14.dp)
+            )
         }
 
         Row(
@@ -409,7 +401,7 @@ private fun IncidentHistoryCard(
     }
 }
 
-private fun getDestinationAddress(
+fun getDestinationAddress(
     context: Context,
     latitude: Double,
     longitude: Double

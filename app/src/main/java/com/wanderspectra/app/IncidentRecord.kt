@@ -19,5 +19,7 @@ data class IncidentRecord(
     val distanceTraveledMeters: Double? = null,
     val routePoints: List<Map<String, Any>> = emptyList(),
     val endLatitude: Double? = null,
-    val endLongitude: Double? = null
+    val endLongitude: Double? = null,
+    val notes: String = "",
+    val possibleTrigger: String = ""
 )

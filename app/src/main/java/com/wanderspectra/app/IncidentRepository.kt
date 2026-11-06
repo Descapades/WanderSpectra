@@ -394,7 +394,9 @@ class IncidentRepository(
                                 }
                             } ?: emptyList(),
                         endLatitude = document.getDouble("endLatitude"),
-                        endLongitude = document.getDouble("endLongitude")
+                        endLongitude = document.getDouble("endLongitude"),
+                        notes = document.getString("notes") ?: "",
+                        possibleTrigger = document.getString("possibleTrigger") ?: ""
                     )
                 }
 
@@ -409,4 +411,26 @@ class IncidentRepository(
             }
     }
 
+    fun updateIncidentNotes(
+        incidentId: String,
+        notes: String,
+        possibleTrigger: String,
+        onSuccess: () -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        firestore.collection("incidents")
+            .document(incidentId)
+            .update(
+                mapOf(
+                "notes" to notes,
+                "possibleTrigger" to possibleTrigger
+                )
+            )
+            .addOnSuccessListener {
+                onSuccess()
+            }
+            .addOnFailureListener { exception ->
+                onFailure(exception)
+            }
+    }
 }
