@@ -122,6 +122,30 @@ class SightingReportRepository(
             }
     }
 
+    fun getReportsForAlert(
+        communityAlertId: String,
+        onSuccess: (List<SightingReport>) -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        db.collection("sightingReports")
+            .whereEqualTo("communityAlertId", communityAlertId)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val reports = snapshot.documents.mapNotNull { document ->
+                    document.toObject(SightingReport::class.java)?.copy(
+                        id = document.id
+                    )
+                }.sortedByDescending {
+                    it.sightingTime?.seconds ?: 0L
+                }
+
+                onSuccess(reports)
+            }
+            .addOnFailureListener { exception ->
+                onFailure(exception)
+            }
+    }
+
     private fun notifyWorker(reportId: String, onResult: (Boolean) -> Unit) {
         FirebaseAuth.getInstance().currentUser
             ?.getIdToken(false)

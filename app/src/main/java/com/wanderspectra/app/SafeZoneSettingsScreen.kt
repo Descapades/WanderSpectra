@@ -43,6 +43,7 @@ import java.util.Locale
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -54,13 +55,16 @@ import com.wanderspectra.app.ui.theme.SecondaryBlue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.runtime.rememberCoroutineScope
+import com.wanderspectra.app.ui.theme.ButtonRed
+import com.wanderspectra.app.ui.theme.SecondaryRed
 import kotlinx.coroutines.launch
 
 @Composable
 fun SafeZoneSettingsContent(
     childId: String,
     editingZoneId: String? = null,
-    onSaveSuccess: () -> Unit = {}
+    onSaveSuccess: () -> Unit = {},
+    onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -437,6 +441,28 @@ fun SafeZoneSettingsContent(
         ) {
             Text(
                 text = "Save Zone",
+                fontFamily = Salsa,
+                fontSize = 16.sp,
+                modifier = Modifier.padding(vertical = 6.dp)
+            )
+        }
+
+
+
+        Button(
+            onClick = onBack,
+            enabled = !isSaving,
+            modifier = Modifier
+                .fillMaxWidth(0.85f),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, SecondaryRed),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = ButtonRed,
+                contentColor = SecondaryRed
+            )
+        ) {
+            Text(
+                text = "Back",
                 fontFamily = Salsa,
                 fontSize = 16.sp,
                 modifier = Modifier.padding(vertical = 6.dp)

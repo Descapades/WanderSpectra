@@ -615,12 +615,9 @@ fun HomeContent(
 
                 val cameraPositionState = rememberCameraPositionState()
 
-                var initialCameraPositionSet by remember {
-                    mutableStateOf(false)
-                }
-
-                LaunchedEffect(childLocations, focusedChildId) {
-                    if (initialCameraPositionSet || focusedChildId != null) {
+                LaunchedEffect(childLocations, children, focusedChildId) {
+                    // Preserve the existing zoom when a child is selected.
+                    if (focusedChildId != null) {
                         return@LaunchedEffect
                     }
 
@@ -633,7 +630,7 @@ fun HomeContent(
                     }
 
                     if (locations.size == 1) {
-                        cameraPositionState.move(
+                        cameraPositionState.animate(
                             CameraUpdateFactory.newLatLngZoom(
                                 locations.first(),
                                 16f
@@ -644,15 +641,13 @@ fun HomeContent(
                             locations.forEach { include(it) }
                         }.build()
 
-                        cameraPositionState.move(
+                        cameraPositionState.animate(
                             CameraUpdateFactory.newLatLngBounds(
                                 bounds,
                                 80
                             )
                         )
                     }
-
-                    initialCameraPositionSet = true
                 }
 
                 Surface(
