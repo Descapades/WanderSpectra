@@ -1,4 +1,4 @@
-package com.wanderspectra.app.model
+package com.wanderspectra.app
 
 /**
  * Represents a trusted individual in a child's WanderSpectra Safety Circle.
@@ -12,5 +12,8 @@ data class SafetyCircleMember(
     val childId: String = "",
     val name: String = "",
     val relationship: String = "",
-    val contactInformation: String = ""
+    val contactInformation: String = "",
+    val isActive: Boolean = true,
+    val elopementAlertsEnabled: Boolean = true,
+    val locationAccess: String = "DURING_ELOPEMENT"
 )

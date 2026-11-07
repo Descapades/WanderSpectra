@@ -40,6 +40,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -663,7 +664,7 @@ fun OnboardingField(
         text = label,
         color = SecondaryBlue,
         fontFamily = Salsa,
-        fontSize = 11.sp
+        fontSize = 16.sp
     )
 
     Spacer(modifier = Modifier.height(5.dp))
@@ -676,7 +677,7 @@ fun OnboardingField(
             Text(
                 text = placeholder,
                 fontFamily = Salsa,
-                fontSize = 12.sp,
+                fontSize = 16.sp,
                 color = PrimaryBlue
             )
         },

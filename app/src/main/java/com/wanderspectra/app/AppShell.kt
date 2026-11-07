@@ -273,7 +273,10 @@ fun AppShell(
                         }
                         AppDestination.SAFETY_CIRCLE -> SafetyCircleManagementScreen(
                             caregiverId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty(),
-                            childId = if (openIncidentId != null) emergencyChildId else child?.childId.orEmpty()
+                            childId = if (openIncidentId != null) emergencyChildId else child?.childId.orEmpty(),
+                            onBack = {
+                                currentDestination = AppDestination.HOME
+                            }
                         )
                         AppDestination.COMMUNITY -> CommunityContent()
                         AppDestination.CAREGIVER_ACCOUNT -> CaregiverAccountContent()

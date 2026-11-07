@@ -18,16 +18,35 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import com.wanderspectra.app.ui.theme.ButtonBlue
+import com.wanderspectra.app.ui.theme.ButtonRed
+import com.wanderspectra.app.ui.theme.CardCream
+import com.wanderspectra.app.ui.theme.EmergencyRed
 import com.wanderspectra.app.ui.theme.PrimaryBlue
 import com.wanderspectra.app.ui.theme.Salsa
+import com.wanderspectra.app.ui.theme.SecondaryBlue
+import com.wanderspectra.app.ui.theme.SecondaryRed
+import com.wanderspectra.app.ui.theme.TanSongbird
 
 data class SafetyCircleMemberUiModel(
     val memberId: String,
     val name: String,
     val relationship: String,
-    val contactInformation: String
+    val contactInformation: String,
+    val isActive: Boolean = true,
+    val elopementAlertsEnabled: Boolean = true,
+    val locationAccess: String = "DURING_ELOPEMENT"
 )
 
 @Composable
@@ -35,7 +54,9 @@ fun SafetyCircleContent(
     members: List<SafetyCircleMemberUiModel> = emptyList(),
     onAddMember: () -> Unit = {},
     onEditMember: (SafetyCircleMemberUiModel) -> Unit = {},
-    onRemoveMember: (SafetyCircleMemberUiModel) -> Unit = {}
+    onRemoveMember: (SafetyCircleMemberUiModel) -> Unit = {},
+    onViewMember: (SafetyCircleMemberUiModel) -> Unit = {},
+    onBack: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -44,34 +65,25 @@ fun SafetyCircleContent(
     ) {
         Text(
             text = "Safety Circle",
-            color = PrimaryBlue,
-            fontFamily = Salsa,
-            fontSize = 28.sp
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Manage the trusted people included in this child's Safety Circle.",
-            style = MaterialTheme.typography.bodyMedium
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Button(
-            onClick = onAddMember,
+            color = EmergencyRed,
+            fontFamily = TanSongbird,
+            fontSize = 22.sp,
+            textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Add Safety Circle Member")
-        }
+        )
 
         Spacer(modifier = Modifier.height(20.dp))
 
         if (members.isEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = CardCream
+                ),
+                border = BorderStroke(1.dp, PrimaryBlue),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 0.dp
                 )
             ) {
                 Column(
@@ -79,14 +91,18 @@ fun SafetyCircleContent(
                 ) {
                     Text(
                         text = "No Safety Circle members added yet.",
-                        style = MaterialTheme.typography.titleMedium
+                        fontFamily = Salsa,
+                        fontSize = 22.sp,
+                        color = SecondaryBlue
                     )
 
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
-                        text = "Use Add Safety Circle Member to begin building the child's trusted response group.",
-                        style = MaterialTheme.typography.bodyMedium
+                        text = "Use Add Member to begin building the child's trusted response group.",
+                        fontFamily = Salsa,
+                        fontSize = 16.sp,
+                        color = PrimaryBlue
                     )
                 }
             }
@@ -101,10 +117,54 @@ fun SafetyCircleContent(
                     SafetyCircleMemberCard(
                         member = member,
                         onEditMember = onEditMember,
-                        onRemoveMember = onRemoveMember
+                        onRemoveMember = onRemoveMember,
+                        onViewMember = onViewMember
                     )
                 }
             }
+        }
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Button(
+            onClick = onAddMember,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            shape = RoundedCornerShape(9.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = ButtonBlue,
+                contentColor = SecondaryBlue
+            ),
+            border = BorderStroke(1.dp, SecondaryBlue)
+        ) {
+            Text(
+                text = "Add Member",
+                fontFamily = Salsa,
+                fontSize = 18.sp,
+                maxLines = 1
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(
+            onClick = onBack,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            shape = RoundedCornerShape(9.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = ButtonRed,
+                contentColor = SecondaryRed
+            ),
+            border = BorderStroke(1.dp, SecondaryRed)
+        ) {
+            Text(
+                text = "Back",
+                fontFamily = Salsa,
+                fontSize = 18.sp,
+                maxLines = 1
+            )
         }
     }
 }
@@ -113,53 +173,105 @@ fun SafetyCircleContent(
 private fun SafetyCircleMemberCard(
     member: SafetyCircleMemberUiModel,
     onEditMember: (SafetyCircleMemberUiModel) -> Unit,
-    onRemoveMember: (SafetyCircleMemberUiModel) -> Unit
+    onRemoveMember: (SafetyCircleMemberUiModel) -> Unit,
+    onViewMember: (SafetyCircleMemberUiModel) -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = CardCream
+        ),
+        border = BorderStroke(1.dp, PrimaryBlue),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 0.dp
+        )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(
+                start = 16.dp,
+                top = 16.dp,
+                end = 16.dp
+            )
         ) {
             Text(
                 text = member.name,
-                color = PrimaryBlue,
+                color = EmergencyRed,
                 fontFamily = Salsa,
-                fontSize = 20.sp
+                fontSize = 24.sp
             )
-
-            Spacer(modifier = Modifier.height(4.dp))
 
             Text(
                 text = member.relationship,
-                style = MaterialTheme.typography.bodyMedium
+                color = PrimaryBlue,
+                fontFamily = Salsa,
+                fontSize = 20.sp,
+                modifier = Modifier.padding(start = 20.dp)
             )
-
-            Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = member.contactInformation,
-                style = MaterialTheme.typography.bodySmall
+                text = if (member.isActive) "● Active" else "● Inactive",
+                color = if (member.isActive) Color(0xFF83D9B4) else EmergencyRed,
+                fontFamily = Salsa,
+                fontSize = 22.sp,
+                modifier = Modifier.padding(start = 20.dp)
             )
+
+
+            Row {
+                Text(
+                    text = "Elopement Alerts: ",
+                    color = EmergencyRed,
+                    fontFamily = Salsa,
+                    fontSize = 20.sp
+                )
+                Text(
+                    text = if (member.elopementAlertsEnabled) "On" else "Off",
+                    color = PrimaryBlue,
+                    fontFamily = Salsa,
+                    fontSize = 20.sp
+                )
+            }
+
+            Row {
+
+                Text(
+                    text = buildAnnotatedString {
+                        withStyle(SpanStyle(color = EmergencyRed)) {
+                            append("Location Access: ")
+                        }
+                        withStyle(SpanStyle(color = PrimaryBlue)) {
+                            append(
+                                if (member.locationAccess == "ALWAYS") {
+                                    "Always"
+                                } else {
+                                    "During Elopement"
+                                }
+                            )
+                        }
+                    },
+                    fontFamily = Salsa,
+                    fontSize = 20.sp,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.End
             ) {
-                OutlinedButton(
-                    onClick = { onEditMember(member) },
-                    modifier = Modifier.weight(1f)
+                TextButton(
+                    onClick = { onViewMember(member) }
                 ) {
-                    Text("Edit")
-                }
-
-                OutlinedButton(
-                    onClick = { onRemoveMember(member) },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Remove")
+                    Text(
+                        text = "View Details >",
+                        fontFamily = Salsa,
+                        fontSize = 16.sp,
+                        color = PrimaryBlue
+                    )
                 }
             }
         }
