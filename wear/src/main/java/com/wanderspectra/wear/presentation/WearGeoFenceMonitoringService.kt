@@ -12,6 +12,10 @@ import android.os.Looper
 import android.util.Log
 import com.wanderspectra.wear.location.WearLocationManager
 import androidx.core.app.NotificationCompat
+import com.google.android.gms.wearable.Wearable
+import org.json.JSONObject
+import android.content.Context
+import android.location.Location
 
 class WearGeofenceMonitoringService : Service() {
 
@@ -27,6 +31,12 @@ class WearGeofenceMonitoringService : Service() {
     private var isMonitoring = false
     private var locationRequestInProgress = false
     private var lastHandledExitTimestamp: Long? = null
+    private var lastHandledReentryTimestamp: Long? = null
+    private var isRouteTracking = false
+    private var routeStartTimestamp: Long? = null
+    private var lastRouteLocation: Location? = null
+    private var routeDistanceMeters = 0.0
+    private val routePoints = mutableListOf<Location>()
 
     private val monitoringRunnable = object : Runnable {
         override fun run() {
@@ -55,12 +65,60 @@ class WearGeofenceMonitoringService : Service() {
                             location.latitude,
                             location.longitude
                         )
+                        if (isRouteTracking &&
+                            WearSafetyStateRepository.isElopementDetected.value
+                        ) {
+                            val previousLocation = lastRouteLocation
+
+                            if (previousLocation != null) {
+                                val results = FloatArray(1)
+
+                                Location.distanceBetween(
+                                    previousLocation.latitude,
+                                    previousLocation.longitude,
+                                    location.latitude,
+                                    location.longitude,
+                                    results
+                                )
+
+                                val distance = results[0]
+
+                                if (distance > 0f) {
+                                    routeDistanceMeters += distance.toDouble()
+                                }
+
+                                lastRouteLocation = Location("route_point").apply {
+                                    latitude = location.latitude
+                                    longitude = location.longitude
+                                    time = System.currentTimeMillis()
+                                }
+
+                                lastRouteLocation?.let { routePoint ->
+                                    routePoints.add(Location(routePoint))
+                                }
+                            }
+                        }
                         val exitEvent = WearSafetyStateRepository.safeZoneExitEvent.value
 
                         if (exitEvent != null &&
                             exitEvent.timestamp != lastHandledExitTimestamp
                         ) {
                             lastHandledExitTimestamp = exitEvent.timestamp
+                            isRouteTracking = true
+                            routeStartTimestamp = exitEvent.timestamp
+                            routeDistanceMeters = 0.0
+
+                            lastRouteLocation = Location("safe_zone_exit").apply {
+                                latitude = exitEvent.latitude
+                                longitude = exitEvent.longitude
+                                time = exitEvent.timestamp
+                            }
+
+                            routePoints.clear()
+
+                            lastRouteLocation?.let { startingPoint ->
+                                routePoints.add(Location(startingPoint))
+                            }
 
                             Log.i(
                                 TAG,
@@ -68,6 +126,51 @@ class WearGeofenceMonitoringService : Service() {
                                         "safeZoneId=${exitEvent.safeZoneId}, " +
                                         "timestamp=${exitEvent.timestamp}"
                             )
+                            sendSafeZoneExitEvent(exitEvent)
+                        }
+                        val reentryEvent =
+                            WearSafetyStateRepository.safeZoneReentryEvent.value
+
+                        if (reentryEvent != null &&
+                            reentryEvent.timestamp != lastHandledReentryTimestamp
+                        ) {
+                            lastHandledReentryTimestamp = reentryEvent.timestamp
+
+                            Log.i(
+                                TAG,
+                                "GPS route before re-entry: " +
+                                        "points=${routePoints.size}, " +
+                                        "distanceMeters=$routeDistanceMeters, " +
+                                        "tracking=$isRouteTracking"
+                            )
+                            isRouteTracking = false
+
+                            val finalRoutePoint = Location("safe_zone_reentry").apply {
+                                latitude = reentryEvent.latitude
+                                longitude = reentryEvent.longitude
+                                time = reentryEvent.timestamp
+                            }
+
+                            val previousRoutePoint = lastRouteLocation
+
+                            if (previousRoutePoint != null) {
+                                val finalDistance = previousRoutePoint.distanceTo(finalRoutePoint)
+
+                                if (finalDistance > 0f) {
+                                    routeDistanceMeters += finalDistance.toDouble()
+                                }
+                            }
+
+                            lastRouteLocation = finalRoutePoint
+                            routePoints.add(Location(finalRoutePoint))
+
+                            Log.i(
+                                TAG,
+                                "SAFE_ZONE_REENTRY: childId=${reentryEvent.childId}, " +
+                                        "safeZoneId=${reentryEvent.safeZoneId}, " +
+                                        "timestamp=${reentryEvent.timestamp}"
+                            )
+                            sendSafeZoneReentryEvent(reentryEvent)
                         }
                     } else {
                         Log.w(TAG, "Location unavailable. Will retry.")
@@ -110,6 +213,94 @@ class WearGeofenceMonitoringService : Service() {
         }
 
         return START_STICKY
+    }
+
+    private fun sendSafeZoneExitEvent(exitEvent: SafeZoneExitEvent) {
+        val caregiverNodeId = getSharedPreferences(
+            "wanderspectra_connection",
+            Context.MODE_PRIVATE
+        ).getString("caregiverNodeId", null)
+
+        if (caregiverNodeId.isNullOrBlank()) {
+            Log.w(TAG, "No caregiver phone saved. Cannot send Safe Zone exit.")
+            return
+        }
+
+        val payload = JSONObject().apply {
+            put("childId", exitEvent.childId)
+            put("safeZoneId", exitEvent.safeZoneId)
+            put("latitude", exitEvent.latitude)
+            put("longitude", exitEvent.longitude)
+            put("timestamp", exitEvent.timestamp)
+        }
+
+        Wearable.getMessageClient(this)
+            .sendMessage(
+                caregiverNodeId,
+                "/wanderspectra/safezone/exit",
+                payload.toString().toByteArray(Charsets.UTF_8)
+            )
+            .addOnSuccessListener {
+                Log.i(TAG, "Safe Zone exit message sent to caregiver phone")
+            }
+            .addOnFailureListener { exception ->
+                Log.e(TAG, "Failed to send Safe Zone exit message", exception)
+            }
+    }
+
+    private fun buildRoutePayload(): JSONObject {
+        return JSONObject().apply {
+            put("startTimestamp", routeStartTimestamp)
+            put("distanceTraveledMeters", routeDistanceMeters)
+
+            val pointsArray = org.json.JSONArray()
+
+            routePoints.forEach { point ->
+                pointsArray.put(
+                    JSONObject().apply {
+                        put("latitude", point.latitude)
+                        put("longitude", point.longitude)
+                        put("timestamp", point.time)
+                    }
+                )
+            }
+
+            put("routePoints", pointsArray)
+        }
+    }
+
+    private fun sendSafeZoneReentryEvent(reentryEvent: SafeZoneReentryEvent) {
+        val caregiverNodeId = getSharedPreferences(
+            "wanderspectra_connection",
+            Context.MODE_PRIVATE
+        ).getString("caregiverNodeId", null)
+
+        if (caregiverNodeId.isNullOrBlank()) {
+            Log.w(TAG, "No caregiver phone saved. Cannot send Safe Zone re-entry.")
+            return
+        }
+
+        val payload = JSONObject().apply {
+            put("childId", reentryEvent.childId)
+            put("safeZoneId", reentryEvent.safeZoneId)
+            put("latitude", reentryEvent.latitude)
+            put("longitude", reentryEvent.longitude)
+            put("timestamp", reentryEvent.timestamp)
+        }
+        payload.put("routeData", buildRoutePayload())
+
+        Wearable.getMessageClient(this)
+            .sendMessage(
+                caregiverNodeId,
+                "/wanderspectra/safezone/reentry",
+                payload.toString().toByteArray(Charsets.UTF_8)
+            )
+            .addOnSuccessListener {
+                Log.i(TAG, "Safe Zone re-entry message sent to caregiver phone")
+            }
+            .addOnFailureListener { exception ->
+                Log.e(TAG, "Failed to send Safe Zone re-entry message", exception)
+            }
     }
 
     private fun stopMonitoring() {

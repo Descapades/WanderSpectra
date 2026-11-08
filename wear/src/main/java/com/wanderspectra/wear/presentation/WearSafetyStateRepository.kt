@@ -25,6 +25,14 @@ data class SafeZoneExitEvent(
     val timestamp: Long
 )
 
+data class SafeZoneReentryEvent(
+    val childId: String,
+    val safeZoneId: String,
+    val latitude: Double,
+    val longitude: Double,
+    val timestamp: Long
+)
+
 object WearSafetyStateRepository {
 
     private val _isElopementDetected = MutableStateFlow(false)
@@ -42,6 +50,12 @@ object WearSafetyStateRepository {
     val safeZoneExitEvent: StateFlow<SafeZoneExitEvent?> =
         _safeZoneExitEvent.asStateFlow()
 
+    private val _safeZoneReentryEvent =
+        MutableStateFlow<SafeZoneReentryEvent?>(null)
+
+    val safeZoneReentryEvent: StateFlow<SafeZoneReentryEvent?> =
+        _safeZoneReentryEvent.asStateFlow()
+
     fun setElopementDetected(detected: Boolean) {
         _isElopementDetected.value = detected
     }
@@ -56,6 +70,7 @@ object WearSafetyStateRepository {
         if (previousZone != safeZone) {
             wasInsideSafeZone = null
             _safeZoneExitEvent.value = null
+            _safeZoneReentryEvent.value = null
         }
 
         _activeSafeZone.value = safeZone
@@ -71,6 +86,7 @@ object WearSafetyStateRepository {
         _isElopementDetected.value = false
         wasInsideSafeZone = null
         _safeZoneExitEvent.value = null
+        _safeZoneReentryEvent.value = null
     }
 
     fun checkLocationAgainstSafeZone(latitude: Double, longitude: Double) {
@@ -94,6 +110,17 @@ object WearSafetyStateRepository {
         // Generate an event only for an actual inside-to-outside transition.
         if (wasInsideSafeZone == true && !isInside) {
             _safeZoneExitEvent.value = SafeZoneExitEvent(
+                childId = safeZone.childId,
+                safeZoneId = safeZone.id,
+                latitude = latitude,
+                longitude = longitude,
+                timestamp = System.currentTimeMillis()
+            )
+        }
+
+        // Detect an outside-to-inside Safe Zone transition.
+        if (wasInsideSafeZone == false && isInside) {
+            _safeZoneReentryEvent.value = SafeZoneReentryEvent(
                 childId = safeZone.childId,
                 safeZoneId = safeZone.id,
                 latitude = latitude,

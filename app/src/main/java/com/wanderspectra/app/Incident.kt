@@ -8,5 +8,9 @@ data class Incident(
     val startTime: Long = 0L,
     val endTime: Long? = null,
     val lastKnownLat: Double? = null,
-    val lastKnownLng: Double? = null
+    val lastKnownLng: Double? = null,
+    val type: String = "ELOPEMENT",
+    val safeZoneId: String? = null,
+    val safeZoneName: String? = null,
+    val resolutionType: String? = null
 )
