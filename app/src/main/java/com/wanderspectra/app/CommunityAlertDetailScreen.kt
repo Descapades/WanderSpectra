@@ -78,9 +78,7 @@ fun CommunityAlertDetailScreen(
     onReportSighting: () -> Unit,
     onViewChildProfile: (() -> Unit)? = null
 ) {
-    var selectedSighting by remember(alert.id) {
-        mutableStateOf<AlertSighting?>(null)
-    }
+    var selectedSighting by remember(alert.id) { mutableStateOf<AlertSighting?>(null) }
 
     if (selectedSighting != null) {
         SightingReportDetailScreen(
@@ -90,13 +88,8 @@ fun CommunityAlertDetailScreen(
         return
     }
 
-    var sightings by remember(alert.id) {
-        mutableStateOf<List<AlertSighting>>(emptyList())
-    }
-
-    var sightingsError by remember(alert.id) {
-        mutableStateOf<String?>(null)
-    }
+    var sightings by remember(alert.id) { mutableStateOf<List<AlertSighting>>(emptyList()) }
+    var sightingsError by remember(alert.id) { mutableStateOf<String?>(null) }
 
     DisposableEffect(alert.id) {
         val registration = FirebaseFirestore.getInstance()
@@ -150,12 +143,6 @@ fun CommunityAlertDetailScreen(
         onDispose {
             registration.remove()
         }
-    }
-
-    val latestSighting = sightings.firstOrNull()
-
-    val latestLocation = latestSighting?.let {
-        LatLng(it.latitude, it.longitude)
     }
 
     val context = LocalContext.current

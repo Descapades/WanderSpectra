@@ -38,7 +38,9 @@ fun SafetyCircleMemberFormScreen(
     var assignmentsLoading by remember(member.memberId) { mutableStateOf(member.memberId.isNotBlank()) }
     var name by remember(member.memberId) { mutableStateOf(member.name) }
     var relationship by remember(member.memberId) { mutableStateOf(member.relationship) }
-    var contactInformation by remember(member.memberId) { mutableStateOf(member.contactInformation) }
+    var phone by remember(member.memberId) { mutableStateOf(member.phone) }
+    var email by remember(member.memberId) { mutableStateOf(member.email) }
+    var address by remember(member.memberId) { mutableStateOf(member.address) }
     var isActive by remember(member.memberId) { mutableStateOf(member.isActive) }
     var elopementAlertsEnabled by remember(member.memberId) { mutableStateOf(member.elopementAlertsEnabled) }
     var locationAccess by remember(member.memberId) { mutableStateOf(member.locationAccess) }
@@ -106,12 +108,25 @@ fun SafetyCircleMemberFormScreen(
         )
 
         OnboardingField(
-            label = "Contact Information",
-            placeholder = "Phone Number or Email",
-            value = contactInformation,
-            onValueChange = { contactInformation = it }
+            label = "Phone",
+            placeholder = "Phone Number",
+            value = phone,
+            onValueChange = { phone = it }
         )
 
+        OnboardingField(
+            label = "Email",
+            placeholder = "Email Address",
+            value = email,
+            onValueChange = { email = it }
+        )
+
+        OnboardingField(
+            label = "Address",
+            placeholder = "Street Address",
+            value = address,
+            onValueChange = { address = it }
+        )
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -277,7 +292,9 @@ fun SafetyCircleMemberFormScreen(
                     member.copy(
                         name = name.trim(),
                         relationship = relationship.trim(),
-                        contactInformation = contactInformation.trim(),
+                        phone = phone.trim(),
+                        email = email.trim(),
+                        address = address.trim(),
                         isActive = isActive,
                         elopementAlertsEnabled = elopementAlertsEnabled,
                         locationAccess = locationAccess
@@ -287,7 +304,7 @@ fun SafetyCircleMemberFormScreen(
             },
             enabled = name.isNotBlank() &&
                     relationship.isNotBlank() &&
-                    contactInformation.isNotBlank() &&
+                    phone.isNotBlank() &&
                     selectedChildIds.isNotEmpty() &&
                     !assignmentsLoading &&
                     errorMessage == null &&

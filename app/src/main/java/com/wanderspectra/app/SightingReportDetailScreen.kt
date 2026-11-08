@@ -12,7 +12,6 @@ import com.wanderspectra.app.AlertSighting
 import com.wanderspectra.app.ui.theme.PrimaryBlue
 import com.wanderspectra.app.ui.theme.Salsa
 import com.wanderspectra.app.ui.theme.SecondaryBlue
-import com.wanderspectra.app.ui.theme.SecondaryRed
 import java.text.SimpleDateFormat
 import java.util.Locale
 import androidx.compose.foundation.BorderStroke

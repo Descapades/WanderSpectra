@@ -607,7 +607,6 @@ fun LoginScreen(
                         color = SecondaryRed
                     )
                 }
-                // Login controls will go here next
             }
         }
     }

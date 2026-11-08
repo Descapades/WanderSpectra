@@ -6,7 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
-/** Repository adapter; the existing SafetyCircleContent remains reusable. */
+
 @Composable
 fun SafetyCircleManagementScreen(
     caregiverId: String,
@@ -23,6 +23,7 @@ fun SafetyCircleManagementScreen(
         var error by remember { mutableStateOf<String?>(null) }
         var removal by remember { mutableStateOf<SafetyCircleMember?>(null) }
         var formMember by remember { mutableStateOf<SafetyCircleMember?>(null) }
+        var viewingMember by remember { mutableStateOf<SafetyCircleMember?>(null) }
         val available = caregiverId.isNotBlank() && childId.isNotBlank()
         var disposed by remember { mutableStateOf(false) }
         DisposableEffect(Unit) { onDispose { disposed = true } }
@@ -103,8 +104,23 @@ fun SafetyCircleManagementScreen(
                     modifier = Modifier.weight(1f)
                 ) {
                     val selectedMember = formMember
+                    val selectedViewingMember = viewingMember
 
-                    if (selectedMember != null) {
+                    if (selectedViewingMember != null) {
+                        SafetyCircleMemberDetailsScreen(
+                            member = selectedViewingMember,
+                            onBack = {
+                                viewingMember = null
+                            },
+                            onEdit = {
+                                formMember = selectedViewingMember
+                                viewingMember = null
+                            },
+                            onRemove = {
+                                removal = selectedViewingMember
+                            }
+                        )
+                    } else if (selectedMember != null) {
                         SafetyCircleMemberFormScreen(
                             member = selectedMember,
                             saveError = error,
@@ -153,7 +169,7 @@ fun SafetyCircleManagementScreen(
                                     memberId = member.memberId,
                                     name = member.name,
                                     relationship = member.relationship,
-                                    contactInformation = member.contactInformation,
+                                    phone = member.phone,
                                     isActive = member.isActive,
                                     elopementAlertsEnabled = member.elopementAlertsEnabled,
                                     locationAccess = member.locationAccess
@@ -168,20 +184,10 @@ fun SafetyCircleManagementScreen(
                                     )
                                 }
                             },
-                            onEditMember = { ui ->
-                                if (!busy && !loading) {
-                                    error = null
-                                    formMember = members.find { it.memberId == ui.memberId }
-                                }
-                            },
-                            onRemoveMember = { ui ->
-                                if (!busy && !loading) removal =
-                                    members.find { it.memberId == ui.memberId }
-                            },
                             onViewMember = { ui ->
                                 if (!busy && !loading) {
                                     error = null
-                                    formMember = members.find { it.memberId == ui.memberId }
+                                    viewingMember = members.find { it.memberId == ui.memberId }
                                 }
                             },
                             onBack = onBack
@@ -210,6 +216,9 @@ fun SafetyCircleManagementScreen(
                                     if (!disposed) {
                                         members =
                                             members.filterNot { it.memberId == member.memberId }
+                                        if (viewingMember?.memberId == member.memberId) {
+                                            viewingMember = null
+                                        }
                                         busy = false
                                         removal = null
                                     }

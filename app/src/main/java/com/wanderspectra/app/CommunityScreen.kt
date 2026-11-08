@@ -340,8 +340,6 @@ fun CommunityAlertCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Distance will appear when an approved
-                // approximate distance is available.
                 val distanceMiles = alert.distanceMiles
 
                 if (distanceMiles != null) {

@@ -145,8 +145,6 @@ class SafeZoneExitListenerService : WearableListenerService() {
             val longitude = payload.getDouble("longitude")
             val timestamp = payload.getLong("timestamp")
             val routeData = payload.optJSONObject("routeData")
-            val routeStartTimestamp = routeData?.optLong("startTimestamp")
-            val distanceTraveledMeters = routeData?.optDouble("distanceTraveledMeters")
             val routePoints = routeData?.optJSONArray("routePoints")
 
             val validRoutePoints = mutableListOf<Map<String, Any>>()

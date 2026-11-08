@@ -51,22 +51,18 @@ import java.util.Locale
 
 private val ZoneBlue = Color(0xFF4681B2)
 private val ZoneRed = Color(0xFFC34A5B)
-private val ZoneYellow = Color(0xFFFAE3A6)
-private val ZoneCream = Color(0xFFEEE9D5)
 private val ZonePinkButton = Color(0xFFE2A0A2)
 private val ZoneBlueButton = Color(0xFFA9C8D9)
 
 @Composable
 fun SafeZoneScreen(
     onAddClick: () -> Unit = {},
-    onEditClick: (String) -> Unit = {},
-    onDeleteClick: () -> Unit = {}
+    onEditClick: (String) -> Unit = {}
 ) {
     var safeZones by remember { mutableStateOf<List<SafeZone>>(emptyList()) }
     var childProfiles by remember { mutableStateOf<List<ChildProfile>>(emptyList()) }
     var childMonitoring by remember { mutableStateOf<Map<String, ChildSafeZoneMonitoring>>(emptyMap()) }
     var loading by remember { mutableStateOf(true) }
-    var monitoring by remember { mutableStateOf(false) }
     var updatingMonitoring by remember { mutableStateOf(false) }
     var monitoringStatuses by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     val context = LocalContext.current

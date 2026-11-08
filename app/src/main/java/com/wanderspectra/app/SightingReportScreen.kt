@@ -40,8 +40,6 @@ import com.wanderspectra.app.ui.theme.ButtonBlue
 private val SightingBlue = Color(0xFF4681B2)
 private val SightingDarkBlue = Color(0xFF194F79)
 private val SightingRed = Color(0xFFC34A5B)
-private val SightingCream = Color(0xFFEEE9D5)
-private val SightingBorder = Color(0xFF526B99)
 private val SightingButtonPink = Color(0xFFE5A1A7)
 
 @Composable
@@ -69,7 +67,6 @@ fun SightingReportScreen(
         val latitude = alert.latitude
         val longitude = alert.longitude
 
-        // Use only an approved public alert location.
         if (
             latitude != null &&
             longitude != null &&

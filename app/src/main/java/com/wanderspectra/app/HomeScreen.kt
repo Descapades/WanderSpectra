@@ -69,19 +69,16 @@ import java.util.Locale
 
 private val HomeBlue = Color(0xFF4681B2)
 private val HomeRed = Color(0xFFC34A5B)
-private val HomeMint = Color(0xFF8EDCB4)
-private val HomeYellow = Color(0xFFFAE3A6)
-private val HomeCream = Color(0xFFEEE9D5)
 private val HomeButtonBlue = Color(0xFFA9C8D9)
 private val HomeButtonRed = Color(0xFFE2A0A2)
 
 private val ChildMarkerColors = listOf(
-    Color(0xFFC94B5B), // Red
-    Color(0xFF4681B2), // Blue
-    Color(0xFF39885B), // Green
-    Color(0xFFC69B23), // Yellow
-    Color(0xFF8B63B5), // Purple
-    Color(0xFFDB803B)  // Orange
+    Color(0xFFC94B5B),
+    Color(0xFF4681B2),
+    Color(0xFF39885B),
+    Color(0xFFC69B23),
+    Color(0xFF8B63B5),
+    Color(0xFFDB803B)
 )
 
 fun formatLastUpdatedTime(timestamp: Long): String {
@@ -158,8 +155,6 @@ fun HomeContent(
         onChildMissing: (ChildProfile) -> Unit,
         onChildSelected: () -> Unit
     ) {
-
-        val childRepository = remember { ChildProfileRepository() }
         val wearableRepository = remember { WearableRepository() }
         val childMonitoringRepository = remember { ChildSafeZoneMonitoringRepository() }
         var childSafeZoneMonitoring by remember(child.childId) { mutableStateOf<ChildSafeZoneMonitoring?>(null) }
@@ -460,11 +455,7 @@ fun HomeContent(
         onChildFocused: (String) -> Unit
     ) {
         val context = LocalContext.current
-        val childRepository = remember { ChildProfileRepository() }
         val wearableRepository = remember { WearableRepository() }
-        var wearableLocation by remember { mutableStateOf<LatLng?>(null) }
-        var wearableDeviceId by remember { mutableStateOf<String?>(null) }
-        var trackedChildId by remember { mutableStateOf<String?>(null) }
         var childLocations by remember { mutableStateOf<Map<String, LatLng>>(emptyMap()) }
         var childMarkerIcons by remember { mutableStateOf<Map<String, BitmapDescriptor>>(emptyMap()) }
 
@@ -601,9 +592,6 @@ fun HomeContent(
             }
         }
 
-        val displayLocation = children.firstNotNullOfOrNull { child ->
-            childLocations[child.childId]
-        }
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -616,7 +604,6 @@ fun HomeContent(
                 val cameraPositionState = rememberCameraPositionState()
 
                 LaunchedEffect(childLocations, children, focusedChildId) {
-                    // Preserve the existing zoom when a child is selected.
                     if (focusedChildId != null) {
                         return@LaunchedEffect
                     }

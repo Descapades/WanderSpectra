@@ -38,15 +38,7 @@ import com.wanderspectra.app.ui.theme.CardCream
 import com.wanderspectra.app.ui.theme.EmergencyRed
 import com.wanderspectra.app.ui.theme.TanSongbird
 
-/**
- * SCRUM-44: Reusable Incident History interface.
- *
- * Receives previously retrieved incidents for the selected child.
- * The calling screen is responsible for loading the records and
- * responding when the caregiver chooses View Report.
- *
- * This component does not access Firebase or modify incident data.
- */
+
 @Composable
 fun IncidentHistoryContent(
     incidents: List<IncidentRecord>,
@@ -113,11 +105,6 @@ fun IncidentHistoryContent(
     }
 }
 
-/**
- * Displays a summary of one stored incident.
- *
- * The full record is passed to the caller when View Report is selected.
- */
 @Composable
 private fun IncidentHistoryCard(
     incident: IncidentRecord,

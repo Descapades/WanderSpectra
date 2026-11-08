@@ -57,7 +57,6 @@ fun AddAnotherChild(
     var childName by remember { mutableStateOf("") }
     var preferredName by remember { mutableStateOf("") }
     var birthdate by remember { mutableStateOf("") }
-    var photoUrl by remember { mutableStateOf("") }
     var height by remember { mutableStateOf("") }
     var weight by remember { mutableStateOf("") }
     var hairColor by remember { mutableStateOf("") }

@@ -25,14 +25,7 @@ import com.wanderspectra.app.ui.theme.PrimaryBlue
 import com.wanderspectra.app.ui.theme.Salsa
 import com.wanderspectra.app.ui.theme.TanSongbird
 
-/**
- * SCRUM-44: Connects incident retrieval to the reusable history interface.
- *
- * The calling screen must supply the selected child's ID.
- *
- * This component does not create incidents, modify Firestore rules,
- * or change the application's shared navigation.
- */
+
 @Composable
 fun IncidentHistoryScreen(
     childId: String,
@@ -41,24 +34,9 @@ fun IncidentHistoryScreen(
     modifier: Modifier = Modifier
 ) {
     val repository = remember { IncidentRepository() }
+    var refreshVersion by remember(childId) { mutableStateOf(0) }
+    var loadState by remember(childId) { mutableStateOf<IncidentHistoryLoadState>(IncidentHistoryLoadState.Loading) }
 
-    var refreshVersion by remember(childId) {
-        mutableStateOf(0)
-    }
-
-    var loadState by remember(childId) {
-        mutableStateOf<IncidentHistoryLoadState>(
-            IncidentHistoryLoadState.Loading
-        )
-    }
-
-    /**
-     * Retrieve incidents when the selected child changes
-     * or the caregiver requests a retry.
-     *
-     * Ignore callbacks from requests belonging to an older child
-     * after the selection changes or the screen is disposed.
-     */
     DisposableEffect(childId, refreshVersion) {
         var acceptingResults = true
 
@@ -172,13 +150,6 @@ fun IncidentHistoryScreen(
         }
     }
 }
-
-/**
- * Separates loading, successful retrieval, missing selection,
- * and retrieval errors.
- *
- * An empty successful result is not treated as a Firebase error.
- */
 private sealed class IncidentHistoryLoadState {
 
     object Loading : IncidentHistoryLoadState()

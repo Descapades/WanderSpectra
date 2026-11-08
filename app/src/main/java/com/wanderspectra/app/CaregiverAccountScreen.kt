@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextAlign
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.wanderspectra.app.ui.theme.ButtonBlue
@@ -219,10 +220,22 @@ fun CaregiverAccountContent() {
                 val fullName = "$firstName $lastName".trim()
 
                 Text(
-                    text = fullName.ifBlank { "Caregiver Name" },
+                    text = "Caregiver Account",
                     color = EmergencyRed,
                     fontFamily = TanSongbird,
-                    fontSize = 24.sp
+                    fontSize = 22.sp,
+                    lineHeight = 40.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Text(
+                    text = fullName.ifBlank { "Caregiver Name" },
+                    color = PrimaryBlue,
+                    fontFamily = TanSongbird,
+                    fontSize = 16.sp
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))

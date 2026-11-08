@@ -43,15 +43,10 @@ object CommunityAlertLocationUtils {
         alertLongitude: Double,
         radiusKm: Double
     ): Boolean {
-
-        // Participant must opt in to Community Alerts.
         if (!participant.optedIn) return false
 
-        // Participant must have a recorded location.
         val latitude = participant.latitude ?: return false
         val longitude = participant.longitude ?: return false
-
-        // Location must have been updated within the last 30 minutes.
         val lastUpdated = participant.locationUpdatedAt ?: return false
         val thirtyMinutesMillis = 30 * 60 * 1000L
         val locationAge = System.currentTimeMillis() - lastUpdated.toDate().time
@@ -60,7 +55,6 @@ object CommunityAlertLocationUtils {
             return false
         }
 
-        // Participant must be inside the configured alert radius.
         return isWithinRadius(
             alertLatitude = alertLatitude,
             alertLongitude = alertLongitude,

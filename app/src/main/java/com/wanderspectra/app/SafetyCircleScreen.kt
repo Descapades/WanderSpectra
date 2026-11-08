@@ -13,8 +13,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -43,7 +41,7 @@ data class SafetyCircleMemberUiModel(
     val memberId: String,
     val name: String,
     val relationship: String,
-    val contactInformation: String,
+    val phone: String,
     val isActive: Boolean = true,
     val elopementAlertsEnabled: Boolean = true,
     val locationAccess: String = "DURING_ELOPEMENT"
@@ -53,15 +51,18 @@ data class SafetyCircleMemberUiModel(
 fun SafetyCircleContent(
     members: List<SafetyCircleMemberUiModel> = emptyList(),
     onAddMember: () -> Unit = {},
-    onEditMember: (SafetyCircleMemberUiModel) -> Unit = {},
-    onRemoveMember: (SafetyCircleMemberUiModel) -> Unit = {},
     onViewMember: (SafetyCircleMemberUiModel) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp)
+            .padding(
+                start = 24.dp,
+                top = 24.dp,
+                end = 24.dp,
+                bottom = 0.dp
+            )
     ) {
         Text(
             text = "Safety Circle",
@@ -108,6 +109,7 @@ fun SafetyCircleContent(
             }
         } else {
             LazyColumn(
+                modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(
@@ -116,8 +118,6 @@ fun SafetyCircleContent(
                 ) { member ->
                     SafetyCircleMemberCard(
                         member = member,
-                        onEditMember = onEditMember,
-                        onRemoveMember = onRemoveMember,
                         onViewMember = onViewMember
                     )
                 }
@@ -140,30 +140,7 @@ fun SafetyCircleContent(
             Text(
                 text = "Add Member",
                 fontFamily = Salsa,
-                fontSize = 18.sp,
-                maxLines = 1
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Button(
-            onClick = onBack,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(9.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = ButtonRed,
-                contentColor = SecondaryRed
-            ),
-            border = BorderStroke(1.dp, SecondaryRed)
-        ) {
-            Text(
-                text = "Back",
-                fontFamily = Salsa,
-                fontSize = 18.sp,
-                maxLines = 1
+                fontSize = 18.sp
             )
         }
     }
@@ -172,8 +149,6 @@ fun SafetyCircleContent(
 @Composable
 private fun SafetyCircleMemberCard(
     member: SafetyCircleMemberUiModel,
-    onEditMember: (SafetyCircleMemberUiModel) -> Unit,
-    onRemoveMember: (SafetyCircleMemberUiModel) -> Unit,
     onViewMember: (SafetyCircleMemberUiModel) -> Unit
 ) {
     Card(

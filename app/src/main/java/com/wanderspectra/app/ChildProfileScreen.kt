@@ -145,14 +145,20 @@ fun ViewChildProfile(
             )
             .padding(20.dp)
     ) {
+        Text(
+            text = "Child Profile",
+            color = EmergencyRed,
+            fontFamily = TanSongbird,
+            fontSize = 20.sp
+        )
 
         Text(
             text = child.preferredName.ifBlank {
                 child.fullName
             },
-            color = EmergencyRed,
+            color = PrimaryBlue,
             fontFamily = TanSongbird,
-            fontSize = 20.sp
+            fontSize = 16.sp
         )
         if (child.photoUrl.isNotBlank()) {
             Spacer(modifier = Modifier.height(12.dp))

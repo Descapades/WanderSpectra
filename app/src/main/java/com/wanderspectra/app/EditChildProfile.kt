@@ -64,7 +64,6 @@ fun EditChildProfile(
     var elopementTriggers by remember(child.childId) { mutableStateOf(child.elopementTriggers) }
     var calmingStrategies by remember(child.childId) { mutableStateOf(child.calmingStrategies) }
     var safetyConcerns by remember(child.childId) { mutableStateOf(child.safetyConcerns) }
-    var photoUrl by remember(child.childId) { mutableStateOf(child.photoUrl) }
     var selectedPhotoUri by remember(child.childId) { mutableStateOf<Uri?>(null) }
     val photoPickerLauncher =
         rememberLauncherForActivityResult(

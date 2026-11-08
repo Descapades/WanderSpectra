@@ -41,7 +41,7 @@ class SafetyCircleRepository(
 
         val primaryChildId = member.childId
             .takeIf { it in selectedChildIds }
-            ?: selectedChildIds.sorted().first()
+            ?: selectedChildIds.min()
 
         val memberToSave = member.copy(
             memberId = document.id,
@@ -103,77 +103,6 @@ class SafetyCircleRepository(
             .addOnFailureListener { onError(it) }
     }
 
-    fun saveMember(
-        member: SafetyCircleMember,
-        onSuccess: (SafetyCircleMember) -> Unit,
-        onError: (Exception) -> Unit
-    ) {
-        val documentReference =
-            if (member.memberId.isBlank()) {
-                safetyCircleCollection.document()
-            } else {
-                safetyCircleCollection.document(member.memberId)
-            }
-
-        val memberToSave = member.copy(
-            memberId = documentReference.id
-        )
-
-        documentReference
-            .set(memberToSave)
-            .addOnSuccessListener {
-                onSuccess(memberToSave)
-            }
-            .addOnFailureListener { exception ->
-                onError(exception)
-            }
-    }
-
-    fun getMember(
-        memberId: String,
-        onSuccess: (SafetyCircleMember?) -> Unit,
-        onError: (Exception) -> Unit
-    ) {
-        safetyCircleCollection
-            .document(memberId)
-            .get()
-            .addOnSuccessListener { document ->
-                val member = document.toObject(
-                    SafetyCircleMember::class.java
-                )
-
-                onSuccess(member)
-            }
-            .addOnFailureListener { exception ->
-                onError(exception)
-            }
-    }
-
-    fun getMembersForChild(
-        caregiverId: String,
-        childId: String,
-        onSuccess: (List<SafetyCircleMember>) -> Unit,
-        onError: (Exception) -> Unit
-    ) {
-        safetyCircleCollection
-            .whereEqualTo("caregiverId", caregiverId)
-            .whereEqualTo("childId", childId)
-            .get()
-            .addOnSuccessListener { querySnapshot ->
-
-                val members = querySnapshot.documents.mapNotNull { document ->
-                    document.toObject(
-                        SafetyCircleMember::class.java
-                    )
-                }
-
-                onSuccess(members)
-            }
-            .addOnFailureListener { exception ->
-                onError(exception)
-            }
-    }
-
     fun getMembersForCaregiver(
         caregiverId: String,
         onSuccess: (List<SafetyCircleMember>) -> Unit,
@@ -193,67 +122,6 @@ class SafetyCircleRepository(
                 }
 
                 onSuccess(members)
-            }
-            .addOnFailureListener { exception ->
-                onError(exception)
-            }
-    }
-
-    fun assignChildToMember(
-        memberId: String,
-        childId: String,
-        onSuccess: () -> Unit,
-        onError: (Exception) -> Unit
-    ) {
-        if (memberId.isBlank() || childId.isBlank()) {
-            onError(
-                IllegalArgumentException(
-                    "Member ID and child ID are required."
-                )
-            )
-            return
-        }
-
-        val assignment = mapOf(
-            "childId" to childId,
-            "assignedAt" to FieldValue.serverTimestamp()
-        )
-
-        safetyCircleCollection
-            .document(memberId)
-            .collection("assignedChildren")
-            .document(childId)
-            .set(assignment)
-            .addOnSuccessListener {
-                onSuccess()
-            }
-            .addOnFailureListener { exception ->
-                onError(exception)
-            }
-    }
-
-    fun removeChildFromMember(
-        memberId: String,
-        childId: String,
-        onSuccess: () -> Unit,
-        onError: (Exception) -> Unit
-    ) {
-        if (memberId.isBlank() || childId.isBlank()) {
-            onError(
-                IllegalArgumentException(
-                    "Member ID and child ID are required."
-                )
-            )
-            return
-        }
-
-        safetyCircleCollection
-            .document(memberId)
-            .collection("assignedChildren")
-            .document(childId)
-            .delete()
-            .addOnSuccessListener {
-                onSuccess()
             }
             .addOnFailureListener { exception ->
                 onError(exception)
@@ -308,52 +176,6 @@ class SafetyCircleRepository(
                 }
 
                 onSuccess(isAssigned)
-            }
-            .addOnFailureListener { onError(it) }
-    }
-
-
-    fun saveChildAssignments(
-        memberId: String,
-        selectedChildIds: Set<String>,
-        onSuccess: () -> Unit,
-        onError: (Exception) -> Unit
-    ) {
-        if (memberId.isBlank() || selectedChildIds.isEmpty()) {
-            onError(
-                IllegalArgumentException(
-                    "A member and at least one child are required."
-                )
-            )
-            return
-        }
-
-        val assignments = safetyCircleCollection
-            .document(memberId)
-            .collection("assignedChildren")
-
-        assignments.get()
-            .addOnSuccessListener { snapshot ->
-                val existingIds = snapshot.documents.map { it.id }.toSet()
-                val batch = firestore.batch()
-
-                (selectedChildIds - existingIds).forEach { childId ->
-                    batch.set(
-                        assignments.document(childId),
-                        mapOf(
-                            "childId" to childId,
-                            "assignedAt" to FieldValue.serverTimestamp()
-                        )
-                    )
-                }
-
-                (existingIds - selectedChildIds).forEach { childId ->
-                    batch.delete(assignments.document(childId))
-                }
-
-                batch.commit()
-                    .addOnSuccessListener { onSuccess() }
-                    .addOnFailureListener { onError(it) }
             }
             .addOnFailureListener { onError(it) }
     }
