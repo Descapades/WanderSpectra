@@ -35,7 +35,8 @@ fun SafetyCircleContent(
     members: List<SafetyCircleMemberUiModel> = emptyList(),
     onAddMember: () -> Unit = {},
     onEditMember: (SafetyCircleMemberUiModel) -> Unit = {},
-    onRemoveMember: (SafetyCircleMemberUiModel) -> Unit = {}
+    onRemoveMember: (SafetyCircleMemberUiModel) -> Unit = {},
+    actionsEnabled: Boolean = true
 ) {
     Column(
         modifier = Modifier
@@ -60,6 +61,7 @@ fun SafetyCircleContent(
 
         Button(
             onClick = onAddMember,
+            enabled = actionsEnabled,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Add Safety Circle Member")
@@ -101,7 +103,8 @@ fun SafetyCircleContent(
                     SafetyCircleMemberCard(
                         member = member,
                         onEditMember = onEditMember,
-                        onRemoveMember = onRemoveMember
+                        onRemoveMember = onRemoveMember,
+                        actionsEnabled = actionsEnabled
                     )
                 }
             }
@@ -113,7 +116,8 @@ fun SafetyCircleContent(
 private fun SafetyCircleMemberCard(
     member: SafetyCircleMemberUiModel,
     onEditMember: (SafetyCircleMemberUiModel) -> Unit,
-    onRemoveMember: (SafetyCircleMemberUiModel) -> Unit
+    onRemoveMember: (SafetyCircleMemberUiModel) -> Unit,
+    actionsEnabled: Boolean
 ) {
     Card(
         modifier = Modifier.fillMaxWidth()
@@ -150,6 +154,7 @@ private fun SafetyCircleMemberCard(
             ) {
                 OutlinedButton(
                     onClick = { onEditMember(member) },
+                    enabled = actionsEnabled,
                     modifier = Modifier.weight(1f)
                 ) {
                     Text("Edit")
@@ -157,6 +162,7 @@ private fun SafetyCircleMemberCard(
 
                 OutlinedButton(
                     onClick = { onRemoveMember(member) },
+                    enabled = actionsEnabled,
                     modifier = Modifier.weight(1f)
                 ) {
                     Text("Remove")
