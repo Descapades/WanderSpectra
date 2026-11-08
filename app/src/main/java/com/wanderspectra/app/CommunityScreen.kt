@@ -33,7 +33,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
 @Composable
-fun CommunityContent() {
+fun CommunityContent(
+    onBackHandlerChanged: (() -> Unit) -> Unit,
+    onBackAvailabilityChanged: (Boolean) -> Unit
+) {
     val repository = remember { CommunityAlertRepository() }
     var alerts by remember { mutableStateOf<List<CommunityAlert>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -45,6 +48,18 @@ fun CommunityContent() {
     var profileLoading by remember { mutableStateOf(false) }
     var profileError by remember { mutableStateOf<String?>(null) }
     var submissionMessage by remember { mutableStateOf<String?>(null) }
+
+    SideEffect {
+        onBackAvailabilityChanged(selectedAlert != null)
+
+        onBackHandlerChanged {
+            when {
+                showingEmergencyProfile -> showingEmergencyProfile = false
+                showingSightingForm -> showingSightingForm = false
+                selectedAlert != null -> selectedAlert = null
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         while (isActive) {

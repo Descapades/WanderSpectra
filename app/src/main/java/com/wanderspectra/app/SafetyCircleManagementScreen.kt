@@ -14,7 +14,8 @@ fun SafetyCircleManagementScreen(
     repository: SafetyCircleRepository = remember {
         SafetyCircleRepository()
     },
-    onBack: () -> Unit = {}
+    onBackHandlerChanged: (() -> Unit) -> Unit,
+    onBackAvailabilityChanged: (Boolean) -> Unit
 ) {
     key(caregiverId, childId) {
         var members by remember { mutableStateOf<List<SafetyCircleMember>>(emptyList()) }
@@ -26,6 +27,22 @@ fun SafetyCircleManagementScreen(
         var viewingMember by remember { mutableStateOf<SafetyCircleMember?>(null) }
         val available = caregiverId.isNotBlank() && childId.isNotBlank()
         var disposed by remember { mutableStateOf(false) }
+
+        SideEffect {
+            onBackAvailabilityChanged(
+                viewingMember != null || formMember != null || removal != null
+            )
+
+            onBackHandlerChanged {
+                when {
+                    busy -> Unit
+                    removal != null -> removal = null
+                    formMember != null -> formMember = null
+                    viewingMember != null -> viewingMember = null
+                }
+            }
+        }
+
         DisposableEffect(Unit) { onDispose { disposed = true } }
         fun load() {
             if (!available) return
@@ -189,8 +206,7 @@ fun SafetyCircleManagementScreen(
                                     error = null
                                     viewingMember = members.find { it.memberId == ui.memberId }
                                 }
-                            },
-                            onBack = onBack
+                            }
                         )
                     }
                 }

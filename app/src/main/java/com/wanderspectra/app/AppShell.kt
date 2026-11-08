@@ -83,6 +83,10 @@ fun AppShell(
     var showIncidentHistoryMenu by remember { mutableStateOf(false) }
     var currentDestination by remember { mutableStateOf(AppDestination.HOME) }
     var previousDestination by remember { mutableStateOf(AppDestination.HOME) }
+    var communityBackHandler by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var communityCanGoBack by remember { mutableStateOf(false) }
+    var safetyCircleBackHandler by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var safetyCircleCanGoBack by remember { mutableStateOf(false) }
     var editingSafeZoneId by remember { mutableStateOf<String?>(null) }
     var openIncidentId by remember { mutableStateOf<String?>(null) }
     var incidentStatus by remember { mutableStateOf("") }
@@ -93,6 +97,15 @@ fun AppShell(
     var emergencyChildName by remember { mutableStateOf("") }
     var emergencyChildId by remember { mutableStateOf("") }
     var incidentBusy by remember { mutableStateOf(false) }
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    var emergencyProfileReturn by remember { mutableStateOf(AppDestination.CHILD_PROFILE) }
+    var childProfiles by remember { mutableStateOf<List<ChildProfile>>(emptyList()) }
+    var child by remember { mutableStateOf<ChildProfile?>(null) }
+    val childRepository = remember { ChildProfileRepository() }
+    val communityAlertRepository = remember { CommunityAlertRepository() }
+    val wearableRepository = remember { WearableRepository() }
+    val coroutineScope = rememberCoroutineScope()
+
     LaunchedEffect(caregiverUid) {
         openIncidentId = emergencyStore.getString("incidentId", null)
         emergencyChildName = emergencyStore.getString("childName", "").orEmpty()
@@ -102,14 +115,6 @@ fun AppShell(
             currentDestination = AppDestination.ELOPEMENT_MODE
         }
     }
-    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
-    var emergencyProfileReturn by remember { mutableStateOf(AppDestination.CHILD_PROFILE) }
-    var childProfiles by remember { mutableStateOf<List<ChildProfile>>(emptyList()) }
-    var child by remember { mutableStateOf<ChildProfile?>(null) }
-    val childRepository = remember { ChildProfileRepository() }
-    val communityAlertRepository = remember { CommunityAlertRepository() }
-    val wearableRepository = remember { WearableRepository() }
-    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         childRepository.getChildProfiles(
@@ -262,9 +267,6 @@ fun AppShell(
                                 if (selectedIncidentReport != null) {
                                     IncidentReportScreen(
                                         report = selectedIncidentReport!!,
-                                        onBack = {
-                                            selectedIncidentReport = null
-                                        }
                                     )
                                 } else {
                                     IncidentHistoryScreen(
@@ -282,12 +284,22 @@ fun AppShell(
                             AppDestination.SAFETY_CIRCLE -> SafetyCircleManagementScreen(
                                 caregiverId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty(),
                                 childId = if (openIncidentId != null) emergencyChildId else child?.childId.orEmpty(),
-                                onBack = {
-                                    currentDestination = AppDestination.HOME
+                                onBackHandlerChanged = { handler ->
+                                    safetyCircleBackHandler = handler
+                                },
+                                onBackAvailabilityChanged = { canGoBack ->
+                                    safetyCircleCanGoBack = canGoBack
                                 }
                             )
 
-                            AppDestination.COMMUNITY -> CommunityContent()
+                            AppDestination.COMMUNITY -> CommunityContent(
+                                onBackHandlerChanged = { handler ->
+                                    communityBackHandler = handler
+                                },
+                                onBackAvailabilityChanged = { canGoBack ->
+                                    communityCanGoBack = canGoBack
+                                }
+                            )
                             AppDestination.CAREGIVER_ACCOUNT -> CaregiverAccountContent()
                             AppDestination.SAFE_ZONE_SETTINGS -> SafeZoneScreen(
                                 onAddClick = {
@@ -580,9 +592,24 @@ fun AppShell(
                     ) {
                         androidx.compose.material3.TextButton(
                             onClick = {
-                                val destination = previousDestination
-                                previousDestination = AppDestination.HOME
-                                currentDestination = destination
+                                when {
+                                    currentDestination == AppDestination.COMMUNITY &&
+                                            communityCanGoBack &&
+                                            communityBackHandler != null -> {
+                                        communityBackHandler?.invoke()
+                                    }
+
+                                    currentDestination == AppDestination.SAFETY_CIRCLE &&
+                                            safetyCircleCanGoBack &&
+                                            safetyCircleBackHandler != null -> {
+                                        safetyCircleBackHandler?.invoke()
+                                    }
+                                    else -> {
+                                        val destination = previousDestination
+                                        previousDestination = AppDestination.HOME
+                                        currentDestination = destination
+                                    }
+                                }
                             },
                             modifier = Modifier
                                 .padding(start = 12.dp, bottom = 0.dp)

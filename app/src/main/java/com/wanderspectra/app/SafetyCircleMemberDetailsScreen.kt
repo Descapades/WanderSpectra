@@ -288,28 +288,6 @@ fun SafetyCircleMemberDetailsScreen(
                 maxLines = 1
             )
         }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Button(
-            onClick = onBack,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(9.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = ButtonBlue,
-                contentColor = SecondaryBlue
-            ),
-            border = BorderStroke(1.dp, SecondaryBlue)
-        ) {
-            Text(
-                text = "Back",
-                fontFamily = Salsa,
-                fontSize = 18.sp,
-                maxLines = 1
-            )
-        }
     }
 }
 

@@ -7,7 +7,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -55,15 +54,12 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import com.wanderspectra.app.ui.theme.ButtonBlue
 import com.wanderspectra.app.ui.theme.ButtonRed
-import com.wanderspectra.app.ui.theme.SecondaryBlue
 import com.wanderspectra.app.ui.theme.SecondaryRed
 
 @Composable
 fun IncidentReportScreen(
     report: IncidentRecord,
-    onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -380,28 +376,6 @@ fun IncidentReportScreen(
                         "Edit Notes"
                     },
                     color = SecondaryRed,
-                    fontFamily = Salsa,
-                    fontSize = 20.sp
-                )
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            TextButton(
-                onClick = onBack,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                shape = RoundedCornerShape(9.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ButtonBlue,
-                    contentColor = SecondaryBlue
-                ),
-                border = BorderStroke(1.dp, SecondaryBlue)
-            ) {
-                Text(
-                    text = "Back",
-                    color = SecondaryBlue,
                     fontFamily = Salsa,
                     fontSize = 20.sp
                 )
