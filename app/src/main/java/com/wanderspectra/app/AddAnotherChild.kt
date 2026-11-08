@@ -72,7 +72,6 @@ fun AddAnotherChild(
     var safetyConcerns by remember { mutableStateOf("") }
     var validationMessage by remember { mutableStateOf<String?>(null) }
     var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
-    val childProfileRepository = remember { ChildProfileRepository() }
     val photoPickerLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.PickVisualMedia()
@@ -460,18 +459,7 @@ fun AddAnotherChild(
 
                                 )
 
-                                childProfileRepository.createChildProfile(
-                                    childProfile = childProfile,
-
-                                    onSuccess = { _ ->
-                                        onChildProfileCreated(childProfile)
-                                    },
-
-                                    onFailure = {
-                                        validationMessage =
-                                            "Child profile could not be saved. Please try again."
-                                    }
-                                )
+                                onChildProfileCreated(childProfile)
                             }
                         }
                     },

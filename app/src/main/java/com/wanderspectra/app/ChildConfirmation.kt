@@ -38,6 +38,7 @@ import com.wanderspectra.app.ui.theme.TanSongbird
 fun ChildConfirmation(
     children: List<ChildProfile>,
     onAddAnotherChild: () -> Unit,
+    isSaving: Boolean = false,
     onBack: () -> Unit,
     onFinish: () -> Unit
 ) {
@@ -249,6 +250,7 @@ fun ChildConfirmation(
 
                     Button(
                         onClick = onFinish,
+                        enabled = !isSaving,
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp)

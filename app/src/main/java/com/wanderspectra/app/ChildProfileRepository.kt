@@ -24,7 +24,11 @@ class ChildProfileRepository {
             .collection("caregivers")
             .document(user.uid)
             .collection("children")
-            .document()
+            .document(
+                childProfile.childId.ifBlank {
+                    java.util.UUID.randomUUID().toString()
+                }
+            )
 
         val childWithIds = childProfile.copy(
             childId = childDocument.id,

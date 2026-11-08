@@ -89,7 +89,7 @@ fun AppShell(
     var selectedIncidentReport by remember { mutableStateOf<IncidentRecord?>(null) }
     val context = LocalContext.current
     val caregiverUid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
-    val emergencyStore = remember(context, caregiverUid) { context.getSharedPreferences("elopement_state_" + caregiverUid, android.content.Context.MODE_PRIVATE) }
+    val emergencyStore = remember(context, caregiverUid) { context.getSharedPreferences("elopement_state_$caregiverUid", android.content.Context.MODE_PRIVATE) }
     var emergencyChildName by remember { mutableStateOf("") }
     var emergencyChildId by remember { mutableStateOf("") }
     var incidentBusy by remember { mutableStateOf(false) }
@@ -501,14 +501,10 @@ fun AppShell(
                                                                             wearableTimestamp > 0L &&
                                                                             wearableTimestamp <= System.currentTimeMillis()
 
-                                                                if (wearableTimestamp > 0L) {
-                                                                    val locationAgeSeconds =
-                                                                        (System.currentTimeMillis() - wearableTimestamp) / 1000L
-                                                                }
                                                                 if (validWearableLocation) {
                                                                     publishCommunityAlert(
-                                                                        wearableLat!!,
-                                                                        wearableLng!!,
+                                                                        wearableLat,
+                                                                        wearableLng,
                                                                         wearableTimestamp
                                                                     )
                                                                 } else {

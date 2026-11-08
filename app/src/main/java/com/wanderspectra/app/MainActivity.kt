@@ -16,9 +16,7 @@ import kotlinx.coroutines.delay
 import android.content.Intent
 import com.facebook.CallbackManager
 import com.google.firebase.auth.FirebaseAuth
-import android.util.Log
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.messaging.FirebaseMessaging
+
 
 class MainActivity : ComponentActivity() {
     private val callbackManager = CallbackManager.Factory.create()
@@ -26,30 +24,6 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         SightingReportNavigation.receive(intent)
-
-        FirebaseMessaging.getInstance().token
-            .addOnSuccessListener { token ->
-                val user = FirebaseAuth.getInstance().currentUser
-
-                if (user == null) {
-                    return@addOnSuccessListener
-                }
-
-                FirebaseFirestore.getInstance()
-                    .collection("communityAlertParticipants")
-                    .document(user.uid)
-                    .get()
-                    .addOnSuccessListener { document ->
-                        val savedToken = document.getString("fcmToken")
-                    }
-                    .addOnFailureListener {
-                        Log.e("FCMTest", "Unable to read Firestore token")
-                    }
-            }
-            .addOnFailureListener {
-                Log.e("FCMTest", "Unable to retrieve FCM token")
-            }
-
         enableEdgeToEdge()
         setContent {
             WanderSpectraTheme {
@@ -62,6 +36,7 @@ class MainActivity : ComponentActivity() {
                 var showAddAnotherChild by remember { mutableStateOf(false) }
                 var showChildConfirmation by remember { mutableStateOf(false) }
                 var confirmedChildren by remember { mutableStateOf<List<ChildProfile>>(emptyList()) }
+                var isSavingChildren by remember { mutableStateOf(false) }
                 val childProfileRepository = remember { ChildProfileRepository() }
 
                 LaunchedEffect(Unit) {
@@ -75,7 +50,6 @@ class MainActivity : ComponentActivity() {
                     HomeScreen(
                         onSignOut = {
                             showHome = false
-                            showOnboarding = false
                         }
                     )
                 } else if (showAddAnotherChild) {
@@ -95,41 +69,52 @@ class MainActivity : ComponentActivity() {
 
                     ChildConfirmation(
                         children = confirmedChildren,
-
                         onAddAnotherChild = {
                             showChildConfirmation = false
                             showAddAnotherChild = true
                         },
-
+                        isSaving = isSavingChildren,
                         onBack = {
                             showChildConfirmation = false
                             showOnboarding = true
                         },
-
                         onFinish = {
-                            val childProfile = confirmedChildren.firstOrNull()
+                            if (confirmedChildren.isNotEmpty()) {
+                                if (isSavingChildren) return@ChildConfirmation
+                                isSavingChildren = true
+                                var savedCount = 0
+                                var hasFailed = false
 
-                            if (childProfile != null) {
-                                childProfileRepository.createChildProfile(
-                                    childProfile = childProfile,
-                                    onSuccess = { childId ->
-                                        childProfileRepository.getChildProfile(
-                                            childId = childId,
-                                            onSuccess = { savedChild ->
-                                                if (savedChild != null) {
-                                                    showChildConfirmation = false
-                                                    showHome = true
-                                                }
-                                            },
-                                            onFailure = { exception ->
-                                                exception.printStackTrace()
-                                            }
+                                val childrenToSave = confirmedChildren.map { child ->
+                                    if (child.childId.isBlank()) {
+                                        child.copy(
+                                            childId = java.util.UUID.randomUUID().toString()
                                         )
-                                    },
-                                    onFailure = { exception ->
-                                        exception.printStackTrace()
+                                    } else {
+                                        child
                                     }
-                                )
+                                }
+                                confirmedChildren = childrenToSave
+
+                                childrenToSave.forEach { childProfile ->
+                                    childProfileRepository.createChildProfile(
+                                        childProfile = childProfile,
+                                        onSuccess = {
+                                            savedCount++
+
+                                            if (savedCount == childrenToSave.size && !hasFailed) {
+                                                isSavingChildren = false
+                                                showChildConfirmation = false
+                                                showHome = true
+                                            }
+                                        },
+                                        onFailure = { exception ->
+                                            hasFailed = true
+                                            isSavingChildren = false
+                                            exception.printStackTrace()
+                                        }
+                                    )
+                                }
                             }
                         }
                     )
