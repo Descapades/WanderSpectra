@@ -9,5 +9,9 @@ data class SafeZone(
     val monitoringEnabled: Boolean = true,
     val childMonitoring: Map<String, Boolean> = emptyMap(),
     val lat: Double = 0.0,
-    val lng: Double = 0.0
+    val lng: Double = 0.0,
+    val scheduleAlwaysOn: Boolean = true,
+    val scheduleDays: List<String> = emptyList(),
+    val scheduleStart: String = "08:00",
+    val scheduleEnd: String = "20:00"
 )

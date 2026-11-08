@@ -79,6 +79,10 @@ fun SafeZoneSettingsContent(
     var editingZone by remember { mutableStateOf<SafeZone?>(null) }
     var childProfiles by remember { mutableStateOf<List<ChildProfile>>(emptyList()) }
     var childMonitoring by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
+    var alwaysOn by remember { mutableStateOf(true) }
+    var selectedDays by remember { mutableStateOf(setOf<String>()) }
+    var startTime by remember { mutableStateOf("08:00") }
+    var endTime by remember { mutableStateOf("20:00") }
 
     LaunchedEffect(Unit) {
         ChildProfileRepository().getChildProfiles(
@@ -107,6 +111,10 @@ fun SafeZoneSettingsContent(
                     lngText = zone.lng.toString()
                     monitoring = zone.monitoringEnabled
                     childMonitoring = zone.childMonitoring
+                    alwaysOn = zone.scheduleAlwaysOn
+                    selectedDays = zone.scheduleDays.toSet()
+                    startTime = zone.scheduleStart
+                    endTime = zone.scheduleEnd
                     addressText = "Loading address..."
 
                     scope.launch {
@@ -281,6 +289,52 @@ fun SafeZoneSettingsContent(
                 )
             )
         }
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(text = "Schedule", color = SecondaryBlue, fontFamily = Salsa, fontSize = 14.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.RadioButton(
+                    selected = alwaysOn,
+                    onClick = { alwaysOn = true }
+                )
+                Text("Always On", color = SecondaryBlue, fontFamily = Salsa)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.RadioButton(
+                    selected = !alwaysOn,
+                    onClick = { alwaysOn = false }
+                )
+                Text("Custom", color = SecondaryBlue, fontFamily = Salsa)
+            }
+            if (!alwaysOn) {
+                val days = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+                days.forEach { day ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.material3.Checkbox(
+                            checked = selectedDays.contains(day),
+                            onCheckedChange = { checked ->
+                                selectedDays = if (checked) selectedDays + day else selectedDays - day
+                            }
+                        )
+                        Text(day, color = SecondaryBlue, fontFamily = Salsa)
+                    }
+                }
+                OutlinedTextField(
+                    value = startTime,
+                    onValueChange = { startTime = it },
+                    label = { Text("From") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = endTime,
+                    onValueChange = { endTime = it },
+                    label = { Text("To") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
 
         Button(
             onClick = {
@@ -377,7 +431,11 @@ fun SafeZoneSettingsContent(
                     monitoringEnabled = monitoring,
                     childMonitoring = childMonitoring,
                     lat = lat,
-                    lng = lng
+                    lng = lng,
+                    scheduleAlwaysOn = alwaysOn,
+                    scheduleDays = selectedDays.toList(),
+                    scheduleStart = startTime,
+                    scheduleEnd = endTime
                 ) ?: SafeZone(
                     childId = childId,
                     name = name,
@@ -385,7 +443,11 @@ fun SafeZoneSettingsContent(
                     monitoringEnabled = monitoring,
                     childMonitoring = childMonitoring,
                     lat = lat,
-                    lng = lng
+                    lng = lng,
+                    scheduleAlwaysOn = alwaysOn,
+                    scheduleDays = selectedDays.toList(),
+                    scheduleStart = startTime,
+                    scheduleEnd = endTime
                 )
 
                 val repository = SafeZoneRepository()

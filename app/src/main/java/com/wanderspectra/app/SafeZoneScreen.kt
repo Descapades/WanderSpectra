@@ -361,6 +361,16 @@ fun SafeZoneScreen(
                                     label = "Address:",
                                     value = safeZoneAddresses[zone.id] ?: "Loading address..."
                                 )
+
+                                ZoneDetail(
+                                    label = "Schedule:",
+                                    value = if (zone.scheduleAlwaysOn) {
+                                        "Always Active"
+                                    } else {
+                                        val days = if (zone.scheduleDays.isEmpty()) "No days" else zone.scheduleDays.joinToString(", ")
+                                        "$days ${zone.scheduleStart}-${zone.scheduleEnd}"
+                                    }
+                                )
                             }
                             Column(
                                 modifier = Modifier.fillMaxWidth()
