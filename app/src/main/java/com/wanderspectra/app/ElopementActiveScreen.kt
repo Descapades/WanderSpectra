@@ -88,8 +88,8 @@ fun ElopementActiveContent(
         )
 
         Text(
-            text = if (isWatchConnected) "● WATCH CONNECTED" else "● WATCH NOT CONNECTED",
-            color = if (isWatchConnected) Color(0xFF86DDB2) else SecondaryRed,
+            text = if (isWatchConnected) "WATCH LAST REPORTED CONNECTED" else "WATCH CONNECTION NOT CONFIRMED",
+            color = PrimaryBlue,
             fontFamily = Salsa,
             fontSize = 20.sp,
             textAlign = TextAlign.Center
@@ -130,6 +130,13 @@ fun ElopementActiveContent(
             textAlign = TextAlign.Center
         )
 
+
+        Text(
+            text = "Saved watch status and battery may be outdated. Last synced does not confirm the watch is currently reachable.",
+            fontFamily = Salsa,
+            color = PrimaryBlue,
+            textAlign = TextAlign.Center
+        )
 
         onSafetyCircle?.let { action ->
 

@@ -11,6 +11,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -204,7 +205,7 @@ fun WearableNotConnectedScreen(
             ) {
 
                 Text(
-                    text = "●",
+                    text = "\u25CF",
                     color = WearableRed,
                     fontSize = 30.sp
                 )
@@ -232,7 +233,7 @@ fun WearableNotConnectedScreen(
 
             Text(
                 text = "No wearable is currently\n" +
-                        "connected to $childName’s\n" +
+                        "connected to ${childName}'s\n" +
                         "profile. Please connect a\n" +
                         "device.",
                 modifier = Modifier.padding(start = 20.dp),
@@ -286,10 +287,44 @@ fun ConnectWearableScreen(
         mutableStateOf<Node?>(null)
     }
 
-    LaunchedEffect(Unit) {
+    var searching by remember { mutableStateOf(true) }
+    var searchVersion by remember { mutableStateOf(0) }
+    var connecting by remember { mutableStateOf(false) }
+    var connectionError by remember { mutableStateOf<String?>(null) }
+    val screenActive = remember { java.util.concurrent.atomic.AtomicBoolean(true) }
+    DisposableEffect(Unit) {
+        screenActive.set(true)
+        onDispose { screenActive.set(false) }
+    }
+    DisposableEffect(searchVersion) {
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        val completed = java.util.concurrent.atomic.AtomicBoolean(false)
+        var disposed = false
+        searching = true
+        availableDevices = emptyList()
+        selectedDevice = null
+        connectionError = null
+        val timeout = Runnable {
+            if (!disposed && completed.compareAndSet(false, true)) {
+                searching = false
+                connectionError = "Device search did not finish. Check the watch connection and search again."
+            }
+        }
+        handler.postDelayed(timeout, 10_000L)
         WearConnectionManager.getAvailableWearables(context) { nodes ->
-            availableDevices = nodes
-            selectedDevice = nodes.firstOrNull()
+            handler.post {
+                if (!disposed && completed.compareAndSet(false, true)) {
+                    handler.removeCallbacks(timeout)
+                    searching = false
+                    availableDevices = nodes
+                    selectedDevice = nodes.firstOrNull()
+                }
+            }
+        }
+        onDispose {
+            disposed = true
+            completed.set(true)
+            handler.removeCallbacks(timeout)
         }
     }
 
@@ -328,7 +363,7 @@ fun ConnectWearableScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "●",
+                    text = "\u25CF",
                     color = WearableRed,
                     fontSize = 30.sp
                 )
@@ -366,7 +401,8 @@ fun ConnectWearableScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Searching for Wear OS devices...",
+                    text = if (searching) "Searching for Wear OS devices..."
+                        else "No reachable Wear OS devices found. Turn on and pair the watch, then search again.",
                     color = PrimaryBlue,
                     fontFamily = Salsa,
                     fontSize = 16.sp
@@ -380,7 +416,7 @@ fun ConnectWearableScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                selectedDevice = node
+                                if (!connecting) selectedDevice = node
                             },
                         verticalAlignment = Alignment.Top
                     ) {
@@ -388,7 +424,7 @@ fun ConnectWearableScreen(
                         RadioButton(
                             selected = selectedDevice?.id == node.id,
                             onClick = {
-                                selectedDevice = node
+                                if (!connecting) selectedDevice = node
                             },
                             colors = RadioButtonDefaults.colors(
                                 selectedColor = Color(0xFF1C4B76)
@@ -416,25 +452,41 @@ fun ConnectWearableScreen(
                 }
             }
 
+            connectionError?.let { message ->
+                Text(message, color = WearableRed, fontFamily = Salsa,
+                    modifier = Modifier.padding(vertical = 8.dp))
+            }
+            Button(
+                enabled = !searching && !connecting,
+                onClick = { searchVersion += 1 }
+            ) { Text("Search Again", fontFamily = Salsa) }
+
             Spacer(modifier = Modifier.weight(1f))
 
             Button(
-                enabled = selectedDevice != null,
+                enabled = selectedDevice != null && !connecting && !searching,
                 onClick = {
                     selectedDevice?.let { node ->
+                        connecting = true
+                        connectionError = null
                         WearConnectionManager.sendConnectionRequest(
                             context = context,
                             nodeId = node.id,
                             childName = childName
                         ) { connected, battery, lat, lng ->
-                            if (connected) {
-                                onDeviceConnected(
+                            if (screenActive.get()) {
+                                connecting = false
+                                if (connected) {
+                                    onDeviceConnected(
                                     node.id,
                                     node.displayName,
                                     battery,
                                     lat,
                                     lng
-                                )
+                                    )
+                                } else {
+                                    connectionError = "The watch could not be reached or did not respond within 10 seconds. Check it and try again."
+                                }
                             }
                         }
                     }
@@ -454,7 +506,7 @@ fun ConnectWearableScreen(
                 )
             ) {
                 Text(
-                    text = "Connect Device",
+                    text = if (connecting) "Connecting..." else "Connect Device",
                     fontFamily = Salsa,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
@@ -513,7 +565,7 @@ fun WearableConnectedScreen(
             ) {
 
                 Text(
-                    text = "●",
+                    text = "\u25CF",
                     color = connectedGreen,
                     fontSize = 22.sp
                 )

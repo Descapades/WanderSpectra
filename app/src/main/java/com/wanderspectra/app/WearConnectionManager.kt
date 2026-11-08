@@ -1,6 +1,9 @@
 package com.wanderspectra.app
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import java.util.concurrent.atomic.AtomicBoolean
 import android.util.Log
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.MessageEvent
@@ -186,57 +189,11 @@ object WearConnectionManager {
         childName: String,
         onResult: (Boolean, Int, Double?, Double?) -> Unit
     ) {
-        val messageClient = Wearable.getMessageClient(context)
-
-        lateinit var responseListener: MessageClient.OnMessageReceivedListener
-
-        responseListener =
-            MessageClient.OnMessageReceivedListener { messageEvent: MessageEvent ->
-
-                if (
-                    (messageEvent.path == CONNECTED_PATH || messageEvent.path == LOCATION_RESPONSE_PATH) &&
-                    messageEvent.sourceNodeId == nodeId
-                ) {
-                    val rawPayload = messageEvent.data.toString(Charsets.UTF_8)
-                    val result = parseLocationResponse(rawPayload)
-
-                    messageClient.removeListener(responseListener)
-
-                    onResult(
-                        true,
-                        result.batteryLevel,
-                        result.latitude,
-                        result.longitude
-                    )
-                }
-            }
-
-        messageClient.addListener(responseListener)
-
-        messageClient
-            .sendMessage(
-                nodeId,
-                CONNECT_PATH,
-                JSONObject().apply {
-                    put("childName", childName)
-                }.toString().toByteArray(Charsets.UTF_8)
-            )
-            .addOnFailureListener { exception ->
-                safeLogE(
-                    TAG,
-                    "Failed to send connection request",
-                    exception
-                )
-
-                messageClient.removeListener(responseListener)
-
-                onResult(
-                    false,
-                    -1,
-                    null,
-                    null
-                )
-            }
+        requestResponse(context, nodeId, CONNECT_PATH,
+            JSONObject().apply { put("childName", childName) }.toString().toByteArray(Charsets.UTF_8)
+        ) { result ->
+            onResult(result.connected, result.batteryLevel, result.latitude, result.longitude)
+        }
     }
 
     // Overload for backward compatibility
@@ -259,50 +216,54 @@ object WearConnectionManager {
         nodeId: String,
         onResult: (WearableLocationResult) -> Unit
     ) {
-        val messageClient = Wearable.getMessageClient(context)
+        requestResponse(context, nodeId, LOCATION_PATH,
+            "Request location".toByteArray(Charsets.UTF_8), onResult)
+    }
 
-        lateinit var responseListener: MessageClient.OnMessageReceivedListener
-
-        responseListener =
-            MessageClient.OnMessageReceivedListener { messageEvent: MessageEvent ->
-
-                if (
-                    (messageEvent.path == LOCATION_RESPONSE_PATH || messageEvent.path == CONNECTED_PATH) &&
-                    messageEvent.sourceNodeId == nodeId
-                ) {
-                    val rawPayload = messageEvent.data.toString(Charsets.UTF_8)
-                    val result = parseLocationResponse(rawPayload)
-
-
-                    messageClient.removeListener(responseListener)
-
-                    onResult(result)
+    /** One terminal callback per request, including listener failure, send failure and timeout. */
+    private fun requestResponse(
+        context: Context,
+        nodeId: String,
+        path: String,
+        payload: ByteArray,
+        onResult: (WearableLocationResult) -> Unit
+    ) {
+        val client = Wearable.getMessageClient(context)
+        val handler = Handler(Looper.getMainLooper())
+        val completed = AtomicBoolean(false)
+        val unavailable = WearableLocationResult(connected = false, batteryLevel = -1)
+        lateinit var listener: MessageClient.OnMessageReceivedListener
+        lateinit var timeout: Runnable
+        fun finish(result: WearableLocationResult) {
+            if (completed.compareAndSet(false, true)) {
+                handler.removeCallbacks(timeout)
+                client.removeListener(listener)
+                handler.post { onResult(result) }
+            }
+        }
+        listener = MessageClient.OnMessageReceivedListener { event ->
+            if (event.sourceNodeId == nodeId &&
+                (event.path == CONNECTED_PATH || event.path == LOCATION_RESPONSE_PATH)) {
+                finish(parseLocationResponse(event.data.toString(Charsets.UTF_8)))
+            }
+        }
+        timeout = Runnable { finish(unavailable) }
+        handler.postDelayed(timeout, 10_000L)
+        client.addListener(listener)
+            .addOnSuccessListener {
+                if (completed.get()) {
+                    client.removeListener(listener)
+                } else {
+                    client.sendMessage(nodeId, path, payload)
+                        .addOnFailureListener { error ->
+                            safeLogE(TAG, "Wearable request failed: $path", error)
+                            finish(unavailable)
+                        }
                 }
             }
-
-        messageClient.addListener(responseListener)
-
-        messageClient
-            .sendMessage(
-                nodeId,
-                LOCATION_PATH,
-                "Request location".toByteArray()
-            )
-            .addOnFailureListener { exception ->
-                safeLogE(
-                    TAG,
-                    "Failed to send location request to Wear device $nodeId",
-                    exception
-                )
-
-                messageClient.removeListener(responseListener)
-
-                onResult(
-                    WearableLocationResult(
-                        connected = false,
-                        batteryLevel = -1
-                    )
-                )
+            .addOnFailureListener { error ->
+                safeLogE(TAG, "Unable to listen for wearable response", error)
+                finish(unavailable)
             }
     }
 
