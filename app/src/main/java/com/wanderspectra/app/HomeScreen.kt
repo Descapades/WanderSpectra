@@ -312,15 +312,16 @@ fun HomeContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
+                        modifier = Modifier.weight(1f).padding(end = 8.dp),
                         text = when (watchConnected) {
-                            true -> "Watch Connected"
-                            false -> "Watch Not Connected"
+                            true -> "Watch last reported connected"
+                            false -> "Watch last reported disconnected"
                             null -> "Watch Status Unavailable"
                         },
                         fontFamily = Salsa,
                         fontSize = 14.sp,
                         color = HomeBlue,
-                        maxLines = 1
+                        maxLines = 2
                     )
 
                     Text(
@@ -607,6 +608,12 @@ fun HomeContent(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
+            Text(
+                text = "Saved wearable locations may be outdated. Check the last update time; a saved connection status does not confirm a live watch connection.",
+                fontFamily = Salsa,
+                color = HomeBlue,
+                modifier = Modifier.padding(8.dp)
+            )
             Column(
                 modifier = Modifier
                     .fillMaxWidth(),
@@ -786,4 +793,3 @@ private fun createChildMarker(
 
     return BitmapDescriptorFactory.fromBitmap(bitmap)
 }
-
