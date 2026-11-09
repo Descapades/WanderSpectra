@@ -180,27 +180,5 @@ fun SightingReportDetailScreen(
             "Details:",
             sighting.details.ifBlank { "None provided" }
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = onBack,
-            modifier = Modifier
-                .fillMaxWidth(0.78f)
-                .height(54.dp)
-                .align(Alignment.CenterHorizontally),
-            shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = ButtonBlue
-            ),
-            border = BorderStroke(1.dp, SecondaryBlue)
-        ) {
-            Text(
-                text = "Back",
-                fontFamily = Salsa,
-                fontSize = 20.sp,
-                color = SecondaryBlue
-            )
-        }
     }
 }

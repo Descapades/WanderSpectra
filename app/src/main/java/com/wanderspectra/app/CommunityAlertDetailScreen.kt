@@ -55,6 +55,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.wanderspectra.app.ui.theme.CardCream
 import com.wanderspectra.app.ui.theme.EmergencyRed
 import com.google.android.gms.maps.model.LatLngBounds
+import androidx.compose.runtime.SideEffect
 
 private val AlertRed = Color(0xFFC34A5B)
 private val AlertCream = Color(0xFFEEE9D5)
@@ -76,9 +77,20 @@ fun CommunityAlertDetailScreen(
     alert: CommunityAlert,
     onBack: () -> Unit,
     onReportSighting: () -> Unit,
-    onViewChildProfile: (() -> Unit)? = null
+    onViewChildProfile: (() -> Unit)? = null,
+    onSightingBackHandlerChanged: ((() -> Unit)?) -> Unit = {}
 ) {
     var selectedSighting by remember(alert.id) { mutableStateOf<AlertSighting?>(null) }
+
+    SideEffect {
+        onSightingBackHandlerChanged(
+            if (selectedSighting != null) {
+                { selectedSighting = null }
+            } else {
+                null
+            }
+        )
+    }
 
     if (selectedSighting != null) {
         SightingReportDetailScreen(
