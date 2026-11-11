@@ -17,7 +17,6 @@ class CommunityAlertRepository {
     private val publishWorkerUrl =
         "https://wanderspectra-alerts.destin-champlin.workers.dev/publish-community-alert"
 
-    // Save a new community alert
     suspend fun createAlert(alert: CommunityAlert): String {
         require(alert.incidentId.isNotBlank()) {
             "An incident ID is required."
@@ -128,7 +127,6 @@ class CommunityAlertRepository {
             }
         }
 
-    // Retrieve all community alerts
     suspend fun getAlerts(): List<CommunityAlert> {
         val now = com.google.firebase.Timestamp.now()
         val twentyFourHoursAgo = now.seconds - (24 * 60 * 60)
@@ -156,19 +154,6 @@ class CommunityAlertRepository {
                 }
             }
     }
-
-    // Retrieve alerts for a specific incident
-    suspend fun getAlertsForIncident(
-        incidentId: String
-    ): List<CommunityAlert> {
-        return alerts
-            .whereEqualTo("incidentId", incidentId)
-            .get()
-            .await()
-            .toObjects(CommunityAlert::class.java)
-    }
-
-    // Mark an alert as resolved
 
     suspend fun resolveAlert(alertId: String) {
         val success = withContext(Dispatchers.IO) {

@@ -31,9 +31,18 @@ import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.tasks.await
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 
 @Composable
-fun CommunityContent() {
+fun CommunityContent(
+    onBackHandlerChanged: (() -> Unit) -> Unit,
+    onBackAvailabilityChanged: (Boolean) -> Unit
+) {
     val repository = remember { CommunityAlertRepository() }
     var alerts by remember { mutableStateOf<List<CommunityAlert>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -41,10 +50,24 @@ fun CommunityContent() {
     var selectedAlert by remember { mutableStateOf<CommunityAlert?>(null) }
     var showingSightingForm by remember { mutableStateOf(false) }
     var showingEmergencyProfile by remember { mutableStateOf(false) }
+    var sightingBackHandler by remember { mutableStateOf<(() -> Unit)?>(null) }
     var emergencyProfile by remember { mutableStateOf<ChildProfile?>(null) }
     var profileLoading by remember { mutableStateOf(false) }
     var profileError by remember { mutableStateOf<String?>(null) }
     var submissionMessage by remember { mutableStateOf<String?>(null) }
+
+    SideEffect {
+        onBackAvailabilityChanged(selectedAlert != null)
+
+        onBackHandlerChanged {
+            when {
+                showingEmergencyProfile -> showingEmergencyProfile = false
+                showingSightingForm -> showingSightingForm = false
+                sightingBackHandler != null -> sightingBackHandler?.invoke()
+                selectedAlert != null -> selectedAlert = null
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         while (isActive) {
@@ -68,25 +91,80 @@ fun CommunityContent() {
         val alert = selectedAlert!!
         if (showingEmergencyProfile) {
 
-            LaunchedEffect(alert.id) {
+            LaunchedEffect(alert.id, showingEmergencyProfile) {
                 profileLoading = true
                 profileError = null
                 emergencyProfile = null
 
-                FirebaseFirestore.getInstance()
-                    .collection("publicEmergencyProfiles")
-                    .document(alert.id)
-                    .get()
-                    .addOnSuccessListener { document ->
-                        emergencyProfile =
-                            document.toObject(ChildProfile::class.java)
+                try {
+                    val user = FirebaseAuth.getInstance().currentUser
+                        ?: throw Exception("User is not authenticated")
 
-                        profileLoading = false
+                    val idToken = user.getIdToken(false).await().token
+                        ?: throw Exception("Unable to retrieve Firebase token")
+
+                    val connection = (
+                            URL("https://wanderspectra-alerts.destin-champlin.workers.dev/get-emergency-profile")
+                                .openConnection() as HttpURLConnection
+                            )
+
+                    try {
+                        connection.requestMethod = "POST"
+                        connection.setRequestProperty("Authorization", "Bearer $idToken")
+                        connection.setRequestProperty("Content-Type", "application/json")
+                        connection.connectTimeout = 15000
+                        connection.readTimeout = 15000
+                        connection.doOutput = true
+
+                        val requestBody = JSONObject()
+                            .put("alertId", alert.id)
+                            .toString()
+
+                        withContext(Dispatchers.IO) {
+                            connection.outputStream.use {
+                                it.write(requestBody.toByteArray(Charsets.UTF_8))
+                            }
+
+                            val responseCode = connection.responseCode
+
+                            if (responseCode != HttpURLConnection.HTTP_OK) {
+                                throw Exception("Emergency Profile request failed: $responseCode")
+                            }
+
+                            val response = connection.inputStream.bufferedReader().use {
+                                it.readText()
+                            }
+
+                            val profileJson = JSONObject(response).getJSONObject("profile")
+
+                            emergencyProfile = ChildProfile(
+                                fullName = profileJson.optString("fullName"),
+                                preferredName = profileJson.optString("preferredName"),
+                                birthdate = profileJson.optString("birthdate"),
+                                photoUrl = profileJson.optString("photoUrl"),
+                                height = profileJson.optString("height"),
+                                weight = profileJson.optString("weight"),
+                                hairColor = profileJson.optString("hairColor"),
+                                eyeColor = profileJson.optString("eyeColor"),
+                                communicationStyle = profileJson.optString("communicationStyle"),
+                                helpfulCommunicationInfo = profileJson.optString("helpfulCommunicationInfo"),
+                                sensorySensitivities = profileJson.optString("sensorySensitivities"),
+                                elopementTriggers = profileJson.optString("elopementTriggers"),
+                                calmingStrategies = profileJson.optString("calmingStrategies"),
+                                safetyConcerns = profileJson.optString("safetyConcerns"),
+                                allergies = profileJson.optString("allergies"),
+                                medicalConsiderations = profileJson.optString("medicalConsiderations"),
+                                criticalInformation = profileJson.optString("criticalInformation")
+                            )
+                        }
+                    } finally {
+                        connection.disconnect()
                     }
-                    .addOnFailureListener { exception ->
-                        profileError = exception.message
-                        profileLoading = false
-                    }
+                } catch (e: Exception) {
+                    profileError = e.message ?: "Unable to load Emergency Profile"
+                } finally {
+                    profileLoading = false
+                }
             }
 
             when {
@@ -151,6 +229,9 @@ fun CommunityContent() {
                 },
                 onViewChildProfile = {
                     showingEmergencyProfile = true
+                },
+                onSightingBackHandlerChanged = { handler ->
+                    sightingBackHandler = handler
                 }
             )
         }
@@ -340,8 +421,6 @@ fun CommunityAlertCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Distance will appear when an approved
-                // approximate distance is available.
                 val distanceMiles = alert.distanceMiles
 
                 if (distanceMiles != null) {

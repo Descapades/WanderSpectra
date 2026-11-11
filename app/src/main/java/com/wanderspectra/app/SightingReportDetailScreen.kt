@@ -12,7 +12,6 @@ import com.wanderspectra.app.AlertSighting
 import com.wanderspectra.app.ui.theme.PrimaryBlue
 import com.wanderspectra.app.ui.theme.Salsa
 import com.wanderspectra.app.ui.theme.SecondaryBlue
-import com.wanderspectra.app.ui.theme.SecondaryRed
 import java.text.SimpleDateFormat
 import java.util.Locale
 import androidx.compose.foundation.BorderStroke
@@ -181,27 +180,5 @@ fun SightingReportDetailScreen(
             "Details:",
             sighting.details.ifBlank { "None provided" }
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = onBack,
-            modifier = Modifier
-                .fillMaxWidth(0.78f)
-                .height(54.dp)
-                .align(Alignment.CenterHorizontally),
-            shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = ButtonBlue
-            ),
-            border = BorderStroke(1.dp, SecondaryBlue)
-        ) {
-            Text(
-                text = "Back",
-                fontFamily = Salsa,
-                fontSize = 20.sp,
-                color = SecondaryBlue
-            )
-        }
     }
 }

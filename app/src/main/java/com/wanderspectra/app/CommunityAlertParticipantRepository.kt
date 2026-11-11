@@ -30,9 +30,6 @@ class CommunityAlertParticipantRepository(
 
         CommunityAlertLocationManager(context).getCurrentLocation(
             onSuccess = { latitude, longitude ->
-
-                // Recheck consent in case the user disabled participation
-                // while the location request was running.
                 if (!CommunityAlertPreferences.isOptedIn(context)) {
                     onFailure("Community Alert participation was disabled.")
                     return@getCurrentLocation

@@ -43,7 +43,6 @@ import java.util.Locale
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -132,9 +131,6 @@ fun SafeZoneSettingsContent(
             }
         }
     }
-
-
-
 
     Column(
         modifier = Modifier
@@ -369,7 +365,6 @@ fun SafeZoneSettingsContent(
 
                 isSaving = true
 
-
                 val zone = editingZone?.copy(
                     childId = childId,
                     name = name,
@@ -446,8 +441,6 @@ fun SafeZoneSettingsContent(
                 modifier = Modifier.padding(vertical = 6.dp)
             )
         }
-
-
 
         Button(
             onClick = onBack,

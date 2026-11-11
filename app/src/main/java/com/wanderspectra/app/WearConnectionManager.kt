@@ -27,7 +27,6 @@ object WearConnectionManager {
     private const val PLAY_SOUND_PATH = "/wanderspectra/play_sound"
     private const val STOP_SOUND_PATH = "/wanderspectra/stop_sound"
     private const val SAFEZONE_PATH = "/wanderspectra/safezone"
-    private const val SAFEZONE_DELETE_PATH = "/wanderspectra/safezone/delete"
 
     private fun safeLogE(tag: String, msg: String, throwable: Throwable? = null) {
         try {
@@ -239,21 +238,6 @@ object WearConnectionManager {
             }
     }
 
-    // Overload for backward compatibility
-    fun sendConnectionRequest(
-        context: Context,
-        nodeId: String,
-        onResult: (Boolean, Int) -> Unit
-    ) {
-        sendConnectionRequest(
-            context = context,
-            nodeId = nodeId,
-            childName = ""
-        ) { connected, battery, _, _ ->
-            onResult(connected, battery)
-        }
-    }
-
     fun requestWearableLocation(
         context: Context,
         nodeId: String,
@@ -384,39 +368,7 @@ object WearConnectionManager {
                 onResult(false)
             }
     }
-    fun sendSafeZoneDeleteToWearable(
-        context: Context,
-        nodeId: String,
-        zoneId: String,
-        onResult: (Boolean) -> Unit
-    ) {
-        if (zoneId.isBlank()) {
-            onResult(false)
-            return
-        }
 
-        val payload = JSONObject().apply {
-            put("id", zoneId)
-        }
-
-        Wearable.getMessageClient(context)
-            .sendMessage(
-                nodeId,
-                SAFEZONE_DELETE_PATH,
-                payload.toString().toByteArray(Charsets.UTF_8)
-            )
-            .addOnSuccessListener {
-                onResult(true)
-            }
-            .addOnFailureListener { exception ->
-                safeLogE(
-                    TAG,
-                    "Failed to send Safe Zone deletion message to $nodeId",
-                    exception
-                )
-                onResult(false)
-            }
-    }
     fun publishSafeZoneDeletion(
         context: Context,
         zoneId: String,
@@ -446,34 +398,6 @@ object WearConnectionManager {
                     "Failed to publish Safe Zone deletion state",
                     exception
                 )
-                onResult(false)
-            }
-    }
-    fun publishSafeZoneActive(
-        context: Context,
-        zoneId: String,
-        onResult: (Boolean) -> Unit
-    ) {
-        if (zoneId.isBlank()) {
-            onResult(false)
-            return
-        }
-
-        val dataRequest = PutDataMapRequest.create(
-            "/wanderspectra/safezone/state"
-        ).apply {
-            dataMap.putBoolean("deleted", false)
-            dataMap.putString("zoneId", zoneId)
-            dataMap.putLong("updatedAt", System.currentTimeMillis())
-        }.asPutDataRequest().setUrgent()
-
-        Wearable.getDataClient(context)
-            .putDataItem(dataRequest)
-            .addOnSuccessListener {
-                onResult(true)
-            }
-            .addOnFailureListener { exception ->
-                safeLogE(TAG, "Failed to publish Safe Zone active state", exception)
                 onResult(false)
             }
     }

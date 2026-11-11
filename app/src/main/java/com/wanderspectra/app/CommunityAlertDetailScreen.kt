@@ -55,6 +55,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.wanderspectra.app.ui.theme.CardCream
 import com.wanderspectra.app.ui.theme.EmergencyRed
 import com.google.android.gms.maps.model.LatLngBounds
+import androidx.compose.runtime.SideEffect
 
 private val AlertRed = Color(0xFFC34A5B)
 private val AlertCream = Color(0xFFEEE9D5)
@@ -76,10 +77,19 @@ fun CommunityAlertDetailScreen(
     alert: CommunityAlert,
     onBack: () -> Unit,
     onReportSighting: () -> Unit,
-    onViewChildProfile: (() -> Unit)? = null
+    onViewChildProfile: (() -> Unit)? = null,
+    onSightingBackHandlerChanged: ((() -> Unit)?) -> Unit = {}
 ) {
-    var selectedSighting by remember(alert.id) {
-        mutableStateOf<AlertSighting?>(null)
+    var selectedSighting by remember(alert.id) { mutableStateOf<AlertSighting?>(null) }
+
+    SideEffect {
+        onSightingBackHandlerChanged(
+            if (selectedSighting != null) {
+                { selectedSighting = null }
+            } else {
+                null
+            }
+        )
     }
 
     if (selectedSighting != null) {
@@ -90,13 +100,8 @@ fun CommunityAlertDetailScreen(
         return
     }
 
-    var sightings by remember(alert.id) {
-        mutableStateOf<List<AlertSighting>>(emptyList())
-    }
-
-    var sightingsError by remember(alert.id) {
-        mutableStateOf<String?>(null)
-    }
+    var sightings by remember(alert.id) { mutableStateOf<List<AlertSighting>>(emptyList()) }
+    var sightingsError by remember(alert.id) { mutableStateOf<String?>(null) }
 
     DisposableEffect(alert.id) {
         val registration = FirebaseFirestore.getInstance()
@@ -150,12 +155,6 @@ fun CommunityAlertDetailScreen(
         onDispose {
             registration.remove()
         }
-    }
-
-    val latestSighting = sightings.firstOrNull()
-
-    val latestLocation = latestSighting?.let {
-        LatLng(it.latitude, it.longitude)
     }
 
     val context = LocalContext.current

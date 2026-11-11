@@ -32,6 +32,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.key
+import androidx.compose.ui.text.style.TextAlign
+import com.wanderspectra.app.ui.theme.EmergencyRed
 import com.wanderspectra.app.ui.theme.TanSongbird
 
 private val WearableRed = Color(0xFFC34A5B)
@@ -45,8 +47,20 @@ fun WearableSettingsContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .padding(
+                top = 12.dp)
             .verticalScroll(rememberScrollState())
     ) {
+        Text(
+            text = "Wearable Settings",
+            color = EmergencyRed,
+            fontFamily = TanSongbird,
+            fontSize = 22.sp,
+            lineHeight = 40.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+
         children.forEach { child ->
             key(child.childId) {
                 ChildWearableCard(child = child)
@@ -189,9 +203,9 @@ fun WearableNotConnectedScreen(
             // Child name
             Text(
                 text = childName,
-                color = WearableRed,
+                color = PrimaryBlue,
                 fontFamily = TanSongbird,
-                fontSize = 20.sp
+                fontSize = 16.sp
             )
 
             // Connection status
@@ -315,9 +329,9 @@ fun ConnectWearableScreen(
 
             Text(
                 text = childName,
-                color = WearableRed,
+                color = PrimaryBlue,
                 fontFamily = TanSongbird,
-                fontSize = 20.sp
+                fontSize = 16.sp
             )
 
             Row(
@@ -499,9 +513,9 @@ fun WearableConnectedScreen(
 
             Text(
                 text = childName,
-                color = WearableRed,
+                color = PrimaryBlue,
                 fontFamily = TanSongbird,
-                fontSize = 20.sp
+                fontSize = 16.sp
             )
 
             Row(

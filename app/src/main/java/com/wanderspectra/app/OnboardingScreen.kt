@@ -181,23 +181,10 @@ fun OnboardingScreen(
                                             safetyConcerns.trim()
                                     )
 
-                                    childProfileRepository.createChildProfile(
-                                        childProfile = childProfile,
+                                    isRegistering = false
+                                    registrationMessage = "Account created successfully."
 
-                                        onSuccess = { childId ->
-                                            isRegistering = false
-                                            registrationMessage =
-                                                "Account and child profile created successfully."
-
-                                            onAccountCreated(childProfile.copy(childId = childId))
-                                        },
-
-                                        onFailure = {
-                                            isRegistering = false
-                                            registrationMessage =
-                                                "Account created, but the child profile could not be saved."
-                                        }
-                                    )
+                                    onAccountCreated(childProfile)
                                 },
 
                                 onFailure = {

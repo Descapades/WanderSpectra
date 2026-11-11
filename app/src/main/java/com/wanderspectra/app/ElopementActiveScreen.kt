@@ -8,7 +8,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,21 +23,15 @@ import androidx.compose.ui.text.withStyle
 @Composable
 fun ElopementActiveContent(
     incidentId: String?,
-    statusText: String,
-    pointLat: Double = 0.0,
-    pointLng: Double = 0.0,
     childName: String = "",
     onChildSafe: (String) -> Unit,
-    onBackHome: () -> Unit,
     isBusy: Boolean = false,
-    caregiverId: String = "",
     childId: String = "",
     onEmergencyProfile: (() -> Unit)? = null,
     emergencyProfileAvailable: Boolean = false,
     onSafetyCircle: (() -> Unit)? = null,
     onCommunity: (() -> Unit)? = null
 ) {
-    var showLocation by remember(incidentId) { mutableStateOf(false) }
     var isWatchConnected by remember(childId) { mutableStateOf(false) }
     var watchBatteryLevel by remember(childId) { mutableIntStateOf(-1) }
     var watchLastSync by remember(childId) { mutableLongStateOf(0L) }
