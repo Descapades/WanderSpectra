@@ -57,6 +57,7 @@ fun AddAnotherChild(
     var childName by remember { mutableStateOf("") }
     var preferredName by remember { mutableStateOf("") }
     var birthdate by remember { mutableStateOf("") }
+    var photoUrl by remember { mutableStateOf("") }
     var height by remember { mutableStateOf("") }
     var weight by remember { mutableStateOf("") }
     var hairColor by remember { mutableStateOf("") }
@@ -401,24 +402,19 @@ fun AddAnotherChild(
                     onClick = {
 
                         when {
-
                             childName.isBlank() -> {
                                 validationMessage =
                                     "Please enter the child's name."
                             }
-
                             birthdate.isBlank() -> {
                                 validationMessage =
                                     "Please enter the child's birthdate."
                             }
-
                             communicationStyle.isBlank() -> {
                                 validationMessage =
                                     "Please enter the child's communication style."
                             }
-
                             else -> {
-
                                 validationMessage = null
 
                                 val childProfile = ChildProfile(
@@ -430,32 +426,15 @@ fun AddAnotherChild(
                                     weight = weight.trim(),
                                     hairColor = hairColor.trim(),
                                     eyeColor = eyeColor.trim(),
-
-                                    communicationStyle =
-                                        communicationStyle.trim(),
-
-                                    helpfulCommunicationInfo =
-                                        helpfulCommunicationInformation.trim(),
-
+                                    communicationStyle = communicationStyle.trim(),
+                                    helpfulCommunicationInfo = helpfulCommunicationInformation.trim(),
                                     allergies = allergies.trim(),
-
-                                    medicalConsiderations =
-                                        medicalConsiderations.trim(),
-
-                                    criticalInformation =
-                                        criticalInformation.trim(),
-
-                                    sensorySensitivities =
-                                        sensorySensitivities.trim(),
-
-                                    elopementTriggers =
-                                        elopementTriggers.trim(),
-
-                                    calmingStrategies =
-                                        calmingStrategies.trim(),
-
-                                    safetyConcerns =
-                                        safetyConcerns.trim(),
+                                    medicalConsiderations = medicalConsiderations.trim(),
+                                    criticalInformation = criticalInformation.trim(),
+                                    sensorySensitivities = sensorySensitivities.trim(),
+                                    elopementTriggers = elopementTriggers.trim(),
+                                    calmingStrategies = calmingStrategies.trim(),
+                                    safetyConcerns = safetyConcerns.trim(),
 
                                 )
 

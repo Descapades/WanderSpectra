@@ -650,7 +650,7 @@ fun OnboardingField(
         text = label,
         color = SecondaryBlue,
         fontFamily = Salsa,
-        fontSize = 16.sp
+        fontSize = 11.sp
     )
 
     Spacer(modifier = Modifier.height(5.dp))
@@ -663,7 +663,7 @@ fun OnboardingField(
             Text(
                 text = placeholder,
                 fontFamily = Salsa,
-                fontSize = 16.sp,
+                fontSize = 12.sp,
                 color = PrimaryBlue
             )
         },
