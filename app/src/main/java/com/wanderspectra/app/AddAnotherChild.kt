@@ -401,24 +401,19 @@ fun AddAnotherChild(
                     onClick = {
 
                         when {
-
                             childName.isBlank() -> {
                                 validationMessage =
                                     "Please enter the child's name."
                             }
-
                             birthdate.isBlank() -> {
                                 validationMessage =
                                     "Please enter the child's birthdate."
                             }
-
                             communicationStyle.isBlank() -> {
                                 validationMessage =
                                     "Please enter the child's communication style."
                             }
-
                             else -> {
-
                                 validationMessage = null
 
                                 val childProfile = ChildProfile(

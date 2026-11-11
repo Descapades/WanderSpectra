@@ -65,7 +65,11 @@ class SafeZoneRepository(
             "monitoringEnabled" to zone.monitoringEnabled,
             "lat" to zone.lat,
             "lng" to zone.lng,
-            "savedAt" to System.currentTimeMillis()
+            "savedAt" to System.currentTimeMillis(),
+            "scheduleAlwaysOn" to zone.scheduleAlwaysOn,
+            "scheduleDays" to zone.scheduleDays,
+            "scheduleStart" to zone.scheduleStart,
+            "scheduleEnd" to zone.scheduleEnd,
         )
 
         db.collection("safeZones")
@@ -108,7 +112,11 @@ class SafeZoneRepository(
             "monitoringEnabled" to zone.monitoringEnabled,
             "lat" to zone.lat,
             "lng" to zone.lng,
-            "savedAt" to System.currentTimeMillis()
+            "savedAt" to System.currentTimeMillis(),
+            "scheduleAlwaysOn" to zone.scheduleAlwaysOn,
+            "scheduleDays" to zone.scheduleDays,
+            "scheduleStart" to zone.scheduleStart,
+            "scheduleEnd" to zone.scheduleEnd,
         )
 
         val document = db.collection("safeZones").document(zone.id)
@@ -200,7 +208,11 @@ class SafeZoneRepository(
                         radius = doc.getLong("radius")?.toInt() ?: 500,
                         monitoringEnabled = doc.getBoolean("monitoringEnabled") ?: true,
                         lat = doc.getDouble("lat") ?: 0.0,
-                        lng = doc.getDouble("lng") ?: 0.0
+                        lng = doc.getDouble("lng") ?: 0.0,
+                        scheduleAlwaysOn = doc.getBoolean("scheduleAlwaysOn") ?: true,
+                        scheduleDays = (doc.get("scheduleDays") as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
+                        scheduleStart = doc.getString("scheduleStart") ?: "08:00",
+                        scheduleEnd = doc.getString("scheduleEnd") ?: "20:00",
                     )
                 }
 
@@ -278,7 +290,11 @@ class SafeZoneRepository(
                         ?.toMap()
                         ?: emptyMap(),
                     lat = document.getDouble("lat") ?: 0.0,
-                    lng = document.getDouble("lng") ?: 0.0
+                    lng = document.getDouble("lng") ?: 0.0,
+                    scheduleAlwaysOn = document.getBoolean("scheduleAlwaysOn") ?: true,
+                    scheduleDays = (document.get("scheduleDays") as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
+                    scheduleStart = document.getString("scheduleStart") ?: "08:00",
+                    scheduleEnd = document.getString("scheduleEnd") ?: "20:00"
                 )
 
                 onResult(zone)
