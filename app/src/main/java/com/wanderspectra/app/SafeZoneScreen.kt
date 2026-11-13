@@ -255,61 +255,65 @@ fun SafeZoneScreen(
                                                     checked = isEnabled,
                                                     enabled = !updatingMonitoring,
                                                     onCheckedChange = { enabled ->
-                                                        updatingMonitoring = true
+                                                        if (enabled && scheduleStatus(zone) == "Outside schedule") {
+                                                            monitoringStatuses = monitoringStatuses + (zone.id to "Outside schedule")
+                                                        } else {
+                                                            updatingMonitoring = true
 
-                                                        monitoringStatuses =
-                                                            monitoringStatuses + (
-                                                                    zone.id to "Updating $childName..."
-                                                                    )
+                                                            monitoringStatuses =
+                                                                monitoringStatuses + (
+                                                                        zone.id to "Updating $childName..."
+                                                                        )
 
-                                                        ChildSafeZoneMonitoringRepository()
-                                                            .setMonitoring(
-                                                                childId = child.childId,
-                                                                safeZoneId = zone.id,
-                                                                enabled = enabled
-                                                            ) { success, message ->
+                                                            ChildSafeZoneMonitoringRepository()
+                                                                .setMonitoring(
+                                                                    childId = child.childId,
+                                                                    safeZoneId = zone.id,
+                                                                    enabled = enabled
+                                                                ) { success, message ->
 
-                                                                if (success) {
-                                                                    childMonitoring =
-                                                                        childMonitoring + (
-                                                                                child.childId to
-                                                                                        ChildSafeZoneMonitoring(
-                                                                                            childId = child.childId,
-                                                                                            caregiverId =
-                                                                                                FirebaseAuth.getInstance()
-                                                                                                    .currentUser?.uid.orEmpty(),
-                                                                                            activeSafeZoneId =
-                                                                                                if (enabled) zone.id else "",
-                                                                                            monitoringEnabled = enabled
+                                                                    if (success) {
+                                                                        childMonitoring =
+                                                                            childMonitoring + (
+                                                                                    child.childId to
+                                                                                            ChildSafeZoneMonitoring(
+                                                                                                childId = child.childId,
+                                                                                                caregiverId =
+                                                                                                    FirebaseAuth.getInstance()
+                                                                                                        .currentUser?.uid.orEmpty(),
+                                                                                                activeSafeZoneId =
+                                                                                                    if (enabled) zone.id else "",
+                                                                                                monitoringEnabled = enabled
+                                                                                            )
+                                                                                    )
+
+                                                                        WearConnectionManager.syncChildSafeZone(
+                                                                            context = context,
+                                                                            childId = child.childId,
+                                                                            safeZone = zone,
+                                                                            enabled = enabled
+                                                                        ) { synced ->
+                                                                            monitoringStatuses =
+                                                                                monitoringStatuses + (
+                                                                                        zone.id to if (synced) {
+                                                                                            "$childName monitoring sent to watch."
+                                                                                        } else {
+                                                                                            "$childName monitoring saved. Watch sync failed."
+                                                                                        }
                                                                                         )
-                                                                                )
 
-                                                                    WearConnectionManager.syncChildSafeZone(
-                                                                        context = context,
-                                                                        childId = child.childId,
-                                                                        safeZone = zone,
-                                                                        enabled = enabled
-                                                                    ) { synced ->
+                                                                            updatingMonitoring = false
+                                                                        }
+                                                                    } else {
                                                                         monitoringStatuses =
                                                                             monitoringStatuses + (
-                                                                                    zone.id to if (synced) {
-                                                                                        "$childName monitoring sent to watch."
-                                                                                    } else {
-                                                                                        "$childName monitoring saved. Watch sync failed."
-                                                                                    }
+                                                                                    zone.id to message
                                                                                     )
 
                                                                         updatingMonitoring = false
                                                                     }
-                                                                } else {
-                                                                    monitoringStatuses =
-                                                                        monitoringStatuses + (
-                                                                                zone.id to message
-                                                                                )
-
-                                                                    updatingMonitoring = false
                                                                 }
-                                                            }
+                                                        }
                                                     },
                                                     colors = SwitchDefaults.colors(
                                                         checkedThumbColor = Color.White,
@@ -356,6 +360,10 @@ fun SafeZoneScreen(
                                 ZoneDetail(
                                     label = "Address:",
                                     value = safeZoneAddresses[zone.id] ?: "Loading address..."
+                                )
+                                ZoneDetail(
+                                    label = "Status:",
+                                    value = scheduleStatus(zone)
                                 )
 
                                 ZoneDetail(
@@ -545,3 +553,18 @@ fun SafeZoneScreen(
             )
         }
     }
+private fun scheduleStatus(zone: SafeZone): String {
+    if (zone.scheduleAlwaysOn) return "Active now"
+    val dayName = when (java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK)) {
+        java.util.Calendar.SUNDAY -> "Sun"
+        java.util.Calendar.MONDAY -> "Mon"
+        java.util.Calendar.TUESDAY -> "Tue"
+        java.util.Calendar.WEDNESDAY -> "Wed"
+        java.util.Calendar.THURSDAY -> "Thu"
+        java.util.Calendar.FRIDAY -> "Fri"
+        java.util.Calendar.SATURDAY -> "Sat"
+        else -> ""
+    }
+    if (!zone.scheduleDays.contains(dayName)) return "Outside schedule"
+    return "Active now"
+}
