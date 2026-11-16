@@ -54,6 +54,9 @@ import com.wanderspectra.app.ui.theme.ButtonBlue
 import com.wanderspectra.app.ui.theme.ButtonRed
 import com.wanderspectra.app.ui.theme.SecondaryRed
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 
 enum class AppDestination {
     HOME,
@@ -93,11 +96,20 @@ fun AppShell(
     var selectedIncidentReport by remember { mutableStateOf<IncidentRecord?>(null) }
     val context = LocalContext.current
     val caregiverUid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
-    val emergencyStore = remember(context, caregiverUid) { context.getSharedPreferences("elopement_state_$caregiverUid", android.content.Context.MODE_PRIVATE) }
+    val emergencyStore = remember(
+        context,
+        caregiverUid
+    ) {
+        context.getSharedPreferences(
+            "elopement_state_$caregiverUid",
+            android.content.Context.MODE_PRIVATE
+        )
+    }
     var emergencyChildName by remember { mutableStateOf("") }
     var emergencyChildId by remember { mutableStateOf("") }
     var incidentBusy by remember { mutableStateOf(false) }
-    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    val notificationPermission =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     var emergencyProfileReturn by remember { mutableStateOf(AppDestination.CHILD_PROFILE) }
     var childProfiles by remember { mutableStateOf<List<ChildProfile>>(emptyList()) }
     var child by remember { mutableStateOf<ChildProfile?>(null) }
@@ -145,8 +157,18 @@ fun AppShell(
                     .padding(start = 24.dp, end = 24.dp, top = 32.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "Wander", color = EmergencyRed, fontFamily = TanSongbird, fontSize = 22.sp)
-                Text(text = "Spectra", color = PrimaryBlue, fontFamily = TanSongbird, fontSize = 22.sp)
+                Text(
+                    text = "Wander",
+                    color = EmergencyRed,
+                    fontFamily = TanSongbird,
+                    fontSize = 22.sp
+                )
+                Text(
+                    text = "Spectra",
+                    color = PrimaryBlue,
+                    fontFamily = TanSongbird,
+                    fontSize = 22.sp
+                )
                 Image(
                     painter = painterResource(id = R.drawable.wanderspectra_logo),
                     contentDescription = "Open Settings",
@@ -182,7 +204,11 @@ fun AppShell(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(color = BackgroundCream, shape = RoundedCornerShape(12.dp))
-                        .border(width = 1.dp, color = PrimaryBlue, shape = RoundedCornerShape(12.dp))
+                        .border(
+                            width = 1.dp,
+                            color = PrimaryBlue,
+                            shape = RoundedCornerShape(12.dp)
+                        )
                 ) {
                     Box(
                         modifier = Modifier
@@ -300,6 +326,7 @@ fun AppShell(
                                     communityCanGoBack = canGoBack
                                 }
                             )
+
                             AppDestination.CAREGIVER_ACCOUNT -> CaregiverAccountContent()
                             AppDestination.SAFE_ZONE_SETTINGS -> SafeZoneScreen(
                                 onAddClick = {
@@ -585,51 +612,74 @@ fun AppShell(
                                 )
                         }
                     }
+
+
                     if (
                         currentDestination != AppDestination.HOME &&
                         currentDestination != AppDestination.ELOPEMENT_MODE &&
                         currentDestination != AppDestination.CHILD_MISSING
                     ) {
-                        androidx.compose.material3.TextButton(
-                            onClick = {
-                                when {
-                                    currentDestination == AppDestination.COMMUNITY &&
-                                            communityCanGoBack &&
-                                            communityBackHandler != null -> {
-                                        communityBackHandler?.invoke()
-                                    }
-
-                                    currentDestination == AppDestination.SAFETY_CIRCLE &&
-                                            safetyCircleCanGoBack &&
-                                            safetyCircleBackHandler != null -> {
-                                        safetyCircleBackHandler?.invoke()
-                                    }
-                                    else -> {
-                                        val destination = previousDestination
-                                        previousDestination = AppDestination.HOME
-                                        currentDestination = destination
-                                    }
-                                }
-                            },
+                        Row(
                             modifier = Modifier
-                                .padding(start = 12.dp, bottom = 0.dp)
-                                .height(36.dp)
+                                .fillMaxWidth()
+                                .padding(start = 20.dp, end = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "Back",
-                                color = PrimaryBlue,
-                                fontFamily = Salsa,
-                                fontSize = 18.sp
-                            )
+                            if (openIncidentId != null) {
+                                androidx.compose.material3.TextButton(
+                                    onClick = {
+                                        currentDestination = AppDestination.ELOPEMENT_MODE
+                                    },
+                                    contentPadding = PaddingValues(0.dp)
+                                ) {
+                                    Text(
+                                        text = "Active Elopement",
+                                        color = SecondaryRed,
+                                        fontFamily = Salsa,
+                                        fontSize = 18.sp
+                                    )
+                                }
+                            } else {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+
+                            androidx.compose.material3.TextButton(
+                                onClick = {
+                                    when {
+                                        currentDestination == AppDestination.COMMUNITY &&
+                                                communityCanGoBack &&
+                                                communityBackHandler != null -> {
+                                            communityBackHandler?.invoke()
+                                        }
+
+                                        currentDestination == AppDestination.SAFETY_CIRCLE &&
+                                                safetyCircleCanGoBack &&
+                                                safetyCircleBackHandler != null -> {
+                                            safetyCircleBackHandler?.invoke()
+                                        }
+
+                                        else -> {
+                                            val destination = previousDestination
+                                            previousDestination = AppDestination.HOME
+                                            currentDestination = destination
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.defaultMinSize(minWidth = 0.dp),
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Text(
+                                    text = "Back",
+                                    color = PrimaryBlue,
+                                    fontFamily = Salsa,
+                                    fontSize = 18.sp
+                                )
+                            }
                         }
                     }
-                }
-            }
 
-            if (openIncidentId != null && currentDestination != AppDestination.ELOPEMENT_MODE) {
-                androidx.compose.material3.TextButton(onClick = {
-                    currentDestination = AppDestination.ELOPEMENT_MODE
-                }) { Text("Return to active Elopement Mode") }
+                }
             }
 
             CaregiverSightingNotifications(
