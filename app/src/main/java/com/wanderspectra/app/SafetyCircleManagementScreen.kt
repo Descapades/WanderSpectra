@@ -218,7 +218,7 @@ fun SafetyCircleManagementScreen(
                     title = { Text("Remove member?") },
                     text = {
                         Column {
-                            Text("Remove ${member.name} from this child's Safety Circle?")
+                            Text("Permanently remove ${member.name} and all of their child assignments? To remove only one assignment, use Edit Member.")
                             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                         }
                     },
