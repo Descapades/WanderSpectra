@@ -52,8 +52,6 @@ fun EmergencyServicesShortcut(
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
-
         Text(
             text = "Provides access to emergency services and " +
                     "$emergencyNumber calling through your phone dialer.",
@@ -66,7 +64,7 @@ fun EmergencyServicesShortcut(
                 .padding(horizontal = 12.dp)
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Button(
             onClick = {

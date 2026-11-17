@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.AnnotatedString
 
 @Composable
 fun ElopementActiveContent(
@@ -30,7 +31,9 @@ fun ElopementActiveContent(
     onEmergencyProfile: (() -> Unit)? = null,
     emergencyProfileAvailable: Boolean = false,
     onSafetyCircle: (() -> Unit)? = null,
-    onCommunity: (() -> Unit)? = null
+    onCommunity: (() -> Unit)? = null,
+    safetyCircleNotified: Boolean = false,
+    communityAlertIssued: Boolean = false
 ) {
     var isWatchConnected by remember(childId) { mutableStateOf(false) }
     var watchBatteryLevel by remember(childId) { mutableIntStateOf(-1) }
@@ -137,8 +140,12 @@ fun ElopementActiveContent(
             )
 
             Text(
-                text = "Sends the active elopement alert and child profile " +
-                        "to trusted Safety Circle members.",
+                text = if (safetyCircleNotified) {
+                    "✓ Safety Circle Notified"
+                } else {
+                    "Sends the active elopement alert and child profile " +
+                            "to trusted Safety Circle members."
+                },
                 color = Color(0xFF478AC2),
                 fontFamily = Salsa,
                 fontSize = 18.sp,
@@ -167,7 +174,11 @@ fun ElopementActiveContent(
                 )
             ) {
                 Text(
-                    text = "Notify Safety Circle",
+                    text = if (safetyCircleNotified) {
+                        "View Safety Circle"
+                    } else {
+                        "Notify Safety Circle"
+                    },
                     fontFamily = Salsa,
                     fontSize = 18.sp,
                     color = SecondaryBlue
@@ -186,10 +197,24 @@ fun ElopementActiveContent(
                 modifier = Modifier.fillMaxWidth()
             )
 
+
             Text(
-                text = "Share $childName's missing-child information " +
-                        "with nearby participating WanderSpectra users.",
-                color = Color(0xFF478AC2),
+                text = if (communityAlertIssued) {
+                    buildAnnotatedString {
+                        withStyle(SpanStyle(color = PrimaryBlue)) {
+                            append("Community Alert Issued   ")
+                        }
+                        withStyle(SpanStyle(color = SafeMint)) {
+                            append("✓ ")
+                        }
+                    }
+                } else {
+                    AnnotatedString(
+                        "Share $childName's missing-child information " +
+                                "with nearby participating WanderSpectra users."
+                    )
+                },
+                color = PrimaryBlue,
                 fontFamily = Salsa,
                 fontSize = 18.sp,
                 lineHeight = 24.sp,
@@ -197,6 +222,7 @@ fun ElopementActiveContent(
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp)
             )
+
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -217,7 +243,11 @@ fun ElopementActiveContent(
                 )
             ) {
                 Text(
-                    text = "Community Alert",
+                    text = if (communityAlertIssued) {
+                        "View Community Alert"
+                    } else {
+                        "Issue Community Alert"
+                    },
                     fontFamily = Salsa,
                     fontSize = 18.sp
                 )
@@ -230,11 +260,9 @@ fun ElopementActiveContent(
             text = "Child is Safe",
             color = Color(0xFF168452),
             fontFamily = Salsa,
-            fontSize = 26.sp,
+            fontSize = 24.sp,
             modifier = Modifier.fillMaxWidth()
         )
-
-        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
             text = "Ends Elopement Mode and completes the incident record.",
@@ -247,7 +275,7 @@ fun ElopementActiveContent(
                 .padding(horizontal = 12.dp)
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Button(
             onClick = {
