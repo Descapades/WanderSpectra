@@ -564,6 +564,44 @@ fun HomeContent(
                                     context = context,
                                     nodeId = deviceId
                                 ) { result ->
+                                    if (!result.connected) {
+                                        wearableRepository.updateWearableConnection(
+                                            childId = child.childId,
+                                            connected = false,
+                                            onSuccess = {
+                                                android.util.Log.i(
+                                                    "HomeLocationCard",
+                                                    "Wearable disconnected: ${child.childId}"
+                                                )
+                                            },
+                                            onFailure = { exception ->
+                                                android.util.Log.e(
+                                                    "HomeLocationCard",
+                                                    "Failed to update wearable connection",
+                                                    exception
+                                                )
+                                            }
+                                        )
+                                    }
+                                    if (result.connected && wearable?.connected == false) {
+                                        wearableRepository.updateWearableConnection(
+                                            childId = child.childId,
+                                            connected = true,
+                                            onSuccess = {
+                                                android.util.Log.i(
+                                                    "HomeLocationCard",
+                                                    "Wearable reconnected: ${child.childId}"
+                                                )
+                                            },
+                                            onFailure = { exception ->
+                                                android.util.Log.e(
+                                                    "HomeLocationCard",
+                                                    "Failed to restore wearable connection",
+                                                    exception
+                                                )
+                                            }
+                                        )
+                                    }
                                     if (
                                         result.connected &&
                                         result.latitude != null &&

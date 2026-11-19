@@ -80,6 +80,7 @@ fun ChildWearableCard(
     var latitude by remember { mutableStateOf<Double?>(null) }
     var longitude by remember { mutableStateOf<Double?>(null) }
     val wearableRepository = remember { WearableRepository() }
+    val context = LocalContext.current
     val childName = child.preferredName
         .ifBlank { child.fullName }
 
@@ -114,15 +115,34 @@ fun ChildWearableCard(
             latitude = latitude,
             longitude = longitude,
             onDisconnectDevice = {
-                isConnected = false
-                showDeviceSelection = false
-                connectedDeviceName = ""
-                batteryLevel = -1
-                latitude = null
-                longitude = null
+                wearableRepository.updateWearableConnection(
+                    childId = child.childId,
+                    connected = false,
+                    onSuccess = {
+                        if (CaregiverNotificationPreferences.isWearableDisconnectedEnabled(context)) {
+                            CaregiverNotificationManager.sendCaregiverNotification(
+                                context = context,
+                                title = "Wearable Disconnected",
+                                message = "$childName's wearable has disconnected."
+                            )
+                        }
+                        isConnected = false
+                        showDeviceSelection = false
+                        connectedDeviceName = ""
+                        batteryLevel = -1
+                        latitude = null
+                        longitude = null
+                    },
+                    onFailure = { exception ->
+                        android.util.Log.e(
+                            "WearableFirestore",
+                            "Failed to disconnect wearable",
+                            exception
+                        )
+                    }
+                )
             }
         )
-
     } else if (showDeviceSelection) {
 
         ConnectWearableScreen(

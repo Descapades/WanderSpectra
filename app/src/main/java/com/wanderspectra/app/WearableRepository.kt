@@ -77,6 +77,24 @@ class WearableRepository {
                 onFailure(exception)
             }
     }
+
+
+    fun updateWearableConnection(
+        childId: String,
+        connected: Boolean,
+        onSuccess: () -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        wearableDocument(childId)
+            .update("connected", connected)
+            .addOnSuccessListener {
+                onSuccess()
+            }
+            .addOnFailureListener { exception ->
+                onFailure(exception)
+            }
+    }
+
 }
 
 
