@@ -162,6 +162,7 @@ fun HomeContent(
         val context = LocalContext.current
         var wearableDeviceId by remember(child.childId) { mutableStateOf<String?>(null) }
         var watchConnected by remember { mutableStateOf<Boolean?>(null) }
+        var previousWatchConnected by remember(child.childId) { mutableStateOf<Boolean?>(null) }
         var batteryLevel by remember { mutableStateOf<Int?>(null) }
         var locationText by remember(child.childId) { mutableStateOf("Location unavailable") }
         var lastUpdatedText by remember(child.childId) { mutableStateOf("Unknown") }
@@ -216,7 +217,22 @@ fun HomeContent(
                     childId = child.childId,
                     onSuccess = { wearable ->
                         wearableDeviceId = wearable?.deviceId
-                        watchConnected = wearable?.connected
+                        val currentConnection = wearable?.connected
+
+                        if (
+                            previousWatchConnected == true &&
+                            currentConnection == false &&
+                            CaregiverNotificationPreferences.isWearableDisconnectedEnabled(context)
+                        ) {
+                            CaregiverNotificationManager.sendCaregiverNotification(
+                                context = context,
+                                title = "Wearable Disconnected",
+                                message = "$childName's wearable has disconnected."
+                            )
+                        }
+
+                        previousWatchConnected = currentConnection
+                        watchConnected = currentConnection
                         batteryLevel = wearable?.batteryLevel?.takeIf { it >= 0 }
 
                         wearableLocation = if (

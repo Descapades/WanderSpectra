@@ -110,13 +110,31 @@ class SafeZoneExitListenerService : WearableListenerService() {
                             safeZoneName = safeZone.name
                         )
 
+
                         IncidentRepository().saveSafeZoneExitIncident(incident) { success, message ->
                             if (success) {
                                 Log.i(TAG, "Safe Zone exit incident saved to Firestore")
+
+                                if (CaregiverNotificationPreferences.isSafeZoneExitEnabled(applicationContext)) {
+                                    val notificationSent = CaregiverNotificationManager.sendCaregiverNotification(
+                                        context = applicationContext,
+                                        title = "Safe Zone Exit Alert",
+                                        message = "Your child's wearable has left ${safeZone.name}."
+                                    )
+
+                                    if (notificationSent) {
+                                        Log.i(TAG, "Safe Zone exit notification posted")
+                                    } else {
+                                        Log.w(TAG, "Safe Zone exit notification could not be posted")
+                                    }
+                                } else {
+                                    Log.i(TAG, "Safe Zone exit notification disabled by caregiver")
+                                }
                             } else {
                                 Log.e(TAG, "Safe Zone exit incident save failed: $message")
                             }
                         }
+
                     }
                 },
                 onFailure = { exception ->

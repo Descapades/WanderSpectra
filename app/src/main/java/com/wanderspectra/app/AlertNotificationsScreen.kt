@@ -68,13 +68,14 @@ fun AlertNotificationsContent() {
     val participantRepository = remember(context) { CommunityAlertParticipantRepository(context) }
     var communityAlertStatus by remember { mutableStateOf("") }
     var communityAlertRequestInProgress by remember { mutableStateOf(false) }
-    var safeZoneExitEnabled by remember { mutableStateOf(false) }
-    var wearableDisconnectedEnabled by remember { mutableStateOf(false) }
-    var lowBatteryAlertEnabled by remember { mutableStateOf(false) }
-    var safetyCircleUpdatesEnabled by remember { mutableStateOf(false) }
-    var communitySightingsEnabled by remember { mutableStateOf(false) }
-    var soundEnabled by remember { mutableStateOf(false) }
-    var vibrationEnabled by remember { mutableStateOf(false) }
+    var safeZoneExitEnabled by remember { mutableStateOf(CaregiverNotificationPreferences.isSafeZoneExitEnabled(context)) }
+    var wearableDisconnectedEnabled by remember { mutableStateOf(CaregiverNotificationPreferences.isWearableDisconnectedEnabled(context)) }
+    var lowBatteryAlertEnabled by remember { mutableStateOf(CaregiverNotificationPreferences.isLowBatteryAlertEnabled(context)) }
+    var safetyCircleUpdatesEnabled by remember { mutableStateOf(CaregiverNotificationPreferences.isSafetyCircleUpdatesEnabled(context)) }
+    var communitySightingsEnabled by remember { mutableStateOf(CaregiverNotificationPreferences.isCommunitySightingsEnabled(context)) }
+    var soundEnabled by remember { mutableStateOf(CaregiverNotificationPreferences.isSoundEnabled(context)) }
+    var vibrationEnabled by remember { mutableStateOf(CaregiverNotificationPreferences.isVibrationEnabled(context)) }
+
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -179,7 +180,10 @@ fun AlertNotificationsContent() {
                     ) {
                         Switch(
                             checked = safeZoneExitEnabled,
-                            onCheckedChange = { safeZoneExitEnabled = it },
+                            onCheckedChange = { enabled ->
+                                safeZoneExitEnabled = enabled
+                                CaregiverNotificationPreferences.setSafeZoneExitEnabled(context, enabled)
+                            },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
                                 checkedTrackColor = PrimaryBlue,
@@ -228,7 +232,10 @@ fun AlertNotificationsContent() {
                     ) {
                         Switch(
                             checked = wearableDisconnectedEnabled,
-                            onCheckedChange = { wearableDisconnectedEnabled = it },
+                            onCheckedChange = { enabled ->
+                                wearableDisconnectedEnabled = enabled
+                                CaregiverNotificationPreferences.setWearableDisconnectedEnabled(context, enabled)
+                            },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
                                 checkedTrackColor = PrimaryBlue,
@@ -268,7 +275,10 @@ fun AlertNotificationsContent() {
                     ) {
                         Switch(
                             checked = lowBatteryAlertEnabled,
-                            onCheckedChange = { lowBatteryAlertEnabled = it },
+                            onCheckedChange = { enabled ->
+                                lowBatteryAlertEnabled = enabled
+                                CaregiverNotificationPreferences.setLowBatteryAlertEnabled(context, enabled)
+                            },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
                                 checkedTrackColor = PrimaryBlue,
@@ -317,7 +327,10 @@ fun AlertNotificationsContent() {
                     ) {
                         Switch(
                             checked = safetyCircleUpdatesEnabled,
-                            onCheckedChange = { safetyCircleUpdatesEnabled = it },
+                            onCheckedChange = { enabled ->
+                                safetyCircleUpdatesEnabled = enabled
+                                CaregiverNotificationPreferences.setSafetyCircleUpdatesEnabled(context, enabled)
+                            },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
                                 checkedTrackColor = PrimaryBlue,
@@ -357,7 +370,10 @@ fun AlertNotificationsContent() {
                     ) {
                         Switch(
                             checked = communitySightingsEnabled,
-                            onCheckedChange = { communitySightingsEnabled = it },
+                            onCheckedChange = { enabled ->
+                                communitySightingsEnabled = enabled
+                                CaregiverNotificationPreferences.setCommunitySightingsEnabled(context, enabled)
+                            },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
                                 checkedTrackColor = PrimaryBlue,
@@ -398,10 +414,43 @@ fun AlertNotificationsContent() {
                         Switch(
                             checked = communityAlertsEnabled,
                             enabled = !communityAlertRequestInProgress,
+
                             onCheckedChange = { enabled ->
-                                // KEEP your existing Community Alerts
-                                // registration and opt-out logic here
+                                communityAlertRequestInProgress = true
+                                communityAlertStatus = ""
+
+                                if (enabled) {
+                                    CommunityAlertPreferences.setOptedIn(context, true)
+
+                                    participantRepository.registerParticipant(
+                                        onSuccess = {
+                                            communityAlertsEnabled = true
+                                            communityAlertRequestInProgress = false
+                                            communityAlertStatus = "Community Alerts enabled."
+                                        },
+                                        onFailure = { error ->
+                                            CommunityAlertPreferences.setOptedIn(context, false)
+                                            communityAlertsEnabled = false
+                                            communityAlertRequestInProgress = false
+                                            communityAlertStatus = error
+                                        }
+                                    )
+                                } else {
+                                    participantRepository.unregisterParticipant(
+                                        onSuccess = {
+                                            CommunityAlertPreferences.setOptedIn(context, false)
+                                            communityAlertsEnabled = false
+                                            communityAlertRequestInProgress = false
+                                            communityAlertStatus = "Community Alerts disabled."
+                                        },
+                                        onFailure = { error ->
+                                            communityAlertRequestInProgress = false
+                                            communityAlertStatus = error
+                                        }
+                                    )
+                                }
                             },
+
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
                                 checkedTrackColor = PrimaryBlue,
@@ -442,7 +491,10 @@ fun AlertNotificationsContent() {
                     ) {
                         Switch(
                             checked = soundEnabled,
-                            onCheckedChange = { soundEnabled = it },
+                            onCheckedChange = { enabled ->
+                                soundEnabled = enabled
+                                CaregiverNotificationPreferences.setSoundEnabled(context, enabled)
+                            },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
                                 checkedTrackColor = PrimaryBlue,
@@ -470,7 +522,10 @@ fun AlertNotificationsContent() {
                     ) {
                         Switch(
                             checked = vibrationEnabled,
-                            onCheckedChange = { vibrationEnabled = it },
+                            onCheckedChange = { enabled ->
+                                vibrationEnabled = enabled
+                                CaregiverNotificationPreferences.setVibrationEnabled(context, enabled)
+                            },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
                                 checkedTrackColor = PrimaryBlue,

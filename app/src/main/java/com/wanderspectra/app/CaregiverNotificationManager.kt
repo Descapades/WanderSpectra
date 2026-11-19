@@ -107,3 +107,78 @@ object CaregiverNotificationManager {
         }
     }
 }
+
+
+
+object CaregiverNotificationPreferences {
+
+    private const val PREFS_NAME = "caregiver_notification_preferences"
+
+    private const val KEY_SAFE_ZONE_EXIT = "safe_zone_exit_enabled"
+    private const val KEY_WEARABLE_DISCONNECTED = "wearable_disconnected_enabled"
+    private const val KEY_LOW_BATTERY = "low_battery_alert_enabled"
+    private const val KEY_SAFETY_CIRCLE_UPDATES = "safety_circle_updates_enabled"
+    private const val KEY_COMMUNITY_SIGHTINGS = "community_sightings_enabled"
+    private const val KEY_SOUND = "sound_enabled"
+    private const val KEY_VIBRATION = "vibration_enabled"
+
+    private fun getPreference(context: Context, key: String): Boolean {
+        return context.getSharedPreferences(
+            PREFS_NAME,
+            Context.MODE_PRIVATE
+        ).getBoolean(key, true)
+    }
+
+    private fun setPreference(context: Context, key: String, enabled: Boolean) {
+        context.getSharedPreferences(
+            PREFS_NAME,
+            Context.MODE_PRIVATE
+        ).edit()
+            .putBoolean(key, enabled)
+            .apply()
+    }
+
+    fun isSafeZoneExitEnabled(context: Context) =
+        getPreference(context, KEY_SAFE_ZONE_EXIT)
+
+    fun setSafeZoneExitEnabled(context: Context, enabled: Boolean) =
+        setPreference(context, KEY_SAFE_ZONE_EXIT, enabled)
+
+    fun isWearableDisconnectedEnabled(context: Context) =
+        getPreference(context, KEY_WEARABLE_DISCONNECTED)
+
+    fun setWearableDisconnectedEnabled(context: Context, enabled: Boolean) =
+        setPreference(context, KEY_WEARABLE_DISCONNECTED, enabled)
+
+    fun isLowBatteryAlertEnabled(context: Context) =
+        getPreference(context, KEY_LOW_BATTERY)
+
+    fun setLowBatteryAlertEnabled(context: Context, enabled: Boolean) =
+        setPreference(context, KEY_LOW_BATTERY, enabled)
+
+    fun isSafetyCircleUpdatesEnabled(context: Context) =
+        getPreference(context, KEY_SAFETY_CIRCLE_UPDATES)
+
+    fun setSafetyCircleUpdatesEnabled(context: Context, enabled: Boolean) =
+        setPreference(context, KEY_SAFETY_CIRCLE_UPDATES, enabled)
+
+    fun isCommunitySightingsEnabled(context: Context) =
+        getPreference(context, KEY_COMMUNITY_SIGHTINGS)
+
+    fun setCommunitySightingsEnabled(context: Context, enabled: Boolean) =
+        setPreference(context, KEY_COMMUNITY_SIGHTINGS, enabled)
+
+    fun isSoundEnabled(context: Context) =
+        getPreference(context, KEY_SOUND)
+
+    fun setSoundEnabled(context: Context, enabled: Boolean) =
+        setPreference(context, KEY_SOUND, enabled)
+
+    fun isVibrationEnabled(context: Context) =
+        getPreference(context, KEY_VIBRATION)
+
+    fun setVibrationEnabled(context: Context, enabled: Boolean) =
+        setPreference(context, KEY_VIBRATION, enabled)
+}
+
+
