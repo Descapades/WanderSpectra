@@ -27,6 +27,7 @@ object WearConnectionManager {
     private const val PLAY_SOUND_PATH = "/wanderspectra/play_sound"
     private const val STOP_SOUND_PATH = "/wanderspectra/stop_sound"
     private const val SAFEZONE_PATH = "/wanderspectra/safezone"
+    private const val ELOPEMENT_PATH = "/wanderspectra/elopement"
 
     private fun safeLogE(tag: String, msg: String, throwable: Throwable? = null) {
         try {
@@ -51,7 +52,6 @@ object WearConnectionManager {
                     "Failed to find Wear OS devices",
                     exception
                 )
-
                 onResult(emptyList())
             }
     }
@@ -76,11 +76,9 @@ object WearConnectionManager {
                     onResult(null)
                 } else {
                     getAvailableWearables(context) { nodes ->
-
                         val matchingNode = nodes.firstOrNull {
                             it.id == deviceId
                         }
-
                         onResult(matchingNode)
                     }
                 }
@@ -91,7 +89,6 @@ object WearConnectionManager {
                     "Failed to retrieve wearable for child $childId",
                     exception
                 )
-
                 onResult(null)
             }
         )
@@ -396,6 +393,53 @@ object WearConnectionManager {
                 safeLogE(
                     TAG,
                     "Failed to publish Safe Zone deletion state",
+                    exception
+                )
+                onResult(false)
+            }
+    }
+
+    fun openWatchApp(
+        context: Context,
+        nodeId: String,
+        onResult: (Boolean) -> Unit
+    ) {
+        Wearable.getMessageClient(context)
+            .sendMessage(
+                nodeId,
+                "/wanderspectra/open_app",
+                ByteArray(0)
+            )
+            .addOnSuccessListener {
+                onResult(true)
+            }
+            .addOnFailureListener { exception ->
+                safeLogE(TAG, "Failed to send open app request", exception)
+                onResult(false)
+            }
+    }
+
+    fun sendElopementToWearable(
+        context: Context,
+        nodeId: String,
+        isElopement: Boolean,
+        onResult: (Boolean) -> Unit
+    ) {
+        val payload = isElopement.toString().toByteArray(Charsets.UTF_8)
+
+        Wearable.getMessageClient(context)
+            .sendMessage(
+                nodeId,
+                ELOPEMENT_PATH,
+                payload
+            )
+            .addOnSuccessListener {
+                onResult(true)
+            }
+            .addOnFailureListener { exception ->
+                safeLogE(
+                    TAG,
+                    "Failed to send Elopement Mode command to $nodeId",
                     exception
                 )
                 onResult(false)

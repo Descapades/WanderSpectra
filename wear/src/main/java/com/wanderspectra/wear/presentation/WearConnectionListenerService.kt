@@ -33,6 +33,7 @@ class WearConnectionListenerService : WearableListenerService() {
         private const val ELOPEMENT_PATH = "/wanderspectra/elopement"
         private const val SAFEZONE_PATH = "/wanderspectra/safezone"
         private const val SAFEZONE_DELETE_PATH = "/wanderspectra/safezone/delete"
+        private const val OPEN_APP_PATH = "/wanderspectra/open_app"
         private var alarmPlayer: MediaPlayer? = null
         private var alarmVibrator: Vibrator? = null
         private val alarmLock = Any()
@@ -199,6 +200,23 @@ class WearConnectionListenerService : WearableListenerService() {
                         .addOnFailureListener { exception ->
                             Log.e(TAG, "Failed to send response to caregiver app", exception)
                         }
+                }
+            }
+
+            OPEN_APP_PATH -> {
+                val intent = Intent(this, MainActivity::class.java).apply {
+                    addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                                Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    )
+                }
+
+                try {
+                    startActivity(intent)
+                    Log.i(TAG, "Open on Watch request received")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Unable to open WanderSpectra on watch", e)
                 }
             }
 

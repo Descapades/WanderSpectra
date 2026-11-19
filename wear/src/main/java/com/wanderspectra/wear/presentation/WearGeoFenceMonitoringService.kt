@@ -61,9 +61,14 @@ class WearGeofenceMonitoringService : Service() {
                     if (!isMonitoring) return@fetchLocation
 
                     if (location != null) {
+                        Log.d(
+                            TAG,
+                            "GPS accuracy: ${location.accuracy} meters"
+                        )
                         WearSafetyStateRepository.checkLocationAgainstSafeZone(
                             location.latitude,
-                            location.longitude
+                            location.longitude,
+                            accuracyMeters = location.accuracy
                         )
                         if (isRouteTracking &&
                             WearSafetyStateRepository.isElopementDetected.value

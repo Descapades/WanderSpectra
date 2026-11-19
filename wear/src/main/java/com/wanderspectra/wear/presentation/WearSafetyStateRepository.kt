@@ -89,7 +89,11 @@ object WearSafetyStateRepository {
         _safeZoneReentryEvent.value = null
     }
 
-    fun checkLocationAgainstSafeZone(latitude: Double, longitude: Double) {
+    fun checkLocationAgainstSafeZone(
+        latitude: Double,
+        longitude: Double,
+        accuracyMeters: Float = 0f
+    ) {
         val safeZone = _activeSafeZone.value
 
         if (safeZone == null || !safeZone.monitoringEnabled) {
@@ -106,9 +110,20 @@ object WearSafetyStateRepository {
         )
 
         val isInside = distanceMeters <= safeZone.radiusMeters
+        val accuracyIsValid = accuracyMeters > 0f && accuracyMeters.isFinite()
 
+        if (accuracyIsValid) {
+            val distanceFromBoundary =
+                kotlin.math.abs(distanceMeters - safeZone.radiusMeters)
+
+            if (distanceFromBoundary <= accuracyMeters) {
+                // GPS uncertainty overlaps the Safe Zone boundary.
+                // Keep the previous state until a clearer reading arrives.
+                return
+            }
+        }
         // Generate an event only for an actual inside-to-outside transition.
-        if (wasInsideSafeZone == true && !isInside) {
+        if (wasInsideSafeZone != false && !isInside) {
             _safeZoneExitEvent.value = SafeZoneExitEvent(
                 childId = safeZone.childId,
                 safeZoneId = safeZone.id,

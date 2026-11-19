@@ -410,6 +410,42 @@ fun AppShell(
                                                         .apply()
                                                     currentDestination =
                                                         AppDestination.ELOPEMENT_MODE
+                                                    WearConnectionManager.getWearableForChild(
+                                                        context = context,
+                                                        childId = selectedChild.childId
+                                                    ) { node ->
+                                                        if (node != null) {
+                                                            WearConnectionManager.sendElopementToWearable(
+                                                                context = context,
+                                                                nodeId = node.id,
+                                                                isElopement = true
+                                                            ) { success ->
+                                                                if (success) {
+                                                                    WearConnectionManager.openWatchApp(
+                                                                        context = context,
+                                                                        nodeId = node.id
+                                                                    ) { opened ->
+                                                                        if (!opened) {
+                                                                            android.util.Log.w(
+                                                                                "WearConnection",
+                                                                                "Unable to send Open on Watch request"
+                                                                            )
+                                                                        }
+                                                                    }
+                                                                } else {
+                                                                    android.util.Log.w(
+                                                                        "WearConnection",
+                                                                        "Unable to activate Elopement Mode on wearable"
+                                                                    )
+                                                                }
+                                                            }
+                                                        } else {
+                                                            android.util.Log.w(
+                                                                "WearConnection",
+                                                                "Child's wearable is not currently connected"
+                                                            )
+                                                        }
+                                                    }
                                                     if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(
                                                             context,
                                                             Manifest.permission.POST_NOTIFICATIONS

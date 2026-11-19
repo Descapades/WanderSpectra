@@ -97,6 +97,17 @@ class SafeZoneExitListenerService : WearableListenerService() {
 
                         Log.i(TAG, "Safe Zone exit validated against registered Safe Zone")
 
+                        WearConnectionManager.openWatchApp(
+                            context = applicationContext,
+                            nodeId = messageEvent.sourceNodeId
+                        ) { success ->
+                            if (success) {
+                                Log.i(TAG, "Open on Watch request sent after Safe Zone exit")
+                            } else {
+                                Log.w(TAG, "Failed to send Open on Watch request after Safe Zone exit")
+                            }
+                        }
+
                         val incident = Incident(
                             childId = childId,
                             caregiverId = caregiverId,
