@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
@@ -303,6 +304,7 @@ fun ConnectWearableScreen(
 
     var searching by remember { mutableStateOf(true) }
     var searchVersion by remember { mutableStateOf(0) }
+    var searchSummary by remember { mutableStateOf<String?>(null) }
     var connecting by remember { mutableStateOf(false) }
     var connectionError by remember { mutableStateOf<String?>(null) }
     val screenActive = remember { java.util.concurrent.atomic.AtomicBoolean(true) }
@@ -315,6 +317,7 @@ fun ConnectWearableScreen(
         val completed = java.util.concurrent.atomic.AtomicBoolean(false)
         var disposed = false
         searching = true
+        searchSummary = null
         availableDevices = emptyList()
         selectedDevice = null
         connectionError = null
@@ -332,6 +335,9 @@ fun ConnectWearableScreen(
                     searching = false
                     availableDevices = nodes
                     selectedDevice = nodes.firstOrNull()
+                    searchSummary = "Search ${searchVersion + 1} finished: " +
+                        if (nodes.isEmpty()) "no reachable devices returned."
+                        else "${nodes.size} reachable device(s) returned."
                 }
             }
         }
@@ -410,6 +416,22 @@ fun ConnectWearableScreen(
                 fontSize = 16.sp
             )
 
+            if (searching) {
+                CircularProgressIndicator(
+                    modifier = Modifier.padding(vertical = 8.dp).size(24.dp),
+                    color = PrimaryBlue
+                )
+            }
+            searchSummary?.let { summary ->
+                Text(
+                    text = summary,
+                    color = SecondaryBlue,
+                    fontFamily = Salsa,
+                    fontSize = 16.sp,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+
             if (availableDevices.isEmpty()) {
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -473,7 +495,7 @@ fun ConnectWearableScreen(
             Button(
                 enabled = !searching && !connecting,
                 onClick = { searchVersion += 1 }
-            ) { Text("Search Again", fontFamily = Salsa) }
+            ) { Text(if (searching) "Searching..." else "Search Again", fontFamily = Salsa) }
 
             Spacer(modifier = Modifier.weight(1f))
 
