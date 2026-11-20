@@ -20,8 +20,6 @@ fun SafetyCircleManagementScreen(
     key(caregiverId, childId) {
         var members by remember { mutableStateOf<List<SafetyCircleMember>>(emptyList()) }
         var loading by remember { mutableStateOf(true) }
-        var loaded by remember { mutableStateOf(false) }
-        var successMessage by remember { mutableStateOf<String?>(null) }
         var busy by remember { mutableStateOf(false) }
         var error by remember { mutableStateOf<String?>(null) }
         var removal by remember { mutableStateOf<SafetyCircleMember?>(null) }
@@ -39,7 +37,7 @@ fun SafetyCircleManagementScreen(
                 when {
                     busy -> Unit
                     removal != null -> removal = null
-                    formMember != null -> formMember = null
+                    formMember != null -> { formMember = null; error = null }
                     viewingMember != null -> viewingMember = null
                 }
             }
@@ -50,7 +48,6 @@ fun SafetyCircleManagementScreen(
             if (!available || busy) return
             loading = true
             error = null
-<<<<<<< HEAD
             repository.getMembersForCaregiver(
                 caregiverId,
 
@@ -87,8 +84,7 @@ fun SafetyCircleManagementScreen(
                                     onError = { exception ->
                                         if (!disposed && !failed) {
                                             failed = true
-                                            error = exception.localizedMessage
-                                                ?: "Unable to load child assignments."
+                                            error = caregiverDataError(exception)
                                             loading = false
                                         }
                                     }
@@ -100,15 +96,9 @@ fun SafetyCircleManagementScreen(
 
                 onError = {
                     if (!disposed) {
-                        error = it.localizedMessage ?: "Unable to load members."; loading = false
+                        error = caregiverDataError(it); loading = false
                     }
                 })
-=======
-            successMessage = null
-            repository.getMembersForChild(caregiverId, childId,
-                onSuccess = { if (!disposed) { members = it; loaded = true; loading = false } },
-                onError = { if (!disposed) { error = caregiverDataError(it); loading = false } })
->>>>>>> 6eab637 (SCRUM-59: Add loading, empty, and error feedback with retry)
         }
         LaunchedEffect(caregiverId, childId) { load() }
         Column(Modifier.fillMaxSize()) {
@@ -118,14 +108,15 @@ fun SafetyCircleManagementScreen(
                     Modifier.padding(16.dp)
                 )
             } else {
-<<<<<<< HEAD
-                if (loading || busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-                error?.let { message ->
-                    Text(message, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.error)
-                    TextButton(
-                        onClick = { load() },
-                        enabled = !busy && !loading
-                    ) { Text("Retry loading") }
+                if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+                if (formMember == null && viewingMember == null) {
+                    error?.let { message ->
+                        DataStateFeedback(
+                            title = "Unable to load Safety Circle",
+                            message = message,
+                            onRetry = if (!busy && !loading) ({ load() }) else null
+                        )
+                    }
                 }
                 Box(
                     modifier = Modifier.weight(1f)
@@ -155,6 +146,7 @@ fun SafetyCircleManagementScreen(
                             onBack = {
                                 if (!busy) {
                                     formMember = null
+                                    error = null
                                 }
                             },
                             onSave = { updatedMember, selectedChildIds ->
@@ -175,21 +167,30 @@ fun SafetyCircleManagementScreen(
                                         member = memberToSave,
                                         selectedChildIds = selectedChildIds,
                                         onSuccess = {
-                                            busy = false
-                                            formMember = null
-                                            load()
+                                            if (!disposed) {
+                                                busy = false
+                                                formMember = null
+                                                load()
+                                            }
                                         },
                                         onError = { exception ->
-                                            busy = false
-                                            error = exception.message
-                                                ?: "Failed to save Safety Circle member."
+                                            if (!disposed) {
+                                                busy = false
+                                                error = caregiverDataError(exception)
+                                            }
                                         }
                                     )
 
                                 }
                             }
                         )
-                    } else {
+                    } else if (loading) {
+                        DataStateFeedback(
+                            title = "Safety Circle",
+                            message = "Loading members...",
+                            loading = true
+                        )
+                    } else if (error == null) {
                         SafetyCircleContent(
                             members = members.map { member ->
                                 SafetyCircleMemberUiModel(
@@ -202,6 +203,7 @@ fun SafetyCircleManagementScreen(
                                     locationAccess = member.locationAccess
                                 )
                             },
+                            actionsEnabled = !busy && !loading,
                             onAddMember = {
                                 if (!busy && !loading) {
                                     error = null
@@ -252,7 +254,7 @@ fun SafetyCircleManagementScreen(
                                 onError = {
                                     if (!disposed) {
                                         busy = false; error =
-                                            it.localizedMessage ?: "Unable to remove member."
+                                            caregiverDataError(it)
                                     }
                                 })
                         }) { Text(if (busy) "Removing..." else "Remove") }
@@ -264,92 +266,6 @@ fun SafetyCircleManagementScreen(
                     }
                 )
             }
-=======
-                if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-                when {
-                    loading -> DataStateFeedback(
-                        title = "Safety Circle", message = "Loading members...", loading = true
-                    )
-                    !loaded && error != null -> DataStateFeedback(
-                        title = "Unable to load Safety Circle",
-                        message = error.orEmpty(), onRetry = { load() }
-                    )
-                    else -> {
-                        successMessage?.let { Text(it, Modifier.padding(12.dp)) }
-                        if (editor == null && removal == null) error?.let { message ->
-                            DataStateFeedback(
-                                title = "Request unsuccessful", message = message,
-                                onRetry = if (busy) null else ({ load() })
-                            )
-                        }
-                        Box(Modifier.weight(1f)) {
-                            SafetyCircleContent(
-                                members = members.map { SafetyCircleMemberUiModel(it.memberId, it.name, it.relationship, it.contactInformation) },
-                                onAddMember = {
-                                    if (!busy && !loading) {
-                                        error = null
-                                        successMessage = null
-                                        editor = SafetyCircleMember(caregiverId = caregiverId, childId = childId)
-                                    }
-                                },
-                                onEditMember = { ui -> if (!busy && !loading) {
-                                    error = null
-                                    successMessage = null
-                                    editor = members.find { it.memberId == ui.memberId }
-                                } },
-                                onRemoveMember = { ui -> if (!busy && !loading) {
-                                    error = null
-                                    successMessage = null
-                                    removal = members.find { it.memberId == ui.memberId }
-                                } },
-                                actionsEnabled = !busy
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        editor?.let { member ->
-            SafetyCircleMemberEditor(member, busy,
-                onDismiss = { if (!busy) editor = null },
-                onSave = { updated ->
-                    busy = true
-                    error = null
-                    repository.saveMember(updated,
-                        onSuccess = { saved -> if (!disposed) {
-                            members = (members.filterNot { it.memberId == saved.memberId } + saved).sortedBy { it.name.lowercase() }
-                            busy = false
-                            editor = null
-                            successMessage = "Safety Circle member saved."
-                        } },
-                        onError = { if (!disposed) { busy = false; error = caregiverDataError(it) } })
-                },
-                error = error
-            )
-        }
-        removal?.let { member ->
-            AlertDialog(
-                onDismissRequest = { if (!busy) removal = null },
-                title = { Text("Remove member?") },
-                text = { Column {
-                    Text("Remove ${member.name} from this child's Safety Circle?")
-                    error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                } },
-                confirmButton = { TextButton(enabled = !busy, onClick = {
-                    busy = true
-                    error = null
-                    repository.removeMember(member.memberId,
-                        onSuccess = { if (!disposed) {
-                            members = members.filterNot { it.memberId == member.memberId }
-                            busy = false
-                            removal = null
-                            successMessage = "Safety Circle member removed."
-                        } },
-                        onError = { if (!disposed) { busy = false; error = caregiverDataError(it) } })
-                }) { Text(if (busy) "Removing..." else "Remove") } },
-                dismissButton = { TextButton(enabled = !busy, onClick = { removal = null }) { Text("Cancel") } }
-            )
->>>>>>> 6eab637 (SCRUM-59: Add loading, empty, and error feedback with retry)
         }
     }
 }

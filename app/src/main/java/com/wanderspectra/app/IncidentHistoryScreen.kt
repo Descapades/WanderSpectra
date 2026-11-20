@@ -38,28 +38,7 @@ fun IncidentHistoryScreen(
     var refreshVersion by remember(childId) { mutableStateOf(0) }
     var loadState by remember(childId) { mutableStateOf<IncidentHistoryLoadState>(IncidentHistoryLoadState.Loading) }
 
-<<<<<<< HEAD
-    DisposableEffect(childId, refreshVersion) {
-=======
-    var refreshVersion by remember(childId) {
-        mutableStateOf(0)
-    }
-
-    var loadState by remember(childId) {
-        mutableStateOf<IncidentHistoryLoadState>(
-            IncidentHistoryLoadState.Loading
-        )
-    }
-
-    /**
-     * Retrieve incidents when the selected child changes
-     * or the caregiver requests a retry.
-     *
-     * Ignore callbacks from requests belonging to an older child
-     * after the selection changes or the screen is disposed.
-     */
     DisposableEffect(childId, refreshVersion, loadIncidents) {
->>>>>>> 6eab637 (SCRUM-59: Add loading, empty, and error feedback with retry)
         var acceptingResults = true
 
         if (childId.isBlank()) {

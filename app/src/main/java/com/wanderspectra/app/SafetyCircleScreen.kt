@@ -51,14 +51,9 @@ data class SafetyCircleMemberUiModel(
 fun SafetyCircleContent(
     members: List<SafetyCircleMemberUiModel> = emptyList(),
     onAddMember: () -> Unit = {},
-<<<<<<< HEAD
     onViewMember: (SafetyCircleMemberUiModel) -> Unit = {},
-    onBack: () -> Unit = {}
-=======
-    onEditMember: (SafetyCircleMemberUiModel) -> Unit = {},
-    onRemoveMember: (SafetyCircleMemberUiModel) -> Unit = {},
+    onBack: () -> Unit = {},
     actionsEnabled: Boolean = true
->>>>>>> 6eab637 (SCRUM-59: Add loading, empty, and error feedback with retry)
 ) {
     Column(
         modifier = Modifier
@@ -72,30 +67,10 @@ fun SafetyCircleContent(
     ) {
         Text(
             text = "Safety Circle",
-<<<<<<< HEAD
             color = EmergencyRed,
             fontFamily = TanSongbird,
             fontSize = 22.sp,
             textAlign = TextAlign.Center,
-=======
-            color = PrimaryBlue,
-            fontFamily = Salsa,
-            fontSize = 28.sp
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Manage the trusted people included in this child's Safety Circle.",
-            style = MaterialTheme.typography.bodyMedium
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Button(
-            onClick = onAddMember,
-            enabled = actionsEnabled,
->>>>>>> 6eab637 (SCRUM-59: Add loading, empty, and error feedback with retry)
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -144,13 +119,8 @@ fun SafetyCircleContent(
                 ) { member ->
                     SafetyCircleMemberCard(
                         member = member,
-<<<<<<< HEAD
-                        onViewMember = onViewMember
-=======
-                        onEditMember = onEditMember,
-                        onRemoveMember = onRemoveMember,
+                        onViewMember = onViewMember,
                         actionsEnabled = actionsEnabled
->>>>>>> 6eab637 (SCRUM-59: Add loading, empty, and error feedback with retry)
                     )
                 }
             }
@@ -159,6 +129,7 @@ fun SafetyCircleContent(
 
         Button(
             onClick = onAddMember,
+            enabled = actionsEnabled,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
@@ -181,13 +152,8 @@ fun SafetyCircleContent(
 @Composable
 private fun SafetyCircleMemberCard(
     member: SafetyCircleMemberUiModel,
-<<<<<<< HEAD
-    onViewMember: (SafetyCircleMemberUiModel) -> Unit
-=======
-    onEditMember: (SafetyCircleMemberUiModel) -> Unit,
-    onRemoveMember: (SafetyCircleMemberUiModel) -> Unit,
+    onViewMember: (SafetyCircleMemberUiModel) -> Unit,
     actionsEnabled: Boolean
->>>>>>> 6eab637 (SCRUM-59: Add loading, empty, and error feedback with retry)
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -223,7 +189,7 @@ private fun SafetyCircleMemberCard(
             )
 
             Text(
-                text = if (member.isActive) "● Active" else "● Inactive",
+                text = if (member.isActive) "\u25CF Active" else "\u25CF Inactive",
                 color = if (member.isActive) Color(0xFF83D9B4) else EmergencyRed,
                 fontFamily = Salsa,
                 fontSize = 22.sp,
@@ -276,9 +242,9 @@ private fun SafetyCircleMemberCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
-<<<<<<< HEAD
                 TextButton(
-                    onClick = { onViewMember(member) }
+                    onClick = { onViewMember(member) },
+                    enabled = actionsEnabled
                 ) {
                     Text(
                         text = "View Details >",
@@ -286,22 +252,6 @@ private fun SafetyCircleMemberCard(
                         fontSize = 16.sp,
                         color = PrimaryBlue
                     )
-=======
-                OutlinedButton(
-                    onClick = { onEditMember(member) },
-                    enabled = actionsEnabled,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Edit")
-                }
-
-                OutlinedButton(
-                    onClick = { onRemoveMember(member) },
-                    enabled = actionsEnabled,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Remove")
->>>>>>> 6eab637 (SCRUM-59: Add loading, empty, and error feedback with retry)
                 }
             }
         }
