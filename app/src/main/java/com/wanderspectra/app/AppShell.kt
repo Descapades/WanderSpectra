@@ -269,6 +269,12 @@ fun AppShell(
                                 if (selectedIncidentReport != null) {
                                     IncidentReportScreen(
                                         report = selectedIncidentReport!!,
+                                        onNotesSaved = { notes, trigger ->
+                                            selectedIncidentReport = selectedIncidentReport?.copy(
+                                                notes = notes,
+                                                possibleTrigger = trigger
+                                            )
+                                        }
                                     )
                                 } else {
                                     IncidentHistoryScreen(
@@ -595,6 +601,10 @@ fun AppShell(
                         androidx.compose.material3.TextButton(
                             onClick = {
                                 when {
+                                    currentDestination == AppDestination.HISTORY &&
+                                            selectedIncidentReport != null -> {
+                                        selectedIncidentReport = null
+                                    }
                                     currentDestination == AppDestination.COMMUNITY &&
                                             communityCanGoBack &&
                                             communityBackHandler != null -> {

@@ -60,7 +60,8 @@ import com.wanderspectra.app.ui.theme.SecondaryRed
 @Composable
 fun IncidentReportScreen(
     report: IncidentRecord,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onNotesSaved: (String, String) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
 
@@ -167,6 +168,8 @@ fun IncidentReportScreen(
                     onSuccess = {
                         incidentNotes = updatedNotes
                         incidentPossibleTrigger = updatedTrigger
+                        notesDraft = updatedNotes
+                        onNotesSaved(updatedNotes, updatedTrigger)
                         showNotesScreen = false
                     },
                     onFailure = { exception ->
@@ -381,34 +384,7 @@ fun IncidentReportScreen(
                 )
             }
         }
-        if (showNotesScreen) {
-            IncidentNotesScreen(
-                initialNotes = notesDraft,
-                initialPossibleTrigger = incidentPossibleTrigger,
-                onSave = { updatedNotes, updatedTrigger ->
-                    IncidentRepository().updateIncidentNotes(
-                        incidentId = report.incidentId,
-                        notes = updatedNotes,
-                        possibleTrigger = updatedTrigger,
-                        onSuccess = {
-                            incidentNotes = updatedNotes
-                            incidentPossibleTrigger = updatedTrigger
-                            showNotesScreen = false
-                        },
-                        onFailure = { exception ->
-                            android.widget.Toast.makeText(
-                                context,
-                                "Failed to save notes: ${exception.message}",
-                                android.widget.Toast.LENGTH_LONG
-                            ).show()
-                        }
-                    )
-                },
-                onCancel = {
-                    showNotesScreen = false
-                }
-            )
-        }
+
     }
 }
 
@@ -592,4 +568,3 @@ private fun rememberFarthestLocationStar(): BitmapDescriptor {
         BitmapDescriptorFactory.fromBitmap(bitmap)
     }
 }
-
