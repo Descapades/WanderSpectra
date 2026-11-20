@@ -29,6 +29,7 @@ class MainActivity : ComponentActivity() {
             WanderSpectraTheme {
                 NotificationPermissionPopup(activity = this@MainActivity)
                 LocationPermissionPopup(activity = this@MainActivity)
+                ChildPictureReminderPopup()
 
                 var showSplash by remember { mutableStateOf(true) }
                 var showOnboarding by remember { mutableStateOf(false) }
