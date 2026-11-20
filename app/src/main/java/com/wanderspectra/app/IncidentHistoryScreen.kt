@@ -31,13 +31,14 @@ fun IncidentHistoryScreen(
     childId: String,
     onViewReport: (IncidentRecord) -> Unit,
     childName: String = "",
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    loadIncidents: ((String, (List<IncidentRecord>) -> Unit, (Exception) -> Unit) -> Unit)? = null
 ) {
     val repository = remember { IncidentRepository() }
     var refreshVersion by remember(childId) { mutableStateOf(0) }
     var loadState by remember(childId) { mutableStateOf<IncidentHistoryLoadState>(IncidentHistoryLoadState.Loading) }
 
-    DisposableEffect(childId, refreshVersion) {
+    DisposableEffect(childId, refreshVersion, loadIncidents) {
         var acceptingResults = true
 
         if (childId.isBlank()) {
@@ -45,21 +46,20 @@ fun IncidentHistoryScreen(
         } else {
             loadState = IncidentHistoryLoadState.Loading
 
-            repository.getIncidentsForChild(
-                childId = childId,
-
-                onSuccess = { incidents ->
+            val retrieve = loadIncidents ?: repository::getIncidentsForChild
+            retrieve(
+                childId,
+                { incidents ->
                     if (acceptingResults) {
                         loadState =
                             IncidentHistoryLoadState.Success(incidents)
                     }
                 },
 
-                onFailure = { exception ->
+                { exception ->
                     if (acceptingResults) {
                         loadState = IncidentHistoryLoadState.Failure(
-                            exception.localizedMessage
-                                ?: "Unable to retrieve incident history."
+                            caregiverDataError(exception)
                         )
                     }
                 }
@@ -74,31 +74,20 @@ fun IncidentHistoryScreen(
     when (val state = loadState) {
 
         IncidentHistoryLoadState.Loading -> {
-            Box(
-                modifier = modifier
-                    .fillMaxSize()
-                    .background(BackgroundCream),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(
-                    color = PrimaryBlue
+            Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                DataStateFeedback(
+                    title = "Incident History",
+                    message = "Loading incidents...",
+                    loading = true
                 )
             }
         }
 
         IncidentHistoryLoadState.NoChildSelected -> {
-            Column(
-                modifier = modifier
-                    .fillMaxSize()
-                    .background(BackgroundCream)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = "Incident History",
-                    color = EmergencyRed,
-                    fontFamily = TanSongbird,
-                    fontSize = 20.sp
+            Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                DataStateFeedback(
+                    title = "Incident History",
+                    message = "Select a child from the History menu to view their incidents."
                 )
             }
         }
@@ -113,39 +102,12 @@ fun IncidentHistoryScreen(
         }
 
         is IncidentHistoryLoadState.Failure -> {
-            Column(
-                modifier = modifier
-                    .fillMaxSize()
-                    .background(BackgroundCream)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Unable to Load Incident History",
-                    color = PrimaryBlue,
-                    fontFamily = Salsa,
-                    fontSize = 22.sp
+            Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                DataStateFeedback(
+                    title = "Unable to load Incident History",
+                    message = state.message,
+                    onRetry = { refreshVersion += 1 }
                 )
-
-                Text(
-                    text = state.message,
-                    color = PrimaryBlue,
-                    fontSize = 15.sp,
-                    modifier = Modifier.padding(vertical = 12.dp)
-                )
-
-                TextButton(
-                    onClick = {
-                        refreshVersion += 1
-                    }
-                ) {
-                    Text(
-                        text = "Retry",
-                        color = PrimaryBlue,
-                        fontFamily = Salsa
-                    )
-                }
             }
         }
     }

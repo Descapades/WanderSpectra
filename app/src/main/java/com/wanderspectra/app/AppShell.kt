@@ -156,6 +156,8 @@ fun AppShell(
                 )
             }
 
+            PhoneConnectivityBanner()
+
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -910,5 +912,3 @@ fun SettingsMenuItem(
             .padding(horizontal = 18.dp, vertical = 12.dp)
     )
 }
-
-

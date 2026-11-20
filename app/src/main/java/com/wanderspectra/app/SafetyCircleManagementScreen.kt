@@ -19,7 +19,7 @@ fun SafetyCircleManagementScreen(
 ) {
     key(caregiverId, childId) {
         var members by remember { mutableStateOf<List<SafetyCircleMember>>(emptyList()) }
-        var loading by remember { mutableStateOf(false) }
+        var loading by remember { mutableStateOf(true) }
         var busy by remember { mutableStateOf(false) }
         var error by remember { mutableStateOf<String?>(null) }
         var removal by remember { mutableStateOf<SafetyCircleMember?>(null) }
@@ -37,7 +37,7 @@ fun SafetyCircleManagementScreen(
                 when {
                     busy -> Unit
                     removal != null -> removal = null
-                    formMember != null -> formMember = null
+                    formMember != null -> { formMember = null; error = null }
                     viewingMember != null -> viewingMember = null
                 }
             }
@@ -45,7 +45,7 @@ fun SafetyCircleManagementScreen(
 
         DisposableEffect(Unit) { onDispose { disposed = true } }
         fun load() {
-            if (!available) return
+            if (!available || busy) return
             loading = true
             error = null
             repository.getMembersForCaregiver(
@@ -84,8 +84,7 @@ fun SafetyCircleManagementScreen(
                                     onError = { exception ->
                                         if (!disposed && !failed) {
                                             failed = true
-                                            error = exception.localizedMessage
-                                                ?: "Unable to load child assignments."
+                                            error = caregiverDataError(exception)
                                             loading = false
                                         }
                                     }
@@ -97,7 +96,7 @@ fun SafetyCircleManagementScreen(
 
                 onError = {
                     if (!disposed) {
-                        error = it.localizedMessage ?: "Unable to load members."; loading = false
+                        error = caregiverDataError(it); loading = false
                     }
                 })
         }
@@ -109,13 +108,15 @@ fun SafetyCircleManagementScreen(
                     Modifier.padding(16.dp)
                 )
             } else {
-                if (loading || busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-                error?.let { message ->
-                    Text(message, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.error)
-                    TextButton(
-                        onClick = { load() },
-                        enabled = !busy && !loading
-                    ) { Text("Retry loading") }
+                if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+                if (formMember == null && viewingMember == null) {
+                    error?.let { message ->
+                        DataStateFeedback(
+                            title = "Unable to load Safety Circle",
+                            message = message,
+                            onRetry = if (!busy && !loading) ({ load() }) else null
+                        )
+                    }
                 }
                 Box(
                     modifier = Modifier.weight(1f)
@@ -145,6 +146,7 @@ fun SafetyCircleManagementScreen(
                             onBack = {
                                 if (!busy) {
                                     formMember = null
+                                    error = null
                                 }
                             },
                             onSave = { updatedMember, selectedChildIds ->
@@ -165,21 +167,30 @@ fun SafetyCircleManagementScreen(
                                         member = memberToSave,
                                         selectedChildIds = selectedChildIds,
                                         onSuccess = {
-                                            busy = false
-                                            formMember = null
-                                            load()
+                                            if (!disposed) {
+                                                busy = false
+                                                formMember = null
+                                                load()
+                                            }
                                         },
                                         onError = { exception ->
-                                            busy = false
-                                            error = exception.message
-                                                ?: "Failed to save Safety Circle member."
+                                            if (!disposed) {
+                                                busy = false
+                                                error = caregiverDataError(exception)
+                                            }
                                         }
                                     )
 
                                 }
                             }
                         )
-                    } else {
+                    } else if (loading) {
+                        DataStateFeedback(
+                            title = "Safety Circle",
+                            message = "Loading members...",
+                            loading = true
+                        )
+                    } else if (error == null) {
                         SafetyCircleContent(
                             members = members.map { member ->
                                 SafetyCircleMemberUiModel(
@@ -192,6 +203,7 @@ fun SafetyCircleManagementScreen(
                                     locationAccess = member.locationAccess
                                 )
                             },
+                            actionsEnabled = !busy && !loading,
                             onAddMember = {
                                 if (!busy && !loading) {
                                     error = null
@@ -218,7 +230,7 @@ fun SafetyCircleManagementScreen(
                     title = { Text("Remove member?") },
                     text = {
                         Column {
-                            Text("Remove ${member.name} from this child's Safety Circle?")
+                            Text("Permanently remove ${member.name} and all of their child assignments? To remove only one assignment, use Edit Member.")
                             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                         }
                     },
@@ -242,7 +254,7 @@ fun SafetyCircleManagementScreen(
                                 onError = {
                                     if (!disposed) {
                                         busy = false; error =
-                                            it.localizedMessage ?: "Unable to remove member."
+                                            caregiverDataError(it)
                                     }
                                 })
                         }) { Text(if (busy) "Removing..." else "Remove") }

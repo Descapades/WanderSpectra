@@ -85,7 +85,7 @@ fun SafetyCircleMemberFormScreen(
             .padding(24.dp)
     ) {
         Text(
-            text = "Add Member",
+            text = if (member.memberId.isBlank()) "Add Member" else "Edit Member",
             color = EmergencyRed,
             fontFamily = TanSongbird,
             fontSize = 22.sp,
@@ -277,6 +277,13 @@ fun SafetyCircleMemberFormScreen(
             )
         }
 
+        if (name.isBlank() || relationship.isBlank() ||
+            phone.isBlank() || selectedChildIds.isEmpty()) {
+            Text(
+                text = "To save, enter a name, relationship, phone number, and select at least one child.",
+                color = MaterialTheme.colorScheme.error
+            )
+        }
         saveError?.let { message ->
             Text(
                 text = message,

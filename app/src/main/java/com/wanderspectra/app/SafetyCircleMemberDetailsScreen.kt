@@ -48,7 +48,7 @@ fun SafetyCircleMemberDetailsScreen(
         repository.getAssignedChildIds(
             memberId = member.memberId,
             onSuccess = { childIds ->
-                assignedChildIds = childIds
+                assignedChildIds = childIds.ifEmpty { member.childId.takeIf { it.isNotBlank() }?.let { setOf(it) } ?: emptySet() }
                 assignmentsLoading = false
             },
             onError = { exception ->
@@ -235,7 +235,7 @@ fun SafetyCircleMemberDetailsScreen(
                     .sortedBy { it.fullName.lowercase() }
                     .forEach { child ->
                         Text(
-                            text = child.fullName,
+                            text = child.preferredName.ifBlank { child.fullName },
                             color = PrimaryBlue,
                             fontFamily = Salsa,
                             fontSize = 20.sp,

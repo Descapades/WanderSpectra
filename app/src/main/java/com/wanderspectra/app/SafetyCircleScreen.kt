@@ -52,7 +52,8 @@ fun SafetyCircleContent(
     members: List<SafetyCircleMemberUiModel> = emptyList(),
     onAddMember: () -> Unit = {},
     onViewMember: (SafetyCircleMemberUiModel) -> Unit = {},
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    actionsEnabled: Boolean = true
 ) {
     Column(
         modifier = Modifier
@@ -118,7 +119,8 @@ fun SafetyCircleContent(
                 ) { member ->
                     SafetyCircleMemberCard(
                         member = member,
-                        onViewMember = onViewMember
+                        onViewMember = onViewMember,
+                        actionsEnabled = actionsEnabled
                     )
                 }
             }
@@ -127,6 +129,7 @@ fun SafetyCircleContent(
 
         Button(
             onClick = onAddMember,
+            enabled = actionsEnabled,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
@@ -149,7 +152,8 @@ fun SafetyCircleContent(
 @Composable
 private fun SafetyCircleMemberCard(
     member: SafetyCircleMemberUiModel,
-    onViewMember: (SafetyCircleMemberUiModel) -> Unit
+    onViewMember: (SafetyCircleMemberUiModel) -> Unit,
+    actionsEnabled: Boolean
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -185,7 +189,7 @@ private fun SafetyCircleMemberCard(
             )
 
             Text(
-                text = if (member.isActive) "● Active" else "● Inactive",
+                text = if (member.isActive) "\u25CF Active" else "\u25CF Inactive",
                 color = if (member.isActive) Color(0xFF83D9B4) else EmergencyRed,
                 fontFamily = Salsa,
                 fontSize = 22.sp,
@@ -239,7 +243,8 @@ private fun SafetyCircleMemberCard(
                 horizontalArrangement = Arrangement.End
             ) {
                 TextButton(
-                    onClick = { onViewMember(member) }
+                    onClick = { onViewMember(member) },
+                    enabled = actionsEnabled
                 ) {
                     Text(
                         text = "View Details >",
