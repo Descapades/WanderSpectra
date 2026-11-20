@@ -421,8 +421,33 @@ fun AlertNotificationsContent() {
                             checked = communityAlertsEnabled,
                             enabled = !communityAlertRequestInProgress,
                             onCheckedChange = { enabled ->
-                                // KEEP your existing Community Alerts
-                                // registration and opt-out logic here
+                                if (enabled && !hasPermission) {
+                                    communityAlertStatus = "Allow notifications, then turn Community Alerts on again."
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                } else {
+                                    communityAlertRequestInProgress = true
+                                    communityAlertStatus = if (enabled) "Registering for Community Alerts..." else "Disabling Community Alerts..."
+                                    val previousValue = communityAlertsEnabled
+                                    CommunityAlertPreferences.setOptedIn(context, enabled)
+                                    val success: () -> Unit = {
+                                        communityAlertsEnabled = enabled
+                                        communityAlertRequestInProgress = false
+                                        communityAlertStatus = if (enabled) "Community Alerts enabled." else "Community Alerts disabled."
+                                    }
+                                    val failure: (String) -> Unit = { message ->
+                                        CommunityAlertPreferences.setOptedIn(context, previousValue)
+                                        communityAlertsEnabled = previousValue
+                                        communityAlertRequestInProgress = false
+                                        communityAlertStatus = message
+                                    }
+                                    if (enabled) {
+                                        participantRepository.registerParticipant(success, failure)
+                                    } else {
+                                        participantRepository.unregisterParticipant(success, failure)
+                                    }
+                                }
                             },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
@@ -442,6 +467,15 @@ fun AlertNotificationsContent() {
                             fontFamily = Salsa,
                             fontSize = 18.sp,
                             modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    if (communityAlertStatus.isNotBlank()) {
+                        Text(
+                            text = communityAlertStatus,
+                            color = PrimaryBlue,
+                            fontFamily = Salsa,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
 
