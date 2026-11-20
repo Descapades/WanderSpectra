@@ -62,19 +62,26 @@ import androidx.compose.ui.graphics.Color
 @Composable
 fun AlertNotificationsContent() {
     val context = LocalContext.current
+    val caregiverId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+    val preferences = remember(context, caregiverId) {
+        context.getSharedPreferences(
+            "notification_preferences_$caregiverId",
+            android.content.Context.MODE_PRIVATE
+        )
+    }
     val lifecycleOwner = LocalLifecycleOwner.current
     var hasPermission by remember { mutableStateOf(CaregiverNotificationManager.hasNotificationPermission(context)) }
     var communityAlertsEnabled by remember { mutableStateOf(CommunityAlertPreferences.isOptedIn(context)) }
     val participantRepository = remember(context) { CommunityAlertParticipantRepository(context) }
     var communityAlertStatus by remember { mutableStateOf("") }
     var communityAlertRequestInProgress by remember { mutableStateOf(false) }
-    var safeZoneExitEnabled by remember { mutableStateOf(false) }
-    var wearableDisconnectedEnabled by remember { mutableStateOf(false) }
-    var lowBatteryAlertEnabled by remember { mutableStateOf(false) }
-    var safetyCircleUpdatesEnabled by remember { mutableStateOf(false) }
-    var communitySightingsEnabled by remember { mutableStateOf(false) }
-    var soundEnabled by remember { mutableStateOf(false) }
-    var vibrationEnabled by remember { mutableStateOf(false) }
+    var safeZoneExitEnabled by remember(preferences) { mutableStateOf(preferences.getBoolean("safeZoneExitEnabled", false)) }
+    var wearableDisconnectedEnabled by remember(preferences) { mutableStateOf(preferences.getBoolean("wearableDisconnectedEnabled", false)) }
+    var lowBatteryAlertEnabled by remember(preferences) { mutableStateOf(preferences.getBoolean("lowBatteryAlertEnabled", false)) }
+    var safetyCircleUpdatesEnabled by remember(preferences) { mutableStateOf(preferences.getBoolean("safetyCircleUpdatesEnabled", false)) }
+    var communitySightingsEnabled by remember(preferences) { mutableStateOf(preferences.getBoolean("communitySightingsEnabled", false)) }
+    var soundEnabled by remember(preferences) { mutableStateOf(preferences.getBoolean("soundEnabled", false)) }
+    var vibrationEnabled by remember(preferences) { mutableStateOf(preferences.getBoolean("vibrationEnabled", false)) }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -179,7 +186,10 @@ fun AlertNotificationsContent() {
                     ) {
                         Switch(
                             checked = safeZoneExitEnabled,
-                            onCheckedChange = { safeZoneExitEnabled = it },
+                            onCheckedChange = { enabled ->
+                                preferences.edit().putBoolean("safeZoneExitEnabled", enabled).apply()
+                                safeZoneExitEnabled = enabled
+                            },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
                                 checkedTrackColor = PrimaryBlue,
@@ -228,7 +238,10 @@ fun AlertNotificationsContent() {
                     ) {
                         Switch(
                             checked = wearableDisconnectedEnabled,
-                            onCheckedChange = { wearableDisconnectedEnabled = it },
+                            onCheckedChange = { enabled ->
+                                preferences.edit().putBoolean("wearableDisconnectedEnabled", enabled).apply()
+                                wearableDisconnectedEnabled = enabled
+                            },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
                                 checkedTrackColor = PrimaryBlue,
@@ -268,7 +281,10 @@ fun AlertNotificationsContent() {
                     ) {
                         Switch(
                             checked = lowBatteryAlertEnabled,
-                            onCheckedChange = { lowBatteryAlertEnabled = it },
+                            onCheckedChange = { enabled ->
+                                preferences.edit().putBoolean("lowBatteryAlertEnabled", enabled).apply()
+                                lowBatteryAlertEnabled = enabled
+                            },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
                                 checkedTrackColor = PrimaryBlue,
@@ -317,7 +333,10 @@ fun AlertNotificationsContent() {
                     ) {
                         Switch(
                             checked = safetyCircleUpdatesEnabled,
-                            onCheckedChange = { safetyCircleUpdatesEnabled = it },
+                            onCheckedChange = { enabled ->
+                                preferences.edit().putBoolean("safetyCircleUpdatesEnabled", enabled).apply()
+                                safetyCircleUpdatesEnabled = enabled
+                            },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
                                 checkedTrackColor = PrimaryBlue,
@@ -357,7 +376,10 @@ fun AlertNotificationsContent() {
                     ) {
                         Switch(
                             checked = communitySightingsEnabled,
-                            onCheckedChange = { communitySightingsEnabled = it },
+                            onCheckedChange = { enabled ->
+                                preferences.edit().putBoolean("communitySightingsEnabled", enabled).apply()
+                                communitySightingsEnabled = enabled
+                            },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
                                 checkedTrackColor = PrimaryBlue,
@@ -442,7 +464,10 @@ fun AlertNotificationsContent() {
                     ) {
                         Switch(
                             checked = soundEnabled,
-                            onCheckedChange = { soundEnabled = it },
+                            onCheckedChange = { enabled ->
+                                preferences.edit().putBoolean("soundEnabled", enabled).apply()
+                                soundEnabled = enabled
+                            },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
                                 checkedTrackColor = PrimaryBlue,
@@ -470,7 +495,10 @@ fun AlertNotificationsContent() {
                     ) {
                         Switch(
                             checked = vibrationEnabled,
-                            onCheckedChange = { vibrationEnabled = it },
+                            onCheckedChange = { enabled ->
+                                preferences.edit().putBoolean("vibrationEnabled", enabled).apply()
+                                vibrationEnabled = enabled
+                            },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
                                 checkedTrackColor = PrimaryBlue,
