@@ -2,6 +2,7 @@ package com.wanderspectra.app
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging
 
 class CaregiverRepository {
 
@@ -58,4 +59,39 @@ class CaregiverRepository {
                 onFailure(exception)
             }
     }
+
+
+    fun registerCaregiverNotificationToken(
+        onSuccess: () -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        val user = auth.currentUser
+
+        if (user == null) {
+            onFailure(Exception("No authenticated caregiver found."))
+            return
+        }
+
+        FirebaseMessaging.getInstance().token
+            .addOnSuccessListener { token ->
+                if (token.isBlank()) {
+                    onFailure(Exception("FCM token is empty."))
+                    return@addOnSuccessListener
+                }
+
+                firestore.collection("caregivers")
+                    .document(user.uid)
+                    .update("fcmToken", token)
+                    .addOnSuccessListener {
+                        onSuccess()
+                    }
+                    .addOnFailureListener { exception ->
+                        onFailure(exception)
+                    }
+            }
+            .addOnFailureListener { exception ->
+                onFailure(exception)
+            }
+    }
+
 }

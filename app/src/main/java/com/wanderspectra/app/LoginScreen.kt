@@ -120,6 +120,21 @@ fun LoginScreen(
 
                     if (task.isSuccessful) {
                         loginMessage = null
+                        CaregiverRepository().registerCaregiverNotificationToken(
+                            onSuccess = {
+                                android.util.Log.i(
+                                    "CaregiverFCM",
+                                    "Caregiver notification token registered successfully."
+                                )
+                            },
+                            onFailure = { exception ->
+                                android.util.Log.e(
+                                    "CaregiverFCM",
+                                    "Failed to register caregiver notification token.",
+                                    exception
+                                )
+                            }
+                        )
                         handleSuccessfulLogin()
                     } else {
                         loginMessage = "Invalid email or password."

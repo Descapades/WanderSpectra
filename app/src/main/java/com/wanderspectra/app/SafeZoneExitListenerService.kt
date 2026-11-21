@@ -10,17 +10,287 @@ class SafeZoneExitListenerService : WearableListenerService() {
 
     companion object {
         private const val TAG = "SafeZoneExitListener"
-
-        private const val SAFE_ZONE_EXIT_PATH =
-            "/wanderspectra/safezone/exit"
-
-        private const val SAFE_ZONE_REENTRY_PATH =
-            "/wanderspectra/safezone/reentry"
+        private const val SAFE_ZONE_EXIT_PATH = "/wanderspectra/safezone/exit"
+        private const val SAFE_ZONE_REENTRY_PATH = "/wanderspectra/safezone/reentry"
+        private const val LOW_BATTERY_PATH = "/wanderspectra/battery/low"
+        private const val WEARABLE_STATUS_PATH = "/wanderspectra/status"
     }
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
         super.onMessageReceived(messageEvent)
+        Log.i(TAG, "Wear OS message received: ${messageEvent.path}")
 
+        if (messageEvent.path == WEARABLE_STATUS_PATH) {
+            try {
+                val payload = JSONObject(
+                    String(messageEvent.data, Charsets.UTF_8)
+                )
+
+                val childId = payload.getString("childId")
+                val batteryLevel = payload.getInt("batteryLevel")
+                val latitude = payload.getDouble("latitude")
+                val longitude = payload.getDouble("longitude")
+                val timestamp = payload.getLong("timestamp")
+                val now = System.currentTimeMillis()
+
+                if (
+                    childId.isBlank() ||
+                    batteryLevel !in 0..100 ||
+                    !latitude.isFinite() ||
+                    !longitude.isFinite() ||
+                    latitude !in -90.0..90.0 ||
+                    longitude !in -180.0..180.0 ||
+                    timestamp < now - 5 * 60_000L ||
+                    timestamp > now + 60_000L
+                ) {
+                    Log.w(TAG, "Wearable status rejected: invalid data")
+                    return
+                }
+
+                val caregiverId = FirebaseAuth.getInstance().currentUser?.uid
+
+                if (caregiverId == null) {
+                    Log.w(TAG, "Wearable status rejected: no authenticated caregiver")
+                    return
+                }
+
+                WearableRepository().getWearable(
+                    childId = childId,
+                    onSuccess = { wearable ->
+                        if (
+                            wearable == null ||
+                            wearable.deviceId.isBlank() ||
+                            wearable.deviceId != messageEvent.sourceNodeId
+                        ) {
+                            Log.w(
+                                TAG,
+                                "Wearable status rejected: unrecognized device"
+                            )
+                        } else {
+                            val repository = WearableRepository()
+
+                            repository.updateWearableLocation(
+                                childId = childId,
+                                latitude = latitude,
+                                longitude = longitude,
+                                timestamp = timestamp,
+                                onSuccess = {
+                                    Log.i(TAG, "Background wearable location saved")
+                                },
+                                onFailure = { exception ->
+                                    Log.e(TAG, "Failed to save background wearable location", exception)
+                                }
+                            )
+
+                            repository.updateWearableBattery(
+                                childId = childId,
+                                batteryLevel = batteryLevel,
+                                onSuccess = {
+                                    Log.i(TAG, "Background wearable battery saved")
+                                },
+                                onFailure = { exception ->
+                                    Log.e(TAG, "Failed to save background wearable battery", exception)
+                                }
+                            )
+                        }
+                    },
+                    onFailure = { exception ->
+                        Log.e(
+                            TAG,
+                            "Failed to validate wearable status",
+                            exception
+                        )
+                    }
+                )
+
+            } catch (exception: Exception) {
+                Log.e(TAG, "Invalid wearable status message", exception)
+            }
+
+            return
+        }
+        if (messageEvent.path == "/wanderspectra/battery/status") {
+            try {
+                val payload = JSONObject(
+                    String(messageEvent.data, Charsets.UTF_8)
+                )
+
+                val childId = payload.getString("childId")
+                val batteryLevel = payload.getInt("batteryLevel")
+                val timestamp = payload.getLong("timestamp")
+                val now = System.currentTimeMillis()
+
+                if (
+                    childId.isBlank() ||
+                    batteryLevel !in 0..100 ||
+                    timestamp < now - 5 * 60_000L ||
+                    timestamp > now + 60_000L
+                ) {
+                    Log.w(TAG, "Periodic battery status rejected: invalid data")
+                    return
+                }
+
+                if (FirebaseAuth.getInstance().currentUser == null) {
+                    Log.w(TAG, "Periodic battery status rejected: no authenticated caregiver")
+                    return
+                }
+
+                WearableRepository().getWearable(
+                    childId = childId,
+                    onSuccess = { wearable ->
+                        if (
+                            wearable == null ||
+                            wearable.deviceId.isBlank() ||
+                            wearable.deviceId != messageEvent.sourceNodeId
+                        ) {
+                            Log.w(TAG, "Periodic battery status rejected: unrecognized device")
+                        } else {
+                            WearableRepository().updateWearableBattery(
+                                childId = childId,
+                                batteryLevel = batteryLevel,
+                                onSuccess = {
+                                    Log.i(TAG, "Periodic battery status saved")
+                                    if (batteryLevel > 20) {
+                                        CaregiverNotificationPreferences.setLowBatteryNotificationSent(
+                                            applicationContext,
+                                            childId,
+                                            false
+                                        )
+
+                                        Log.i(TAG, "Low battery notification flag reset")
+                                    }
+                                    if (
+                                        batteryLevel <= 20 &&
+                                        CaregiverNotificationPreferences.isLowBatteryAlertEnabled(applicationContext) &&
+                                        !CaregiverNotificationPreferences.hasLowBatteryNotificationBeenSent(
+                                            applicationContext,
+                                            childId
+                                        )
+                                    ) {
+                                        val notificationSent =
+                                            CaregiverNotificationManager.sendCaregiverNotification(
+                                                context = applicationContext,
+                                                title = "Wearable Low Battery",
+                                                message = "Your child's wearable battery is at $batteryLevel%. Please charge the device."
+                                            )
+
+                                        if (notificationSent) {
+                                            CaregiverNotificationPreferences.setLowBatteryNotificationSent(
+                                                applicationContext,
+                                                childId,
+                                                true
+                                            )
+
+                                            Log.i(TAG, "Periodic low battery notification posted")
+                                        }
+                                    }
+                                },
+                                onFailure = { exception ->
+                                    Log.e(TAG, "Failed to save periodic battery status", exception)
+                                }
+                            )
+                        }
+                    },
+                    onFailure = { exception ->
+                        Log.e(TAG, "Failed to validate periodic battery status", exception)
+                    }
+                )
+
+            } catch (exception: Exception) {
+                Log.e(TAG, "Invalid periodic battery status message", exception)
+            }
+
+            return
+        }
+        if (messageEvent.path == LOW_BATTERY_PATH) {
+            try {
+                val payload = JSONObject(
+                    String(messageEvent.data, Charsets.UTF_8)
+                )
+
+                val childId = payload.getString("childId")
+                val batteryLevel = payload.getInt("batteryLevel")
+                val timestamp = payload.getLong("timestamp")
+                val now = System.currentTimeMillis()
+
+                if (
+                    childId.isBlank() ||
+                    batteryLevel !in 0..20 ||
+                    timestamp < now - 5 * 60_000L ||
+                    timestamp > now + 60_000L
+                ) {
+                    Log.w(TAG, "Low battery message rejected: invalid data")
+                    return
+                }
+
+                Log.i(TAG, "Low battery message data validated: $batteryLevel%")
+                val caregiverId = FirebaseAuth.getInstance().currentUser?.uid
+
+                if (caregiverId == null) {
+                    Log.w(TAG, "Low battery message rejected: no authenticated caregiver")
+                    return
+                }
+
+                WearableRepository().getWearable(
+                    childId = childId,
+                    onSuccess = { wearable ->
+                        if (
+                            wearable == null ||
+                            wearable.deviceId.isBlank() ||
+                            wearable.deviceId != messageEvent.sourceNodeId
+                        ) {
+                            Log.w(
+                                TAG,
+                                "Low battery message rejected: wearable does not match registered device"
+                            )
+                        } else {
+                            Log.i(
+                                TAG,
+                                "Low battery message validated against registered wearable"
+                            )
+
+                            if (
+                                CaregiverNotificationPreferences.isLowBatteryAlertEnabled(applicationContext) &&
+                                !CaregiverNotificationPreferences.hasLowBatteryNotificationBeenSent(
+                                    applicationContext,
+                                    childId
+                                )
+                            ) {
+                                val notificationSent =
+                                    CaregiverNotificationManager.sendCaregiverNotification(
+                                        context = applicationContext,
+                                        title = "Wearable Low Battery",
+                                        message = "Your child's wearable battery is at $batteryLevel%. Please charge the device."
+                                    )
+
+                                if (notificationSent) {
+                                    CaregiverNotificationPreferences.setLowBatteryNotificationSent(
+                                        applicationContext,
+                                        childId,
+                                        true
+                                    )
+
+                                    Log.i(TAG, "Low battery notification posted")
+                                } else {
+                                    Log.w(TAG, "Low battery notification could not be posted")
+                                }
+                            }
+                        }
+                    },
+                    onFailure = { exception ->
+                        Log.e(
+                            TAG,
+                            "Failed to validate low battery wearable",
+                            exception
+                        )
+                    }
+                )
+            } catch (exception: Exception) {
+                Log.e(TAG, "Invalid low battery message", exception)
+            }
+
+            return
+        }
         if (messageEvent.path != SAFE_ZONE_EXIT_PATH &&
             messageEvent.path != SAFE_ZONE_REENTRY_PATH
         ) return

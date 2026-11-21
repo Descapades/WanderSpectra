@@ -77,6 +77,18 @@
                     android:scheme="wear"
                     android:host="*"
                     android:path="/wanderspectra/safezone/reentry" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:path="/wanderspectra/status" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:path="/wanderspectra/battery/low" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:path="/wanderspectra/battery/status" />
             </intent-filter>
         </service>
     </application>

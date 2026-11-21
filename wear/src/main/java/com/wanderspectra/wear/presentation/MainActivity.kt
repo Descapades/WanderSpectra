@@ -40,6 +40,12 @@ import com.wanderspectra.wear.R
 import com.wanderspectra.wear.location.WearLocationManager
 import com.wanderspectra.wear.presentation.theme.PrimaryBlue
 import com.wanderspectra.wear.presentation.theme.WanderSpectraTheme
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.wanderspectra.wear.WearBatteryWorker
+import java.util.concurrent.TimeUnit
+
 
 private val BackgroundCream = Color(0xFFEEE9D5)
 
@@ -48,26 +54,31 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        val batteryWorkRequest =
+            PeriodicWorkRequestBuilder<WearBatteryWorker>(
+                15, TimeUnit.MINUTES
+            ).build()
+
+        WorkManager.getInstance(applicationContext)
+            .enqueueUniquePeriodicWork(
+                "wander_spectra_battery_reporting",
+                ExistingPeriodicWorkPolicy.KEEP,
+                batteryWorkRequest
+            )
         setTheme(android.R.style.Theme_DeviceDefault)
         WearSafeZoneStorage.restore(this)
-        startGeofenceMonitoringIfEnabled()
+        startWearableMonitoring()
         setContent {
             WearApp(
                 activity = this,
                 onLocationPermissionGranted = {
-                    startGeofenceMonitoringIfEnabled()
+                    startWearableMonitoring()
                 }
             )
         }
     }
 
-    private fun startGeofenceMonitoringIfEnabled() {
-        val safeZone = WearSafetyStateRepository.activeSafeZone.value
-
-        if (safeZone == null || !safeZone.monitoringEnabled) {
-            return
-        }
-
+    private fun startWearableMonitoring() {
         if (!WearLocationManager.hasLocationPermission(this)) {
             return
         }
@@ -80,7 +91,7 @@ class MainActivity : ComponentActivity() {
         try {
             ContextCompat.startForegroundService(this, intent)
         } catch (e: Exception) {
-            Log.e("MainActivity", "Unable to start Safe Zone monitoring", e)
+            Log.e("MainActivity", "Unable to start wearable monitoring", e)
         }
     }
 }

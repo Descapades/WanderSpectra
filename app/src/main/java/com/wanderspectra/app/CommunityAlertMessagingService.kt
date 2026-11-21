@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.google.firebase.messaging.FirebaseMessagingService
@@ -18,17 +19,47 @@ class CommunityAlertMessagingService : FirebaseMessagingService() {
         private const val CHANNEL_ID = "community_alerts"
     }
 
+
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
 
-        val alertId = message.data["alertId"] ?: return
-        val alertType = message.data["type"] ?: return
+        when (message.data["type"]) {
+            "COMMUNITY_ALERT" -> {
+                val alertId = message.data["alertId"] ?: return
+                if (alertId.isBlank()) return
 
-        if (alertType != "COMMUNITY_ALERT") return
-        if (alertId.isBlank()) return
+                showCommunityAlertNotification(alertId)
+            }
 
-        showCommunityAlertNotification(alertId)
+
+            "LOW_BATTERY" -> {
+                val childName = message.data["childName"] ?: return
+                val batteryLevel = message.data["batteryLevel"]
+                    ?.toIntOrNull() ?: return
+
+                if (childName.isBlank() || batteryLevel !in 0..20) return
+
+                if (CaregiverNotificationPreferences.isLowBatteryAlertEnabled(this)) {
+                    showLowBatteryNotification(childName, batteryLevel)
+                }
+            }
+
+        }
     }
+
+
+    private fun showLowBatteryNotification(
+        childName: String,
+        batteryLevel: Int
+    ) {
+        CaregiverNotificationManager.sendCaregiverNotification(
+            context = this,
+            title = "Wearable Low Battery",
+            message = "$childName's wearable battery is at $batteryLevel%. Please charge the device."
+        )
+    }
+
+
 
     private fun showCommunityAlertNotification(alertId: String) {
         val manager = getSystemService(

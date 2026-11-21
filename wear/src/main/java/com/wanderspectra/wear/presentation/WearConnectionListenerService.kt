@@ -72,13 +72,6 @@ class WearConnectionListenerService : WearableListenerService() {
 
                             if (cleared) {
                                 WearSafetyStateRepository.clearActiveSafeZone()
-
-                                stopService(
-                                    Intent(
-                                        this,
-                                        WearGeofenceMonitoringService::class.java
-                                    )
-                                )
                             }
                         }
                     }
@@ -114,10 +107,6 @@ class WearConnectionListenerService : WearableListenerService() {
 
                         if (cleared) {
                             WearSafetyStateRepository.clearActiveSafeZone()
-
-                            stopService(
-                                Intent(this, WearGeofenceMonitoringService::class.java)
-                            )
                         } else {
                             Log.e(TAG, "Failed to clear synchronized Safe Zone")
                         }
@@ -129,6 +118,7 @@ class WearConnectionListenerService : WearableListenerService() {
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
         super.onMessageReceived(messageEvent)
+        Log.i(TAG, "Wear OS message received: ${messageEvent.path}")
         if (messageEvent.path == CONNECT_PATH) {
             getSharedPreferences(
                 "wanderspectra_connection",
@@ -149,6 +139,19 @@ class WearConnectionListenerService : WearableListenerService() {
 
                         val childName = json.optString("childName", "").trim()
 
+                        val childId = json.optString("childId", "").trim()
+
+                        if (childId.isNotBlank()) {
+                            getSharedPreferences(
+                                "wanderspectra_child",
+                                Context.MODE_PRIVATE
+                            ).edit()
+                                .putString("childId", childId)
+                                .apply()
+
+                            Log.i(TAG, "Connected child ID saved")
+                        }
+
                         if (childName.isNotBlank()) {
                             getSharedPreferences(
                                 "wanderspectra_child",
@@ -165,10 +168,14 @@ class WearConnectionListenerService : WearableListenerService() {
                 val batteryLevel = getBatteryLevel()
 
                 WearLocationManager.fetchLocation(this) { locationData ->
-                    if (locationData != null) {
+                    val activeSafeZone =
+                        WearSafetyStateRepository.activeSafeZone.value
+
+                    if (locationData != null && activeSafeZone?.monitoringEnabled == true) {
                         WearSafetyStateRepository.checkLocationAgainstSafeZone(
                             locationData.latitude,
-                            locationData.longitude
+                            locationData.longitude,
+                            accuracyMeters = locationData.accuracy
                         )
                     }
 
@@ -251,10 +258,6 @@ class WearConnectionListenerService : WearableListenerService() {
 
                         if (cleared) {
                             WearSafetyStateRepository.clearActiveSafeZone()
-
-                            stopService(
-                                Intent(this, WearGeofenceMonitoringService::class.java)
-                            )
                         } else {
                             Log.e(TAG, "Failed to clear Safe Zone from storage")
                         }
@@ -296,7 +299,6 @@ class WearConnectionListenerService : WearableListenerService() {
 
                     WearSafeZoneStorage.save(this, safeZone)
                     WearSafetyStateRepository.updateActiveSafeZone(safeZone)
-                    if (safeZone.monitoringEnabled) {
 
                         val serviceIntent = Intent(
                             this,
@@ -316,12 +318,6 @@ class WearConnectionListenerService : WearableListenerService() {
                                 e
                             )
                         }
-                    } else {
-
-                        stopService(
-                            Intent(this, WearGeofenceMonitoringService::class.java)
-                        )
-                    }
 
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to parse safezone payload", e)

@@ -180,6 +180,7 @@ object WearConnectionManager {
         context: Context,
         nodeId: String,
         childName: String,
+        childId: String,
         onResult: (Boolean, Int, Double?, Double?) -> Unit
     ) {
         val messageClient = Wearable.getMessageClient(context)
@@ -215,6 +216,7 @@ object WearConnectionManager {
                 CONNECT_PATH,
                 JSONObject().apply {
                     put("childName", childName)
+                    put("childId", childId)
                 }.toString().toByteArray(Charsets.UTF_8)
             )
             .addOnFailureListener { exception ->

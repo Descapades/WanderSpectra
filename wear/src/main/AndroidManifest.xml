@@ -48,6 +48,21 @@
                     android:pathPrefix="/wanderspectra" />
             </intent-filter>
         </service>
+
+    <receiver
+        android:name="com.wanderspectra.wear.WearBatteryReceiver"
+        android:enabled="true"
+        android:exported="false">
+        <intent-filter>
+            <action android:name="android.intent.action.BATTERY_LOW" />
+            <action android:name="android.intent.action.BATTERY_OKAY" />
+        </intent-filter>
+    </receiver>
+
+    <service
+        android:name=".presentation.WearGeofenceMonitoringService"
+        android:exported="false"
+        android:foregroundServiceType="location" />
         <service
             android:name=".presentation.WearGeofenceMonitoringService"
             android:exported="false"

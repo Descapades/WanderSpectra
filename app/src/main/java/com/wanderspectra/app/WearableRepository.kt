@@ -95,6 +95,27 @@ class WearableRepository {
             }
     }
 
+
+    fun updateWearableBattery(
+        childId: String,
+        batteryLevel: Int,
+        onSuccess: () -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        if (batteryLevel !in 0..100) {
+            onFailure(IllegalArgumentException("Invalid battery level"))
+            return
+        }
+
+        wearableDocument(childId)
+            .update("batteryLevel", batteryLevel)
+            .addOnSuccessListener {
+                onSuccess()
+            }
+            .addOnFailureListener { exception ->
+                onFailure(exception)
+            }
+    }
 }
 
 

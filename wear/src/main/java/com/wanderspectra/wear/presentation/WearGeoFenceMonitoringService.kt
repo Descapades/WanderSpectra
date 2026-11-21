@@ -16,6 +16,7 @@ import com.google.android.gms.wearable.Wearable
 import org.json.JSONObject
 import android.content.Context
 import android.location.Location
+import android.os.BatteryManager
 
 class WearGeofenceMonitoringService : Service() {
 
@@ -42,13 +43,6 @@ class WearGeofenceMonitoringService : Service() {
         override fun run() {
             if (!isMonitoring) return
 
-            val safeZone = WearSafetyStateRepository.activeSafeZone.value
-
-            if (safeZone == null || !safeZone.monitoringEnabled) {
-                stopMonitoring()
-                return
-            }
-
             if (!locationRequestInProgress) {
                 locationRequestInProgress = true
 
@@ -65,11 +59,19 @@ class WearGeofenceMonitoringService : Service() {
                             TAG,
                             "GPS accuracy: ${location.accuracy} meters"
                         )
-                        WearSafetyStateRepository.checkLocationAgainstSafeZone(
-                            location.latitude,
-                            location.longitude,
-                            accuracyMeters = location.accuracy
+                        sendWearableStatus(
+                            latitude = location.latitude,
+                            longitude = location.longitude
                         )
+                        val activeSafeZone = WearSafetyStateRepository.activeSafeZone.value
+
+                        if (activeSafeZone?.monitoringEnabled == true) {
+                            WearSafetyStateRepository.checkLocationAgainstSafeZone(
+                                location.latitude,
+                                location.longitude,
+                                accuracyMeters = location.accuracy
+                            )
+                        }
                         if (isRouteTracking &&
                             WearSafetyStateRepository.isElopementDetected.value
                         ) {
@@ -104,8 +106,11 @@ class WearGeofenceMonitoringService : Service() {
                             }
                         }
                         val exitEvent = WearSafetyStateRepository.safeZoneExitEvent.value
+                        val safeZoneMonitoringEnabled =
+                            WearSafetyStateRepository.activeSafeZone.value?.monitoringEnabled == true
 
-                        if (exitEvent != null &&
+                        if (safeZoneMonitoringEnabled &&
+                            exitEvent != null &&
                             exitEvent.timestamp != lastHandledExitTimestamp
                         ) {
                             lastHandledExitTimestamp = exitEvent.timestamp
@@ -136,7 +141,8 @@ class WearGeofenceMonitoringService : Service() {
                         val reentryEvent =
                             WearSafetyStateRepository.safeZoneReentryEvent.value
 
-                        if (reentryEvent != null &&
+                        if (safeZoneMonitoringEnabled &&
+                            reentryEvent != null &&
                             reentryEvent.timestamp != lastHandledReentryTimestamp
                         ) {
                             lastHandledReentryTimestamp = reentryEvent.timestamp
@@ -200,24 +206,69 @@ class WearGeofenceMonitoringService : Service() {
         startId: Int
     ): Int {
 
-        val safeZone = WearSafetyStateRepository.activeSafeZone.value
-
-        if (safeZone == null || !safeZone.monitoringEnabled) {
-            stopSelf()
-            return START_NOT_STICKY
-        }
-
         startForeground(
             NOTIFICATION_ID,
             createNotification()
         )
 
         if (!isMonitoring) {
+            lastHandledExitTimestamp =
+                WearSafetyStateRepository.safeZoneExitEvent.value?.timestamp
+
+            lastHandledReentryTimestamp =
+                WearSafetyStateRepository.safeZoneReentryEvent.value?.timestamp
             isMonitoring = true
             handler.post(monitoringRunnable)
         }
 
         return START_STICKY
+    }
+
+    private fun sendWearableStatus(latitude: Double, longitude: Double) {
+        val preferences = getSharedPreferences(
+            "wanderspectra_connection",
+            Context.MODE_PRIVATE
+        )
+
+        val caregiverNodeId = preferences.getString("caregiverNodeId", null)
+        val childId = getSharedPreferences(
+            "wanderspectra_child",
+            Context.MODE_PRIVATE
+        ).getString("childId", null)
+
+        if (caregiverNodeId.isNullOrBlank() || childId.isNullOrBlank()) {
+            Log.w(TAG, "Cannot send wearable status: " +
+                    "caregiverNodeIdMissing=${caregiverNodeId.isNullOrBlank()}, " +
+                    "childIdMissing=${childId.isNullOrBlank()}"
+            )
+            return
+        }
+
+        val batteryManager = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+        val batteryLevel = batteryManager.getIntProperty(
+            BatteryManager.BATTERY_PROPERTY_CAPACITY
+        )
+
+        val payload = JSONObject().apply {
+            put("childId", childId)
+            put("batteryLevel", batteryLevel)
+            put("latitude", latitude)
+            put("longitude", longitude)
+            put("timestamp", System.currentTimeMillis())
+        }
+
+        Wearable.getMessageClient(this)
+            .sendMessage(
+                caregiverNodeId,
+                "/wanderspectra/status",
+                payload.toString().toByteArray(Charsets.UTF_8)
+            )
+            .addOnSuccessListener {
+                Log.d(TAG, "Wearable status message sent")
+            }
+            .addOnFailureListener { exception ->
+                Log.e(TAG, "Failed to send wearable status", exception)
+            }
     }
 
     private fun sendSafeZoneExitEvent(exitEvent: SafeZoneExitEvent) {

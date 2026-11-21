@@ -83,6 +83,7 @@ fun ChildWearableCard(
     val context = LocalContext.current
     val childName = child.preferredName
         .ifBlank { child.fullName }
+    val childId = child.childId
 
     LaunchedEffect(child.childId) {
         wearableRepository.getWearable(
@@ -147,6 +148,7 @@ fun ChildWearableCard(
 
         ConnectWearableScreen(
             childName = childName,
+            childId = childId,
             onDeviceConnected = { deviceId, deviceName, battery, lat, lng ->
 
                 connectedDeviceName = deviceName
@@ -308,6 +310,7 @@ fun WearableNotConnectedScreen(
 @Composable
 fun ConnectWearableScreen(
     childName: String,
+    childId: String,
     onDeviceConnected: (String, String, Int, Double?, Double?) -> Unit
 ) {
     val context = LocalContext.current
@@ -459,7 +462,8 @@ fun ConnectWearableScreen(
                         WearConnectionManager.sendConnectionRequest(
                             context = context,
                             nodeId = node.id,
-                            childName = childName
+                            childName = childName,
+                            childId = childId,
                         ) { connected, battery, lat, lng ->
                             if (connected) {
                                 onDeviceConnected(

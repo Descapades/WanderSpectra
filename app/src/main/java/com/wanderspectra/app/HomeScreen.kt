@@ -602,6 +602,61 @@ fun HomeContent(
                                             }
                                         )
                                     }
+
+                                    if (result.connected && result.batteryLevel in 0..100) {
+                                        wearableRepository.updateWearableBattery(
+                                            childId = child.childId,
+                                            batteryLevel = result.batteryLevel,
+                                            onSuccess = {
+                                                android.util.Log.i(
+                                                    "HomeBattery",
+                                                    "Battery updated to ${result.batteryLevel}%"
+                                                )
+                                            },
+                                            onFailure = { exception ->
+                                                android.util.Log.e(
+                                                    "HomeBattery",
+                                                    "Failed to update wearable battery",
+                                                    exception
+                                                )
+                                            }
+                                        )
+
+                                        val currentBattery = result.batteryLevel
+
+                                        if (currentBattery <= 20) {
+                                            if (
+                                                CaregiverNotificationPreferences.isLowBatteryAlertEnabled(context) &&
+                                                !CaregiverNotificationPreferences.hasLowBatteryNotificationBeenSent(
+                                                    context,
+                                                    child.childId
+                                                )
+                                            ) {
+                                                val notificationSent =
+                                                    CaregiverNotificationManager.sendCaregiverNotification(
+                                                        context = context,
+                                                        title = "Wearable Low Battery",
+                                                        message = "${child.fullName}'s wearable battery is at $currentBattery%. Please charge the device."
+                                                    )
+
+                                                if (notificationSent) {
+                                                    CaregiverNotificationPreferences.setLowBatteryNotificationSent(
+                                                        context,
+                                                        child.childId,
+                                                        true
+                                                    )
+                                                }
+                                            }
+                                        } else {
+                                            CaregiverNotificationPreferences.setLowBatteryNotificationSent(
+                                                context,
+                                                child.childId,
+                                                false
+                                            )
+                                        }
+
+                                    }
+
                                     if (
                                         result.connected &&
                                         result.latitude != null &&

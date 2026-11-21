@@ -117,6 +117,7 @@ object CaregiverNotificationPreferences {
     private const val KEY_SAFE_ZONE_EXIT = "safe_zone_exit_enabled"
     private const val KEY_WEARABLE_DISCONNECTED = "wearable_disconnected_enabled"
     private const val KEY_LOW_BATTERY = "low_battery_alert_enabled"
+    private const val KEY_LOW_BATTERY_NOTIFIED = "low_battery_notified_"
     private const val KEY_SAFETY_CIRCLE_UPDATES = "safety_circle_updates_enabled"
     private const val KEY_COMMUNITY_SIGHTINGS = "community_sightings_enabled"
     private const val KEY_SOUND = "sound_enabled"
@@ -179,6 +180,31 @@ object CaregiverNotificationPreferences {
 
     fun setVibrationEnabled(context: Context, enabled: Boolean) =
         setPreference(context, KEY_VIBRATION, enabled)
+
+
+    fun hasLowBatteryNotificationBeenSent(
+        context: Context,
+        childId: String
+    ): Boolean {
+        return context.getSharedPreferences(
+            PREFS_NAME,
+            Context.MODE_PRIVATE
+        ).getBoolean(KEY_LOW_BATTERY_NOTIFIED + childId, false)
+    }
+
+    fun setLowBatteryNotificationSent(
+        context: Context,
+        childId: String,
+        sent: Boolean
+    ) {
+        context.getSharedPreferences(
+            PREFS_NAME,
+            Context.MODE_PRIVATE
+        ).edit()
+            .putBoolean(KEY_LOW_BATTERY_NOTIFIED + childId, sent)
+            .apply()
+    }
+
 }
 
 
