@@ -45,6 +45,7 @@ class ChildSafeZoneMonitoringRepository(
         childId: String,
         safeZoneId: String,
         enabled: Boolean,
+        overrideActive: Boolean = false,
         onDone: (Boolean, String) -> Unit
     ) {
         val caregiverId = FirebaseAuth.getInstance().currentUser?.uid
@@ -81,11 +82,12 @@ class ChildSafeZoneMonitoringRepository(
                 }
             }
 
-            val data = mapOf(
+            val data = hashMapOf(
                 "childId" to childId,
-                "caregiverId" to caregiverId,
+                "caregiverId" to (FirebaseAuth.getInstance().currentUser?.uid ?: ""),
                 "activeSafeZoneId" to if (enabled) safeZoneId else "",
-                "monitoringEnabled" to enabled
+                "monitoringEnabled" to enabled,
+                "overrideActive" to overrideActive
             )
 
             transaction.set(monitoringRef, data)

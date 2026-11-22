@@ -185,7 +185,7 @@ fun SafeZoneScreen(
                             safeZoneAddresses = safeZoneAddresses + (
                                     zone.id to (address ?: "Address unavailable")
                                     )
-                        } catch (e: Exception) {
+                        } catch (_: Exception) {
                             safeZoneAddresses = safeZoneAddresses + (
                                     zone.id to "Address unavailable"
                                     )
@@ -266,7 +266,8 @@ fun SafeZoneScreen(
                                                             .setMonitoring(
                                                                 childId = child.childId,
                                                                 safeZoneId = zone.id,
-                                                                enabled = enabled
+                                                                enabled = enabled,
+                                                                overrideActive = enabled && !isActiveNow(zone)
                                                             ) { success, message ->
 
                                                                 if (success) {
@@ -280,7 +281,8 @@ fun SafeZoneScreen(
                                                                                                     .currentUser?.uid.orEmpty(),
                                                                                             activeSafeZoneId =
                                                                                                 if (enabled) zone.id else "",
-                                                                                            monitoringEnabled = enabled
+                                                                                            monitoringEnabled = enabled,
+                                                                                            overrideActive = enabled && !isActiveNow(zone)
                                                                                         )
                                                                                 )
 
@@ -332,8 +334,15 @@ fun SafeZoneScreen(
                                                 )
                                             }
                                         }
+                                            if (childMonitoring[child.childId]?.overrideActive == true) {
+                                                ZoneDetail(
+                                                    label = "Override:",
+                                                    value = "Monitoring on by override"
+                                                )
+                                            }
+                                        }
                                     }
-                                }
+
 
                                 val zoneStatus = monitoringStatuses[zone.id].orEmpty()
 
@@ -563,4 +572,18 @@ private fun scheduleStatus(zone: SafeZone): String {
     }
     if (!zone.scheduleDays.contains(dayName)) return "Outside schedule"
     return "Active now"
+}
+fun isActiveNow(zone: SafeZone): Boolean {
+    if (zone.scheduleAlwaysOn) return true
+    val dayName = when (java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK)) {
+        java.util.Calendar.SUNDAY -> "Sun"
+        java.util.Calendar.MONDAY -> "Mon"
+        java.util.Calendar.TUESDAY -> "Tue"
+        java.util.Calendar.WEDNESDAY -> "Wed"
+        java.util.Calendar.THURSDAY -> "Thu"
+        java.util.Calendar.FRIDAY -> "Fri"
+        java.util.Calendar.SATURDAY -> "Sat"
+        else -> ""
+    }
+    return zone.scheduleDays.contains(dayName)
 }
