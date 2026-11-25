@@ -56,6 +56,10 @@ import com.wanderspectra.app.ui.theme.CardCream
 import com.wanderspectra.app.ui.theme.EmergencyRed
 import com.google.android.gms.maps.model.LatLngBounds
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.withStyle
+import com.wanderspectra.app.ui.theme.SafeMint
 
 private val AlertRed = Color(0xFFC34A5B)
 private val AlertCream = Color(0xFFEEE9D5)
@@ -158,17 +162,21 @@ fun CommunityAlertDetailScreen(
     }
 
     val context = LocalContext.current
+    val isResolved = alert.status == "RESOLVED"
 
     val publicLocation = if (
-        alert.approximateLatitude != null &&
-        alert.approximateLongitude != null &&
-        alert.approximateLatitude in -90.0..90.0 &&
-        alert.approximateLongitude in -180.0..180.0
+        alert.latitude != null &&
+        alert.longitude != null &&
+        alert.latitude.isFinite() &&
+        alert.longitude.isFinite() &&
+        alert.latitude in -90.0..90.0 &&
+        alert.longitude in -180.0..180.0
     ) {
-        LatLng(alert.approximateLatitude, alert.approximateLongitude)
+        LatLng(alert.latitude, alert.longitude)
     } else {
         null
     }
+
 
     var publicLocationAddress by remember(publicLocation) {
         mutableStateOf("Loading location...")
@@ -195,9 +203,9 @@ fun CommunityAlertDetailScreen(
                     )
                     ?.firstOrNull()
                     ?.getAddressLine(0)
-                    ?: "Approximate location unavailable"
+                    ?: "Location unavailable"
             } catch (e: Exception) {
-                "Approximate location unavailable"
+                "Location unavailable"
             }
         }
     }
@@ -261,251 +269,289 @@ fun CommunityAlertDetailScreen(
         }
     } ?: "Unavailable"
 
-    Column(
+
+    Surface(
         modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        shape = RoundedCornerShape(16.dp),
+        color = CardCream,
+        border = BorderStroke(1.dp, PrimaryBlue)
     ) {
-        Text(
-            text = "Active\nCommunity\nAlert!",
-            fontFamily = TanSongbird,
-            fontSize = 20.sp,
-            lineHeight = 34.sp,
-            color = AlertRed,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = "${alert.childName.ifBlank { "Child" }} is missing!",
-            fontFamily = Salsa,
-            fontSize = 34.sp,
-            lineHeight = 29.sp,
-            color = SecondaryRed,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(18.dp))
-
-        Text(
-            text = "Last Known Location:",
-            fontFamily = Salsa,
-            fontSize = 24.sp,
-            color = SecondaryBlue,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Surface(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(300.dp),
-            shape = RoundedCornerShape(8.dp),
-            color = AlertCream,
-            border = BorderStroke(1.dp, PrimaryBlue)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (publicLocation != null || sightings.isNotEmpty()) {
-                GoogleMap(
-                    modifier = Modifier.fillMaxSize(),
-                    cameraPositionState = cameraPositionState
-                ) {
-                    publicLocation?.let { location ->
-                        Marker(
-                            state = MarkerState(position = location),
-                            title = "Last Known Area"
-                        )
-                    }
-
-                    sightings.forEach { sighting ->
-                        Marker(
-                            state = MarkerState(
-                                position = LatLng(
-                                    sighting.latitude,
-                                    sighting.longitude
-                                )
-                            ),
-                            title = "Reported Sighting (Unverified)",
-                            snippet = "Direction: ${sighting.direction}",
-                            icon = BitmapDescriptorFactory.defaultMarker(
-                                BitmapDescriptorFactory.HUE_AZURE
-                            )
-                        )
-                    }
-                }
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Map location unavailable",
-                        fontFamily = Salsa,
-                        color = PrimaryBlue,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = publicLocationAddress,
-            fontFamily = Salsa,
-            fontSize = 18.sp,
-            lineHeight = 23.sp,
-            color = PrimaryBlue,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-        )
-
-        Spacer(modifier = Modifier.height(6.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Last Updated: ",
-                fontFamily = Salsa,
-                fontSize = 17.sp,
-                color = AlertRed
-            )
 
             Text(
-                text = lastUpdated,
-                fontFamily = Salsa,
-                fontSize = 17.sp,
-                color = PrimaryBlue
+                text = if (isResolved) {
+                    "Child\nFound Safe!"
+                } else {
+                    "Active\nCommunity\nAlert!"
+                },
+                fontFamily = TanSongbird,
+                fontSize = 20.sp,
+                lineHeight = 34.sp,
+                color = AlertRed,
+                textAlign = TextAlign.Center
             )
-        }
 
-        Spacer(modifier = Modifier.height(22.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-        Text(
-            text = "Reported Sightings:",
-            fontFamily = Salsa,
-            fontSize = 24.sp,
-            color = SecondaryBlue,
-            modifier = Modifier.fillMaxWidth()
-        )
+            Text(
+                text = if (isResolved) {
+                    "${alert.childName.ifBlank { "Child" }} has been found safe!"
+                } else {
+                    "${alert.childName.ifBlank { "Child" }} is missing!"
+                },
+                fontFamily = Salsa,
+                fontSize = 34.sp,
+                lineHeight = 29.sp,
+                color = if (isResolved) PrimaryBlue else SecondaryRed,
+                textAlign = TextAlign.Center
+            )
 
-        Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
-        when {
-            sightingsError != null -> {
+
+            if (!isResolved) {
                 Text(
-                    text = sightingsError.orEmpty(),
-                    color = SecondaryRed,
+                    text = "Last Known Location:",
+                    fontFamily = Salsa,
+                    fontSize = 24.sp,
+                    color = SecondaryBlue,
                     modifier = Modifier.fillMaxWidth()
                 )
-            }
 
-            sightings.isEmpty() -> {
-                Text(
-                    text = "No sightings reported yet.",
-                    fontFamily = Salsa,
-                    fontSize = 17.sp,
-                    color = PrimaryBlue,
+                Spacer(modifier = Modifier.height(10.dp))
+
+
+                ChildLocationMap(
+                    children = emptyList(),
+                    alertLocation = publicLocation,
+                    reportedSightings = sightings
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp)
-                )
-            }
+                        .fillMaxWidth(),
 
-            else -> {
-                val dateFormatter = SimpleDateFormat(
-                    "MMM d, yyyy 'at' h:mm a",
-                    Locale.getDefault()
-                )
-
-                sightings.forEach { sighting ->
-                    Surface(
-                        onClick = {
-                            selectedSighting = sighting
-                        },
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    Text(
+                        text = publicLocationAddress,
+                        fontFamily = Salsa,
+                        fontSize = 18.sp,
+                        lineHeight = 23.sp,
+                        color = PrimaryBlue,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 10.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        color = CardCream,
-                        border = BorderStroke(1.dp, PrimaryBlue)
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Text(
+                            text = "Last Updated: ",
+                            fontFamily = Salsa,
+                            fontSize = 18.sp,
+                            color = AlertRed
+                        )
+
+                        Text(
+                            text = lastUpdated,
+                            fontFamily = Salsa,
+                            fontSize = 18.sp,
+                            color = PrimaryBlue
+                        )
+                    }
+                }
+                } else {
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Status: ",
+                            fontFamily = Salsa,
+                            fontSize = 18.sp,
+                            color = EmergencyRed
+                        )
+
+                        Text(
+                            text = "RESOLVED",
+                            fontFamily = Salsa,
+                            fontSize = 18.sp,
+                            color = PrimaryBlue
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    val resolvedDate = alert.resolvedAt?.toDate()?.let {
+                        val date = SimpleDateFormat(
+                            "MMM d, yyyy",
+                            Locale.getDefault()
+                        ).format(it)
+
+                        val time = SimpleDateFormat(
+                            "h:mm a",
+                            Locale.getDefault()
+                        ).format(it)
+
+                        "$date\nat $time"
+                    } ?: "Unavailable"
+
+                    Text(
+                        text = buildAnnotatedString {
+                            withStyle(SpanStyle(color = EmergencyRed)) {
+                                append("Found Safe: ")
+                            }
+                            withStyle(SpanStyle(color = PrimaryBlue)) {
+                                append(resolvedDate)
+                            }
+                        },
+                        fontFamily = Salsa,
+                        fontSize = 18.sp,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+
+
+                }
+
+
+                Spacer(modifier = Modifier.height(22.dp))
+
+                if (!isResolved) {
+                    Text(
+                        text = "Reported Sightings:",
+                        fontFamily = Salsa,
+                        fontSize = 24.sp,
+                        color = SecondaryBlue,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    when {
+                        sightingsError != null -> {
                             Text(
-                                text = sighting.sightingTime?.toDate()?.let {
-                                    dateFormatter.format(it)
-                                } ?: "Unknown Date",
+                                text = sightingsError.orEmpty(),
+                                color = SecondaryRed,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+
+                        sightings.isEmpty() -> {
+                            Text(
+                                text = "No sightings reported yet.",
                                 fontFamily = Salsa,
                                 fontSize = 18.sp,
-                                color = EmergencyRed,
-                                modifier = Modifier.weight(1f)
+                                color = PrimaryBlue,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                            )
+                        }
+                        else -> {
+                            val dateFormatter = SimpleDateFormat(
+                                "MMM d, yyyy 'at' h:mm a",
+                                Locale.getDefault()
                             )
 
+                            sightings.forEach { sighting ->
+                                Surface(
+                                    onClick = {
+                                        selectedSighting = sighting
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 10.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = CardCream,
+                                    border = BorderStroke(1.dp, PrimaryBlue)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = sighting.sightingTime?.toDate()?.let {
+                                                dateFormatter.format(it)
+                                            } ?: "Unknown Date",
+                                            fontFamily = Salsa,
+                                            fontSize = 18.sp,
+                                            color = EmergencyRed,
+                                            modifier = Modifier.weight(1f)
+                                        )
+
+                                        Text(
+                                            text = "›",
+                                            fontFamily = Salsa,
+                                            fontSize = 28.sp,
+                                            color = EmergencyRed
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    if (onViewChildProfile != null) {
+                        Button(
+                            onClick = { onViewChildProfile.invoke() },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(54.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = ProfileBlue
+                            ),
+                            border = BorderStroke(1.dp, SecondaryBlue)
+                        ) {
                             Text(
-                                text = "›",
+                                text = "View Child Profile",
                                 fontFamily = Salsa,
-                                fontSize = 28.sp,
-                                color = EmergencyRed
+                                fontSize = 20.sp,
+                                color = SecondaryBlue
                             )
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(22.dp))
+
+                if (!isResolved) {
+                    Button(
+                        onClick = onReportSighting,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = ButtonPink
+                        ),
+                        border = BorderStroke(1.dp, SecondaryRed)
+                    ) {
+                        Text(
+                            text = "Report Sighting",
+                            fontFamily = Salsa,
+                            fontSize = 20.sp,
+                            color = SecondaryRed
+                        )
+                    }
+                }
             }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        if (onViewChildProfile != null) {
-            Button(
-                onClick = { onViewChildProfile.invoke() },
-                modifier = Modifier
-                    .fillMaxWidth(0.78f)
-                    .height(54.dp),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ProfileBlue
-                ),
-                border = BorderStroke(1.dp, SecondaryBlue)
-            ) {
-                Text(
-                    text = "View Child Profile",
-                    fontFamily = Salsa,
-                    fontSize = 20.sp,
-                    color = SecondaryBlue
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(22.dp))
-
-        Button(
-            onClick = onReportSighting,
-            modifier = Modifier
-                .fillMaxWidth(0.78f)
-                .height(54.dp),
-            shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = ButtonPink
-            ),
-            border = BorderStroke(1.dp, SecondaryRed)
-        ) {
-            Text(
-                text = "Report Sighting",
-                fontFamily = Salsa,
-                fontSize = 20.sp,
-                color = SecondaryRed
-            )
         }
     }
-}

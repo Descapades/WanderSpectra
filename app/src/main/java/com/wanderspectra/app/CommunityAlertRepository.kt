@@ -13,9 +13,10 @@ class CommunityAlertRepository {
 
     private val db = FirebaseFirestore.getInstance()
     private val alerts = db.collection("communityAlerts")
-    private val publicAlerts = db.collection("publicCommunityAlerts")
     private val publishWorkerUrl =
         "https://wanderspectra-alerts.destin-champlin.workers.dev/publish-community-alert"
+    private val resolvedAlertsWorkerUrl =
+        "https://wanderspectra-alerts.destin-champlin.workers.dev/resolved-community-alerts"
 
     suspend fun createAlert(alert: CommunityAlert): String {
         require(alert.incidentId.isNotBlank()) {
@@ -127,12 +128,72 @@ class CommunityAlertRepository {
             }
         }
 
-    suspend fun getAlerts(): List<CommunityAlert> {
-        val now = com.google.firebase.Timestamp.now()
-        val twentyFourHoursAgo = now.seconds - (24 * 60 * 60)
 
-        return publicAlerts
-            .whereIn("status", listOf("ACTIVE", "RESOLVED"))
+    private suspend fun getResolvedAlerts(): List<CommunityAlert> =
+        withContext(Dispatchers.IO) {
+            val user = FirebaseAuth.getInstance().currentUser
+                ?: throw IllegalStateException("User is not signed in")
+
+            val token = user.getIdToken(false).await().token
+                ?: throw IllegalStateException("Unable to get Firebase token")
+
+            val connection = URL(resolvedAlertsWorkerUrl)
+                .openConnection() as HttpURLConnection
+
+            try {
+                connection.requestMethod = "GET"
+                connection.setRequestProperty(
+                    "Authorization",
+                    "Bearer $token"
+                )
+                connection.connectTimeout = 15000
+                connection.readTimeout = 15000
+
+                val responseCode = connection.responseCode
+
+                if (responseCode !in 200..299) {
+                    throw IllegalStateException(
+                        "Unable to retrieve resolved alerts ($responseCode)"
+                    )
+                }
+
+                val response = connection.inputStream
+                    .bufferedReader()
+                    .use { it.readText() }
+
+                val alertsArray = JSONObject(response).getJSONArray("alerts")
+
+                (0 until alertsArray.length()).map { index ->
+                    val alert = alertsArray.getJSONObject(index)
+
+                    CommunityAlert(
+                        id = alert.optString("id"),
+                        incidentId = alert.optString("incidentId"),
+                        childName = alert.optString("childName"),
+                        photoUrl = alert.optString("photoUrl"),
+                        lastKnownArea = alert.optString("lastKnownArea"),
+                        status = "RESOLVED",
+                        createdAt = alert.optString("createdAt")
+                            .takeIf { it.isNotBlank() && it != "null" }
+                            ?.let { com.google.firebase.Timestamp(
+                                java.util.Date.from(java.time.Instant.parse(it))
+                            ) },
+                        resolvedAt = alert.optString("resolvedAt")
+                            .takeIf { it.isNotBlank() && it != "null" }
+                            ?.let { com.google.firebase.Timestamp(
+                                java.util.Date.from(java.time.Instant.parse(it))
+                            ) }
+                    )
+                }
+            } finally {
+                connection.disconnect()
+            }
+        }
+
+
+    suspend fun getAlerts(): List<CommunityAlert> {
+        val activeAlerts = alerts
+            .whereEqualTo("status", "ACTIVE")
             .get()
             .await()
             .documents
@@ -140,20 +201,19 @@ class CommunityAlertRepository {
                 document.toObject(CommunityAlert::class.java)
                     ?.copy(id = document.id)
             }
-            .filter { alert ->
-                when (alert.status) {
-                    "ACTIVE" -> true
 
-                    "RESOLVED" -> {
-                        val resolvedAt = alert.resolvedAt
-                        resolvedAt != null &&
-                                resolvedAt.seconds > twentyFourHoursAgo
-                    }
+        val resolvedAlerts = getResolvedAlerts()
 
-                    else -> false
+        return (activeAlerts + resolvedAlerts)
+            .sortedWith(
+                compareBy<CommunityAlert> {
+                    it.status != "ACTIVE"
+                }.thenByDescending {
+                    it.createdAt?.seconds ?: 0L
                 }
-            }
+            )
     }
+
 
     suspend fun resolveAlert(alertId: String) {
         val success = withContext(Dispatchers.IO) {

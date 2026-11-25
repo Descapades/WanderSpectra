@@ -37,7 +37,6 @@ object SightingReportNavigation {
 fun CaregiverSightingNotifications(caregiverId: String, childId: String) {
     val context = LocalContext.current
     val db = remember { FirebaseFirestore.getInstance() }
-    var latest by remember(caregiverId, childId) { mutableStateOf<Pair<String, String>?>(null) }
     var listenerError by remember(caregiverId, childId) { mutableStateOf<String?>(null) }
     DisposableEffect(caregiverId, childId) {
         val listeners = mutableMapOf<String, ListenerRegistration>()
@@ -72,7 +71,6 @@ fun CaregiverSightingNotifications(caregiverId: String, childId: String) {
                                                 val reportId = report.getString("reportId") ?: return@forEach
                                                 val seenKey = "$alertId/$reportId"
                                                 if (!seen.getBoolean(seenKey, false)) {
-                                                    latest = alertId to reportId
                                                     showSightingNotification(context, alertId, reportId)
                                                     seen.edit().putBoolean(seenKey, true).apply()
                                                 }
@@ -92,11 +90,6 @@ fun CaregiverSightingNotifications(caregiverId: String, childId: String) {
     }
     Column(Modifier.fillMaxWidth()) {
         listenerError?.let { Text(it, Modifier.padding(8.dp), color = MaterialTheme.colorScheme.error) }
-        latest?.let { target ->
-            TextButton(onClick = {
-                SightingReportNavigation.receive(Intent().putExtra("sightingAlertId", target.first).putExtra("sightingReportId", target.second))
-            }) { Text("View new sighting report") }
-        }
     }
     val target = SightingReportNavigation.request
     if (target != null) {
@@ -137,7 +130,9 @@ private fun CaregiverSightingReportDialog(caregiverId: String, alertId: String, 
                     if (!alert.exists() || alert.getString("caregiverId") != caregiverId || alert.getString("status") != "ACTIVE") {
                         text = "This active alert is unavailable for this caregiver."
                     } else {
-                        db.collection("publicSightingReports").document(reportId).get()
+
+                        db.collection("sightingReports").document(reportId).get()
+
                             .addOnSuccessListener { report ->
                                 if (!report.exists() || report.getString("communityAlertId") != alertId) {
                                     text = "The report does not belong to this alert."

@@ -115,7 +115,7 @@ fun SafetyCircleMemberFormScreen(
         )
 
         OnboardingField(
-            label = "Email",
+            label = "Email (optional)",
             placeholder = "Email Address",
             value = email,
             onValueChange = { email = it }
@@ -273,14 +273,6 @@ fun SafetyCircleMemberFormScreen(
         errorMessage?.let {
             Text(
                 text = it,
-                color = MaterialTheme.colorScheme.error
-            )
-        }
-
-        if (name.isBlank() || relationship.isBlank() ||
-            phone.isBlank() || selectedChildIds.isEmpty()) {
-            Text(
-                text = "To save, enter a name, relationship, phone number, and select at least one child.",
                 color = MaterialTheme.colorScheme.error
             )
         }

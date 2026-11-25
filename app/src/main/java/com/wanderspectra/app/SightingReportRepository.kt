@@ -49,8 +49,7 @@ class SightingReportRepository(
             return
         }
 
-        // Check the public alert, not the caregiver's private alert.
-        val alertRef = db.collection("publicCommunityAlerts")
+        val alertRef = db.collection("communityAlerts")
             .document(report.communityAlertId)
 
         alertRef.get()

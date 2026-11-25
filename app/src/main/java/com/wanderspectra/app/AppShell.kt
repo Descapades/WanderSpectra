@@ -93,10 +93,24 @@ fun AppShell(
     var editingSafeZoneId by remember { mutableStateOf<String?>(null) }
     var openIncidentId by remember { mutableStateOf<String?>(null) }
     var communityAlertIssued by remember { mutableStateOf(false) }
+    var safetyCircleNotified by remember { mutableStateOf(false) }
+    var pendingCommunityAlertResolutionId by remember { mutableStateOf<String?>(null) }
+    var communityAlertResolutionInProgress by remember { mutableStateOf(false) }
     var incidentStatus by remember { mutableStateOf("") }
     var selectedIncidentReport by remember { mutableStateOf<IncidentRecord?>(null) }
     val context = LocalContext.current
     val caregiverUid = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+    var emergencyChildName by remember { mutableStateOf("") }
+    var emergencyChildId by remember { mutableStateOf("") }
+    var incidentBusy by remember { mutableStateOf(false) }
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    var emergencyProfileReturn by remember { mutableStateOf(AppDestination.CHILD_PROFILE) }
+    var childProfiles by remember { mutableStateOf<List<ChildProfile>>(emptyList()) }
+    var child by remember { mutableStateOf<ChildProfile?>(null) }
+    val childRepository = remember { ChildProfileRepository() }
+    val communityAlertRepository = remember { CommunityAlertRepository() }
+    val wearableRepository = remember { WearableRepository() }
+    val coroutineScope = rememberCoroutineScope()
     val emergencyStore = remember(
         context,
         caregiverUid
@@ -106,27 +120,61 @@ fun AppShell(
             android.content.Context.MODE_PRIVATE
         )
     }
-    var emergencyChildName by remember { mutableStateOf("") }
-    var emergencyChildId by remember { mutableStateOf("") }
-    var incidentBusy by remember { mutableStateOf(false) }
-    val notificationPermission =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
-    var emergencyProfileReturn by remember { mutableStateOf(AppDestination.CHILD_PROFILE) }
-    var childProfiles by remember { mutableStateOf<List<ChildProfile>>(emptyList()) }
-    var child by remember { mutableStateOf<ChildProfile?>(null) }
-    val childRepository = remember { ChildProfileRepository() }
-    val communityAlertRepository = remember { CommunityAlertRepository() }
-    val wearableRepository = remember { WearableRepository() }
-    val coroutineScope = rememberCoroutineScope()
+    val smsPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (!isGranted) {
+            // We'll display an error message when permission is denied.
+        }
+    }
 
     LaunchedEffect(caregiverUid) {
         openIncidentId = emergencyStore.getString("incidentId", null)
+        pendingCommunityAlertResolutionId = emergencyStore.getString("pendingCommunityAlertResolutionId", null)
         communityAlertIssued = emergencyStore.getBoolean("communityAlertIssued", false) && openIncidentId != null
+        safetyCircleNotified = emergencyStore.getBoolean("safetyCircleNotified", false) && openIncidentId != null
         emergencyChildName = emergencyStore.getString("childName", "").orEmpty()
         emergencyChildId = emergencyStore.getString("childId", "").orEmpty()
         if (openIncidentId != null) {
             incidentStatus = "Active incident restored"
             currentDestination = AppDestination.ELOPEMENT_MODE
+        }
+    }
+
+
+
+
+    LaunchedEffect(caregiverUid, pendingCommunityAlertResolutionId) {
+        val alertId = pendingCommunityAlertResolutionId
+            ?: return@LaunchedEffect
+
+        if (communityAlertResolutionInProgress) {
+            return@LaunchedEffect
+        }
+
+        communityAlertResolutionInProgress = true
+
+        try {
+            communityAlertRepository.resolveAlert(alertId)
+
+            emergencyStore.edit()
+                .remove("pendingCommunityAlertResolutionId")
+                .apply()
+
+            pendingCommunityAlertResolutionId = null
+
+            android.util.Log.d(
+                "CommunityAlert",
+                "Pending Community Alert resolved successfully: $alertId"
+            )
+        } catch (error: Exception) {
+            android.util.Log.e(
+                "CommunityAlert",
+                "Pending Community Alert resolution failed: $alertId",
+                error
+            )
+        } finally {
+            communityAlertResolutionInProgress = false
         }
     }
 
@@ -220,6 +268,11 @@ fun AppShell(
                         when (currentDestination) {
                             AppDestination.HOME -> HomeContent(
                                 children = childProfiles,
+                                activeElopementChildId = if (openIncidentId != null) {
+                                    emergencyChildId
+                                } else {
+                                    null
+                                },
                                 onChildMissing = { selectedChild ->
                                     child = selectedChild
                                     currentDestination = if (openIncidentId != null) {
@@ -400,6 +453,7 @@ fun AppShell(
                                                 if (ok && !id.isNullOrBlank()) {
                                                     openIncidentId = id
                                                     communityAlertIssued = false
+                                                    safetyCircleNotified = false
                                                     emergencyChildId = selectedChild.childId
                                                     emergencyChildName =
                                                         selectedChild.preferredName.ifBlank { selectedChild.fullName }
@@ -475,7 +529,7 @@ fun AppShell(
                                 childName = emergencyChildName,
                                 childId = emergencyChildId,
                                 communityAlertIssued = communityAlertIssued,
-                                safetyCircleNotified = false,
+                                safetyCircleNotified = safetyCircleNotified,
                                 onEmergencyProfile = {
                                     emergencyProfileReturn = AppDestination.ELOPEMENT_MODE
                                     currentDestination = AppDestination.EMERGENCY_PROFILE
@@ -483,6 +537,9 @@ fun AppShell(
                                 emergencyProfileAvailable = childProfiles.any { it.childId == emergencyChildId },
                                 onSafetyCircle = {
                                     currentDestination = AppDestination.SAFETY_CIRCLE
+                                },
+                                onNotifySafetyCircle = {
+                                    // SMS notification logic will go here.
                                 },
                                 onCommunity = {
                                     if (communityAlertIssued) {
@@ -630,37 +687,79 @@ fun AppShell(
                                     }
                                 },
                                 isBusy = incidentBusy,
+
                                 onChildSafe = { id ->
                                     if (!incidentBusy && id == openIncidentId) {
                                         incidentBusy = true
+                                        incidentStatus = "Closing incident..."
+
                                         IncidentRepository().closeIncident(id) { ok, message ->
-                                            incidentBusy = false
                                             incidentStatus = message
+
                                             if (ok) {
+                                                val shouldResolveCommunityAlert = communityAlertIssued
+
+                                                if (shouldResolveCommunityAlert) {
+                                                    communityAlertResolutionInProgress = true
+                                                    pendingCommunityAlertResolutionId = id
+                                                    emergencyStore.edit()
+                                                        .putString("pendingCommunityAlertResolutionId", id)
+                                                        .apply()
+                                                }
+
                                                 coroutineScope.launch {
-                                                    try {
-                                                        communityAlertRepository.resolveAlert(id)
-                                                    } catch (error: Exception) {
-                                                        android.util.Log.e(
-                                                            "CommunityAlert",
-                                                            "Unable to resolve Community Alert",
-                                                            error
-                                                        )
+                                                    if (shouldResolveCommunityAlert) {
+                                                        try {
+                                                            communityAlertRepository.resolveAlert(id)
+
+                                                            pendingCommunityAlertResolutionId = null
+                                                            emergencyStore.edit()
+                                                                .remove("pendingCommunityAlertResolutionId")
+                                                                .apply()
+
+                                                        } catch (error: Exception) {
+                                                            android.util.Log.e(
+                                                                "CommunityAlert",
+                                                                "Unable to resolve Community Alert",
+                                                                error
+                                                            )
+                                                            communityAlertResolutionInProgress = false
+                                                            incidentStatus =
+                                                                "Child marked safe, but Community Alert resolution failed."
+                                                            android.widget.Toast.makeText(
+                                                                context,
+                                                                "Child marked safe, but the Community Alert could not be resolved. Please check your connection.",
+                                                                android.widget.Toast.LENGTH_LONG
+                                                            ).show()
+                                                        }
                                                     }
 
-                                                    emergencyStore.edit().clear().apply()
+                                                    emergencyStore.edit()
+                                                        .remove("incidentId")
+                                                        .remove("childId")
+                                                        .remove("childName")
+                                                        .remove("communityAlertIssued")
+                                                        .remove("safetyCircleNotified")
+                                                        .apply()
+
                                                     openIncidentId = null
                                                     emergencyChildId = ""
                                                     emergencyChildName = ""
+                                                    communityAlertIssued = false
+                                                    safetyCircleNotified = false
+                                                    incidentBusy = false
                                                     currentDestination = AppDestination.HOME
                                                 }
+                                            } else {
+                                                incidentBusy = false
                                             }
                                         }
                                     }
                                 },
 
+
                                 )
-                        }
+                            }
                     }
 
 

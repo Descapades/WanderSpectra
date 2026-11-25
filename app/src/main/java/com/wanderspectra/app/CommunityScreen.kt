@@ -54,7 +54,6 @@ fun CommunityContent(
     var emergencyProfile by remember { mutableStateOf<ChildProfile?>(null) }
     var profileLoading by remember { mutableStateOf(false) }
     var profileError by remember { mutableStateOf<String?>(null) }
-    var submissionMessage by remember { mutableStateOf<String?>(null) }
 
     SideEffect {
         onBackAvailabilityChanged(selectedAlert != null)
@@ -215,7 +214,7 @@ fun CommunityContent(
                 onSubmitted = {
                     showingSightingForm = false
                     selectedAlert = null
-                    submissionMessage = "Sighting submitted successfully."
+
                 }
             )
         } else {
@@ -245,16 +244,6 @@ fun CommunityContent(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-
-        submissionMessage?.let { message ->
-            Text(
-                text = message,
-                color = PrimaryBlue,
-                fontFamily = Salsa
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
         Text(
             text = "Community",
             color = Color(0xFFC34A5B),
@@ -316,16 +305,18 @@ fun CommunityAlertCard(
     val isActive = alert.status == "ACTIVE"
     val context = LocalContext.current
 
+
     val publicLocation = if (
-        alert.approximateLatitude != null &&
-        alert.approximateLongitude != null &&
-        alert.approximateLatitude in -90.0..90.0 &&
-        alert.approximateLongitude in -180.0..180.0
+        alert.latitude != null &&
+        alert.longitude != null &&
+        alert.latitude in -90.0..90.0 &&
+        alert.longitude in -180.0..180.0
     ) {
-        LatLng(alert.approximateLatitude, alert.approximateLongitude)
+        LatLng(alert.latitude, alert.longitude)
     } else {
         null
     }
+
 
     var publicLocationAddress by remember(publicLocation) {
         mutableStateOf("Loading location...")
@@ -352,9 +343,9 @@ fun CommunityAlertCard(
                     )
                     ?.firstOrNull()
                     ?.getAddressLine(0)
-                    ?: "Approximate location unavailable"
+                    ?: "Location unavailable"
             } catch (e: Exception) {
-                "Approximate location unavailable"
+                "Location unavailable"
             }
         }
     }

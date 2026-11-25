@@ -110,6 +110,7 @@ fun HomeScreen(
 @Composable
 fun HomeContent(
     children: List<ChildProfile>,
+    activeElopementChildId: String?,
     onChildMissing: (ChildProfile) -> Unit
 ) {
     var focusedChildId by remember { mutableStateOf<String?>(null) }
@@ -122,7 +123,7 @@ fun HomeContent(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        HomeLocationCard(
+        ChildLocationMap(
             children = children,
             focusedChildId = focusedChildId,
             focusRequest = focusRequest,
@@ -131,31 +132,35 @@ fun HomeContent(
                 focusRequest++
             }
         )
-
         children.forEachIndexed { index, child ->
             key(child.childId) {
+
                 HomeStatusCard(
                     child = child,
                     childColor = ChildMarkerColors[index % ChildMarkerColors.size],
+                    isActiveElopement = activeElopementChildId == child.childId,
                     onChildMissing = onChildMissing,
                     onChildSelected = {
                         focusedChildId = child.childId
                         focusRequest++
                     }
                 )
+
             }
         }
     }
 }
 
-    @Composable
-    private fun HomeStatusCard(
-        child: ChildProfile,
-        childColor: Color,
-        onChildMissing: (ChildProfile) -> Unit,
-        onChildSelected: () -> Unit
-    ) {
-        val wearableRepository = remember { WearableRepository() }
+@Composable
+private fun HomeStatusCard(
+    child: ChildProfile,
+    childColor: Color,
+    isActiveElopement: Boolean,
+    onChildMissing: (ChildProfile) -> Unit,
+    onChildSelected: () -> Unit
+) {
+
+    val wearableRepository = remember { WearableRepository() }
         val childMonitoringRepository = remember { ChildSafeZoneMonitoringRepository() }
         var childSafeZoneMonitoring by remember(child.childId) { mutableStateOf<ChildSafeZoneMonitoring?>(null) }
         val childName = child.preferredName.ifBlank { child.fullName }
@@ -276,6 +281,7 @@ fun HomeContent(
                     .padding(horizontal = 12.dp, vertical = 12.dp),
                 horizontalAlignment = Alignment.Start
             ) {
+
                 Text(
                     text = childName,
                     fontFamily = TanSongbird,
@@ -283,7 +289,19 @@ fun HomeContent(
                     color = childColor
                 )
 
+                if (isActiveElopement) {
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "ACTIVE ELOPEMENT",
+                        fontFamily = Salsa,
+                        fontSize = 16.sp,
+                        color = HomeRed
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(6.dp))
+
                 val isSafeZoneOn =
                     childSafeZoneMonitoring?.monitoringEnabled == true &&
                             !childSafeZoneMonitoring?.activeSafeZoneId.isNullOrBlank()
@@ -452,7 +470,7 @@ fun HomeContent(
                     border = BorderStroke(1.dp, SecondaryRed)
                 ) {
                     Text(
-                        text = "CHILD IS MISSING",
+                        text = "ELOPEMENT MODE",
                         fontFamily = Salsa,
                         fontSize = 18.sp,
                         maxLines = 1
@@ -462,424 +480,4 @@ fun HomeContent(
             }
         }
     }
-
-    @Composable
-    private fun HomeLocationCard(
-        children: List<ChildProfile>,
-        focusedChildId: String?,
-        focusRequest: Int,
-        onChildFocused: (String) -> Unit
-    ) {
-        val context = LocalContext.current
-        val wearableRepository = remember { WearableRepository() }
-        var childLocations by remember { mutableStateOf<Map<String, LatLng>>(emptyMap()) }
-        var childMarkerIcons by remember { mutableStateOf<Map<String, BitmapDescriptor>>(emptyMap()) }
-
-        LaunchedEffect(children) {
-            childLocations = emptyMap()
-
-            children.forEach { child ->
-                wearableRepository.getWearable(
-                    childId = child.childId,
-                    onSuccess = { wearable ->
-                        val latitude = wearable?.latitude
-                        val longitude = wearable?.longitude
-
-                        if (latitude != null && longitude != null) {
-                            childLocations = childLocations + (
-                                    child.childId to LatLng(latitude, longitude)
-                                    )
-                        }
-                    },
-                    onFailure = { exception ->
-                        android.util.Log.e(
-                            "HomeLocationCard",
-                            "Failed to load location for ${child.childId}",
-                            exception
-                        )
-                    }
-                )
-            }
-        }
-
-        LaunchedEffect(children) {
-            childMarkerIcons = emptyMap()
-
-            children.forEachIndexed { index, child ->
-                val childColor = ChildMarkerColors[index % ChildMarkerColors.size]
-
-                val photo = if (child.photoUrl.isNotBlank()) {
-                    try {
-                        withContext(Dispatchers.IO) {
-                            val request = ImageRequest.Builder(context)
-                                .data(child.photoUrl)
-                                .allowHardware(false)
-                                .build()
-
-                            val result = context.imageLoader.execute(request)
-
-                            if (result is SuccessResult) {
-                                val drawable = result.drawable
-
-                                if (drawable is BitmapDrawable) {
-                                    drawable.bitmap
-                                } else {
-                                    null
-                                }
-                            } else {
-                                null
-                            }
-                        }
-                    } catch (e: Exception) {
-                        android.util.Log.e(
-                            "HomeLocationCard",
-                            "Unable to load marker photo for ${child.childId}",
-                            e
-                        )
-                        null
-                    }
-                } else {
-                    null
-                }
-
-                val markerIcon = createChildMarker(
-                    photo = photo,
-                    color = childColor
-                )
-
-                childMarkerIcons = childMarkerIcons + (child.childId to markerIcon)
-            }
-        }
-
-        LaunchedEffect(children) {
-            while (true) {
-                children.forEach { child ->
-                    wearableRepository.getWearable(
-                        childId = child.childId,
-                        onSuccess = { wearable ->
-                            val deviceId = wearable?.deviceId
-
-                            if (!deviceId.isNullOrBlank()) {
-                                WearConnectionManager.requestWearableLocation(
-                                    context = context,
-                                    nodeId = deviceId
-                                ) { result ->
-                                    if (!result.connected) {
-                                        wearableRepository.updateWearableConnection(
-                                            childId = child.childId,
-                                            connected = false,
-                                            onSuccess = {
-                                                android.util.Log.i(
-                                                    "HomeLocationCard",
-                                                    "Wearable disconnected: ${child.childId}"
-                                                )
-                                            },
-                                            onFailure = { exception ->
-                                                android.util.Log.e(
-                                                    "HomeLocationCard",
-                                                    "Failed to update wearable connection",
-                                                    exception
-                                                )
-                                            }
-                                        )
-                                    }
-                                    if (result.connected && wearable?.connected == false) {
-                                        wearableRepository.updateWearableConnection(
-                                            childId = child.childId,
-                                            connected = true,
-                                            onSuccess = {
-                                                android.util.Log.i(
-                                                    "HomeLocationCard",
-                                                    "Wearable reconnected: ${child.childId}"
-                                                )
-                                            },
-                                            onFailure = { exception ->
-                                                android.util.Log.e(
-                                                    "HomeLocationCard",
-                                                    "Failed to restore wearable connection",
-                                                    exception
-                                                )
-                                            }
-                                        )
-                                    }
-
-                                    if (result.connected && result.batteryLevel in 0..100) {
-                                        wearableRepository.updateWearableBattery(
-                                            childId = child.childId,
-                                            batteryLevel = result.batteryLevel,
-                                            onSuccess = {
-                                                android.util.Log.i(
-                                                    "HomeBattery",
-                                                    "Battery updated to ${result.batteryLevel}%"
-                                                )
-                                            },
-                                            onFailure = { exception ->
-                                                android.util.Log.e(
-                                                    "HomeBattery",
-                                                    "Failed to update wearable battery",
-                                                    exception
-                                                )
-                                            }
-                                        )
-
-                                        val currentBattery = result.batteryLevel
-
-                                        if (currentBattery <= 20) {
-                                            if (
-                                                CaregiverNotificationPreferences.isLowBatteryAlertEnabled(context) &&
-                                                !CaregiverNotificationPreferences.hasLowBatteryNotificationBeenSent(
-                                                    context,
-                                                    child.childId
-                                                )
-                                            ) {
-                                                val notificationSent =
-                                                    CaregiverNotificationManager.sendCaregiverNotification(
-                                                        context = context,
-                                                        title = "Wearable Low Battery",
-                                                        message = "${child.fullName}'s wearable battery is at $currentBattery%. Please charge the device."
-                                                    )
-
-                                                if (notificationSent) {
-                                                    CaregiverNotificationPreferences.setLowBatteryNotificationSent(
-                                                        context,
-                                                        child.childId,
-                                                        true
-                                                    )
-                                                }
-                                            }
-                                        } else {
-                                            CaregiverNotificationPreferences.setLowBatteryNotificationSent(
-                                                context,
-                                                child.childId,
-                                                false
-                                            )
-                                        }
-
-                                    }
-
-                                    if (
-                                        result.connected &&
-                                        result.latitude != null &&
-                                        result.longitude != null
-                                    ) {
-                                        val latitude = result.latitude
-                                        val longitude = result.longitude
-
-                                        wearableRepository.updateWearableLocation(
-                                            childId = child.childId,
-                                            latitude = latitude,
-                                            longitude = longitude,
-                                            timestamp = result.timestamp,
-                                            onSuccess = {
-                                                childLocations = childLocations + (
-                                                        child.childId to LatLng(latitude, longitude)
-                                                        )
-                                            },
-                                            onFailure = { exception ->
-                                                android.util.Log.e(
-                                                    "HomeLocationCard",
-                                                    "Failed to save location for ${child.childId}",
-                                                    exception
-                                                )
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        },
-                        onFailure = { exception ->
-                            android.util.Log.e(
-                                "HomeLocationCard",
-                                "Failed to retrieve wearable for ${child.childId}",
-                                exception
-                            )
-                        }
-                    )
-                }
-
-                delay(30_000L)
-            }
-        }
-
-        Column(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-
-                val cameraPositionState = rememberCameraPositionState()
-
-                LaunchedEffect(childLocations, children, focusedChildId) {
-                    if (focusedChildId != null) {
-                        return@LaunchedEffect
-                    }
-
-                    val locations = children.mapNotNull { child ->
-                        childLocations[child.childId]
-                    }
-
-                    if (locations.isEmpty()) {
-                        return@LaunchedEffect
-                    }
-
-                    if (locations.size == 1) {
-                        cameraPositionState.animate(
-                            CameraUpdateFactory.newLatLngZoom(
-                                locations.first(),
-                                16f
-                            )
-                        )
-                    } else {
-                        val bounds = LatLngBounds.builder().apply {
-                            locations.forEach { include(it) }
-                        }.build()
-
-                        cameraPositionState.animate(
-                            CameraUpdateFactory.newLatLngBounds(
-                                bounds,
-                                80
-                            )
-                        )
-                    }
-                }
-
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(340.dp),
-                    shape = RoundedCornerShape(15.dp),
-                    border = BorderStroke(1.dp, HomeBlue)
-                ) {
-                    GoogleMap(
-                        modifier = Modifier.fillMaxSize(),
-                        cameraPositionState = cameraPositionState
-                    ) {
-                        children.forEach { child ->
-                            val location = childLocations[child.childId]
-
-                            if (location != null) {
-                                key(child.childId) {
-                                    val markerState = rememberMarkerState(
-                                        key = child.childId,
-                                        position = location
-                                    )
-
-                                    LaunchedEffect(location) {
-                                        markerState.position = location
-                                    }
-
-                                    Marker(
-                                        state = markerState,
-                                        title = child.preferredName.ifBlank { child.fullName },
-                                        icon = childMarkerIcons[child.childId]
-                                            ?: BitmapDescriptorFactory.defaultMarker(
-                                            floatArrayOf(0f, 210f, 120f, 45f, 270f, 30f)[
-                                                children.indexOf(child) % 6
-                                            ]
-                                        ),
-                                        onClick = {
-                                            onChildFocused(child.childId)
-                                            true
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    LaunchedEffect(focusedChildId, focusRequest) {
-                        val location = focusedChildId?.let { childLocations[it] }
-
-                        if (location != null) {
-                            cameraPositionState.animate(
-                                CameraUpdateFactory.newLatLngZoom(
-                                    location,
-                                    17f
-                                ),
-                                600
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-private fun createChildMarker(
-    photo: Bitmap?,
-    color: Color
-): BitmapDescriptor {
-    val size = 144
-    val borderWidth = 9f
-
-    val bitmap = Bitmap.createBitmap(
-        size,
-        size,
-        Bitmap.Config.ARGB_8888
-    )
-
-    val canvas = Canvas(bitmap)
-
-    val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        this.color = color.toArgb()
-        style = Paint.Style.FILL
-    }
-
-    canvas.drawCircle(
-        size / 2f,
-        size / 2f,
-        size / 2f,
-        borderPaint
-    )
-
-    val imagePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        isFilterBitmap = true
-    }
-
-    val radius = size / 2f - borderWidth
-
-    canvas.save()
-
-    val path = Path().apply {
-        addCircle(
-            size / 2f,
-            size / 2f,
-            radius,
-            Path.Direction.CW
-        )
-    }
-
-    canvas.clipPath(path)
-
-    if (photo != null) {
-        val scale = maxOf(
-            (size - borderWidth * 2) / photo.width,
-            (size - borderWidth * 2) / photo.height
-        )
-
-        val scaledWidth = photo.width * scale
-        val scaledHeight = photo.height * scale
-
-        val destination = RectF(
-            (size - scaledWidth) / 2f,
-            (size - scaledHeight) / 2f,
-            (size + scaledWidth) / 2f,
-            (size + scaledHeight) / 2f
-        )
-
-        canvas.drawBitmap(
-            photo,
-            null,
-            destination,
-            imagePaint
-        )
-    } else {
-        canvas.drawColor(android.graphics.Color.WHITE)
-    }
-
-    canvas.restore()
-
-    return BitmapDescriptorFactory.fromBitmap(bitmap)
-}
 

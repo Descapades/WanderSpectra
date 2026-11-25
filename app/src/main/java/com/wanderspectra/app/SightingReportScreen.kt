@@ -49,7 +49,7 @@ fun SightingReportScreen(
     onSubmitted: () -> Unit
 ) {
     val repository = remember { SightingReportRepository() }
-
+    val wearableRepository = remember { WearableRepository() }
     var selectedLocation by remember { mutableStateOf<LatLng?>(null) }
     var selectedTime by remember { mutableStateOf("Just Now") }
     var customHour by remember { mutableStateOf("") }
@@ -63,13 +63,22 @@ fun SightingReportScreen(
 
     val cameraPositionState = rememberCameraPositionState()
 
+
+
     LaunchedEffect(alert.id) {
         val latitude = alert.latitude
         val longitude = alert.longitude
 
+        android.util.Log.d(
+            "SightingReport",
+            "Alert ID: ${alert.id}, latitude: $latitude, longitude: $longitude"
+        )
+
         if (
             latitude != null &&
             longitude != null &&
+            latitude.isFinite() &&
+            longitude.isFinite() &&
             latitude in -90.0..90.0 &&
             longitude in -180.0..180.0
         ) {
@@ -81,6 +90,8 @@ fun SightingReportScreen(
             )
         }
     }
+
+
 
     Column(
         modifier = Modifier

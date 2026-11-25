@@ -122,7 +122,7 @@ fun ElopementConfirmationContent(
             )
         ) {
             Text(
-                text = "ELOPEMENT MODE",
+                text = "ACTIVATE",
                 fontFamily = Salsa,
                 fontSize = 16.sp
             )

@@ -12,8 +12,6 @@ data class CommunityAlert(
     val status: String = "ACTIVE",
     val distanceMiles: Double? = null,
     val lastKnownArea: String = "",
-    val approximateLatitude: Double? = null,
-    val approximateLongitude: Double? = null,
     val locationTimestamp: Long = 0L,
     val isLiveLocation: Boolean = false,
     val alertRadiusKm: Double = 1.0,

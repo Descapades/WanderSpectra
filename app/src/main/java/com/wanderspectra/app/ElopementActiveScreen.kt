@@ -20,6 +20,12 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.AnnotatedString
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.platform.LocalContext
+
 
 @Composable
 fun ElopementActiveContent(
@@ -31,6 +37,7 @@ fun ElopementActiveContent(
     onEmergencyProfile: (() -> Unit)? = null,
     emergencyProfileAvailable: Boolean = false,
     onSafetyCircle: (() -> Unit)? = null,
+    onNotifySafetyCircle: (() -> Unit)? = null,
     onCommunity: (() -> Unit)? = null,
     safetyCircleNotified: Boolean = false,
     communityAlertIssued: Boolean = false
@@ -39,24 +46,48 @@ fun ElopementActiveContent(
     var watchBatteryLevel by remember(childId) { mutableIntStateOf(-1) }
     var watchLastSync by remember(childId) { mutableLongStateOf(0L) }
     val wearableRepository = remember { WearableRepository() }
+    var wearableLocation by remember(childId) { mutableStateOf<com.google.android.gms.maps.model.LatLng?>(null) }
+    var locationTimestamp by remember(childId) { mutableLongStateOf(0L) }
 
     LaunchedEffect(childId) {
         if (childId.isNotBlank()) {
-            wearableRepository.getWearable(
-                childId = childId,
-                onSuccess = { wearable ->
-                    isWatchConnected = wearable?.connected == true
-                    watchBatteryLevel = wearable?.batteryLevel ?: -1
-                    watchLastSync = wearable?.lastSync ?: 0L
-                },
-                onFailure = { exception ->
-                    android.util.Log.e(
-                        "ElopementActive",
-                        "Failed to retrieve wearable for child",
-                        exception
-                    )
-                }
-            )
+            while (true) {
+                wearableRepository.getWearable(
+                    childId = childId,
+
+                    onSuccess = { wearable ->
+                        isWatchConnected = wearable?.connected == true
+                        watchBatteryLevel = wearable?.batteryLevel ?: -1
+                        watchLastSync = wearable?.lastSync ?: 0L
+
+                        wearableLocation = if (
+                            wearable?.latitude != null &&
+                            wearable.longitude != null
+                        ) {
+                            com.google.android.gms.maps.model.LatLng(
+                                wearable.latitude,
+                                wearable.longitude
+                            )
+                        } else {
+                            null
+                        }
+
+                        locationTimestamp = wearable?.locationTimestamp
+                            ?.takeIf { it > 0L }
+                            ?: wearable?.lastSync
+                                    ?: 0L
+                    },
+
+                    onFailure = { exception ->
+                        android.util.Log.e(
+                            "ElopementActive",
+                            "Failed to retrieve wearable for child",
+                            exception
+                        )
+                    }
+                )
+                kotlinx.coroutines.delay(5_000L)
+            }
         }
     }
 
@@ -126,7 +157,6 @@ fun ElopementActiveContent(
             textAlign = TextAlign.Center
         )
 
-
         onSafetyCircle?.let { action ->
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -158,7 +188,7 @@ fun ElopementActiveContent(
             Spacer(modifier = Modifier.height(8.dp))
 
             Button(
-                onClick = action,
+                onClick = { onNotifySafetyCircle?.invoke() },
                 modifier = Modifier
                     .fillMaxWidth(0.85f)
                     .height(48.dp)
@@ -253,7 +283,83 @@ fun ElopementActiveContent(
                 )
             }
         }
-        EmergencyServicesShortcut()
+
+        val context = LocalContext.current
+        var dialerError by remember { mutableStateOf<String?>(null) }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "Call Emergency Services",
+            color = SecondaryRed,
+            fontFamily = Salsa,
+            fontSize = 24.sp,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Text(
+            text = "Provides access to emergency services and 911 calling through your phone dialer.",
+            color = EmergencyRed,
+            fontFamily = Salsa,
+            fontSize = 18.sp,
+            lineHeight = 24.sp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(
+            onClick = {
+                dialerError = null
+
+                try {
+                    context.startActivity(
+                        Intent(
+                            Intent.ACTION_DIAL,
+                            Uri.fromParts("tel", "911", null)
+                        )
+                    )
+                } catch (_: ActivityNotFoundException) {
+                    dialerError =
+                        "No calling app is available. Use another phone to contact emergency services."
+                } catch (_: SecurityException) {
+                    dialerError =
+                        "Unable to open the calling app. Open your phone app to contact emergency services."
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth(0.85f)
+                .height(48.dp)
+                .border(
+                    width = 1.dp,
+                    color = SecondaryRed,
+                    shape = RoundedCornerShape(10.dp)
+                ),
+            shape = RoundedCornerShape(10.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = ButtonRed,
+                contentColor = SecondaryRed
+            )
+        ) {
+            Text(
+                text = "Call for Help",
+                fontFamily = Salsa,
+                fontSize = 18.sp
+            )
+        }
+
+        dialerError?.let { message ->
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = message,
+                color = MaterialTheme.colorScheme.error,
+                fontFamily = Salsa
+            )
+        }
+
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
