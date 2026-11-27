@@ -8,6 +8,9 @@ import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 import org.json.JSONObject
+import android.content.Context
+import android.location.Geocoder
+import java.util.Locale
 
 class CommunityAlertRepository {
 
@@ -18,7 +21,32 @@ class CommunityAlertRepository {
     private val resolvedAlertsWorkerUrl =
         "https://wanderspectra-alerts.destin-champlin.workers.dev/resolved-community-alerts"
 
-    suspend fun createAlert(alert: CommunityAlert): String {
+
+    private suspend fun getGeneralLocation(
+        context: Context,
+        latitude: Double,
+        longitude: Double
+    ): String = withContext(Dispatchers.IO) {
+        try {
+            @Suppress("DEPRECATION")
+            val address = Geocoder(context, Locale.getDefault())
+                .getFromLocation(latitude, longitude, 1)
+                ?.firstOrNull()
+
+            listOfNotNull(
+                address?.locality?.takeIf { it.isNotBlank() },
+                address?.adminArea?.takeIf { it.isNotBlank() }
+            ).joinToString(", ")
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
+
+    suspend fun createAlert(
+        context: Context,
+        alert: CommunityAlert
+    ): String {
         require(alert.incidentId.isNotBlank()) {
             "An incident ID is required."
         }
@@ -64,9 +92,16 @@ class CommunityAlertRepository {
         val document = alerts.document(alert.incidentId)
         val now = com.google.firebase.Timestamp.now()
 
+        val generalLocation = getGeneralLocation(
+            context,
+            alert.latitude!!,
+            alert.longitude!!
+        )
+
         val newAlert = alert.copy(
             id = document.id,
             status = "ACTIVE",
+            lastKnownArea = generalLocation,
             createdAt = now,
             updatedAt = now,
             resolvedAt = null

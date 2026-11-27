@@ -591,7 +591,8 @@ fun AppShell(
 
                                                                     try {
                                                                         communityAlertRepository.createAlert(
-                                                                            CommunityAlert(
+                                                                            context = context,
+                                                                            alert = CommunityAlert(
                                                                                 incidentId = incidentId,
                                                                                 caregiverId = caregiverUid,
                                                                                 childId = emergencyChildId,
